@@ -114,6 +114,26 @@ simulate.layer_xgb <- function(obj, data) {
   return(ret)
 }
 
+#' @export
+simulate.layer_dl <- function(obj, data) {
+
+  select <- obj$filter(data)
+  response <- h2o.predict(obj$fit, newdata = as.h2o(data[select,]))
+
+  if(obj$method_options$distribution == 'bernoulli') {
+    simulation <- runif(dim(response)[1]) < response
+  } else if(obj$method_options$distribution == 'gaussian') {
+    simulation <- rnorm(dim(response)[1], mean = as.vector(response), sd = obj$sigma)
+  } else if(obj$method_options$distribution == 'gamma') {
+    simulation <- rgamma(dim(response)[1], scale = as.vector(response) / obj$shape, shape = obj$shape)
+  }
+
+  ret <- rep(0, nrow(data))
+  ret[select] <- simulation
+
+  return(ret)
+}
+
 #' Simulate the future development of claims
 #'
 #' Simulates multiple paths for the future development of each claim

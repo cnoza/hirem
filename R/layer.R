@@ -139,6 +139,69 @@ layer_xgb <- function(obj, name, nrounds = 1500, early_stopping_rounds = 20, ver
   hirem_layer(obj, name, 'xgb', 'layer_xgb', options, filter, transformation)
 }
 
+#' Layer estimated using a deep learning model
+#'
+#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{deeplearning} function of the \code{\link[h2o]{h2o}} package.
+#'
+#' @param obj The hierarchical reserving model
+#' @param name Character, name of the layer. This name should match the variable name in the data set
+#' @param distribution Default is tweedie,
+#' @param hidden Default is c(10,10)
+#' @param epochs Default is 1000
+#' @param train_samples_per_iteration Default is -1
+#' @param reproducible Default is True,
+#' @param activation Default is "Tanh",
+#' @param single_node_mode Default is FALSE,
+#' @param balance_classes Default is FALSE,
+#' @param force_load_balance Default is FALSE,
+#' @param seed Default is 23123,
+#' @param tweedie_power Default is 1.5,
+#' @param score_training_samples Default is 0,
+#' @param score_validation_samples Default is 0,
+#' @param stopping_rounds Default is 0
+#' @param input_dropout_ratio Default is 0.1
+#' @param filter Function with \itemize{
+#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
+#'         FALSE indicates that this layer is zero for the current record.
+#'  }
+#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' applied before modelling this layer.
+#' @export
+layer_dl <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
+                     reproducible = T, activation = "Tanh",
+                     single_node_mode = FALSE,
+                     balance_classes = FALSE,
+                     force_load_balance = FALSE,
+                     seed = 23123,
+                     tweedie_power = 1.5,
+                     score_training_samples = 0,
+                     score_validation_samples = 0,
+                     input_dropout_ratio = 0.1,
+                     hidden_dropout_ratios = 0.5,
+                     stopping_rounds = 0, filter = NULL, transformation = NULL) {
+
+  options <- c()
+  options$distribution <- distribution
+  options$hidden <- hidden
+  options$epochs <- epochs
+  options$train_samples_per_iteration <- train_samples_per_iteration
+  options$reproducible <- reproducible
+  options$activation <- activation
+  options$single_node_mode <- single_node_mode
+  options$balance_classes <- balance_classes
+  options$force_load_balance <- force_load_balance
+  options$seed <- seed
+  options$tweedie_power <- tweedie_power
+  options$score_training_samples <- score_training_samples
+  options$score_validation_samples <- score_validation_samples
+  options$stopping_rounds <- stopping_rounds
+  options$input_dropout_ratio <- input_dropout_ratio
+  options$hidden_dropout_ratios <- hidden_dropout_ratios
+
+  hirem_layer(obj, name, 'dl', 'layer_dl', options, filter, transformation)
+}
+
 #' @export
 print.hirem_layer <- function(obj, ...) {
   if(!is.null(obj$transformation)) {

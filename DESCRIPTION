@@ -20,7 +20,8 @@ Imports:
 	tidyr,
 	purrr,
 	Matrix,
-	xgboost
+	xgboost,
+	h2o
 RoxygenNote: 7.1.2
 Suggests: 
     knitr,

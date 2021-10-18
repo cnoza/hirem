@@ -143,25 +143,60 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     layer$shape_sd <- shape$s.e.
   }
 
-  # if(layer$method_options$select_trees == 'last') {
-  #   layer$iter <- layer$method_options$n.trees
-  # } else {
-  #   layer$iter <- gbm.perf(layer$fit, plot.it = FALSE)
-  #
-  #   if(length(layer$iter) == 0) {
-  #     layer$iter <- which.min(layer$fit$oobag.improve[is.finite(layer$fit$oobag.improve)])
-  #   }
-  # }
-  #
-  # if(layer$method_options$distribution == 'gaussian') {
-  #   layer$sigma <- sd(predict(layer$fit, n.trees = layer$iter, type = "response") - layer$fit$data$y)
-  # }
-  #
-  # if(layer$method_options$distribution == 'gamma') {
-  #   shape <- gamma_fit_shape(layer$fit$data$y, predict(layer$fit, n.trees = layer$iter, type = "response"))
-  #   layer$shape <- shape$shape
-  #   layer$shape_sd <- shape$s.e.
-  # }
+  return(layer)
+}
+
+#' @export
+fit.layer_dl <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+
+  layer$formula <- formula
+
+  data <- obj$data_training
+  if(!training) {
+    data <- obj$data_observed
+  }
+
+  if(!is.null(fold)) {
+    data <- data %>% filter(cv_fold != fold)
+  }
+
+  data <- data[layer$filter(data), ]
+
+  f <- as.formula(formula)
+  label <- as.character(terms(f)[[2]])
+
+  h2o.init()
+  data.h2o <- as.h2o(data)
+  layer$fit <- h2o.deeplearning(x = attr(terms(f),"term.labels"),
+                                y = label,
+                                training_frame = data.h2o,
+                                distribution = layer$method_options$distribution,
+                                hidden = layer$method_options$hidden,
+                                epochs = layer$method_options$epochs,
+                                train_samples_per_iteration = layer$method_options$train_samples_per_iteration,
+                                reproducible = layer$method_options$reproducible,
+                                activation = layer$method_options$activation,
+                                single_node_mode = layer$method_options$single_node_mode,
+                                balance_classes = layer$method_options$balance_classes,
+                                force_load_balance = layer$method_options$force_load_balance,
+                                seed = layer$method_options$seed,
+                                tweedie_power = layer$method_options$tweedie_power,
+                                score_training_samples = layer$method_options$score_training_samples,
+                                score_validation_samples = layer$method_options$score_validation_samples,
+                                stopping_rounds = layer$method_options$stopping_rounds,
+                                input_dropout_ratio = layer$method_options$input_dropout_ratio,
+                                hidden_dropout_ratios = layer$method_options$hidden_dropout_ratios)
+
+  if(layer$method_options$distribution == 'gaussian') {
+    layer$sigma <- sd(h2o.predict(layer$fit, data.h2o) - data[,label])
+  }
+
+  if(layer$method_options$distribution == 'gamma') {
+    shape <- gamma_fit_shape(data[,label], h2o.predict(layer$fit, data.h2o))
+    layer$shape <- shape$shape
+    layer$shape_sd <- shape$s.e.
+  }
+
 
   return(layer)
 }

@@ -54,7 +54,7 @@ truncated_gaussian_fit_sigma <- function(y, mu, lower = -Inf, upper = Inf, sigma
 }
 
 #' @export
-gamma_fit_shape <- function(observed, fitted)
+gamma_fit_shape <- function(observed, fitted, weight = 1)
 {
   likelihood <- function(k)
   {

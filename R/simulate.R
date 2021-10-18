@@ -86,6 +86,34 @@ simulate.layer_gbm <- function(obj, data) {
   return(ret)
 }
 
+#' @export
+simulate.layer_xgb <- function(obj, data) {
+
+  select <- obj$filter(data)
+  f <- as.formula(obj$formula)
+  label <- as.character(terms(f)[[2]])
+
+  newdata.xgb <- xgb.DMatrix(data = sparse.model.matrix(f, data=data[select, ]),
+                             info = list(
+                               'label' = as.matrix(data[select,label])
+                             ))
+
+  response <- predict(obj$fit, ntreelimit = obj$best_ntreelimit, newdata = newdata.xgb, type = 'response')
+
+  if(obj$method_options$objective == 'binary:logistic') {
+    simulation <- runif(length(response)) < response
+  } else if(obj$method_options$objective == 'reg:squarederror') {
+    simulation <- rnorm(length(response), mean = response, sd = obj$sigma)
+  } else if(obj$method_options$objective == 'reg:gamma') {
+    simulation <- rgamma(length(response), scale = response / obj$shape, shape = obj$shape)
+  }
+
+  ret <- rep(0, nrow(data))
+  ret[select] <- simulation
+
+  return(ret)
+}
+
 #' Simulate the future development of claims
 #'
 #' Simulates multiple paths for the future development of each claim

@@ -84,6 +84,88 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   return(layer)
 }
 
+#' @export
+fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  layer$formula <- formula
+
+  data <- obj$data_training
+  if(!training) {
+    data <- obj$data_observed
+  }
+
+  if(!is.null(fold)) {
+    data <- data %>% filter(cv_fold != fold)
+  }
+
+  data <- data[layer$filter(data), ]
+
+  f <- as.formula(formula)
+  label <- as.character(terms(f)[[2]])
+
+  data.xgb <- xgb.DMatrix(data = sparse.model.matrix(f, data=data),
+                          info = list(
+                            'label' = as.matrix(data[,label])
+                          ))
+
+  layer$fit <- xgboost(
+    data = data.xgb,
+    nrounds = layer$method_options$nrounds,
+    early_stopping_rounds = layer$method_options$early_stopping_rounds,
+    verbose = layer$method_options$verbose,
+    params = list(
+      booster = layer$method_options$booster,
+      objective = layer$method_options$objective,
+      eval_metric = layer$method_options$eval_metric,
+      eta = layer$method_options$eta,
+      nthread = layer$method_options$nthread,
+      subsample = layer$method_options$subsample,
+      colsample_bynode = layer$method_options$colsample_bynode,
+      max_depth = layer$method_options$max_depth,
+      min_child_weight = layer$method_options$min_child_weight,
+      gamma = layer$method_options$gamma,
+      lambda = layer$method_options$lambda,
+      alpha = layer$method_options$alpha
+    )
+  )
+
+  layer$iter <- layer$fit$best_iteration
+  layer$best_ntreelimit <- layer$fit$best_ntreelimit
+  layer$best_score <- layer$fit$best_score
+  layer$niter <- layer$fit$niter
+
+  if(layer$method_options$objective == 'reg:squarederror') {
+    layer$sigma <- sd(predict(layer$fit, ntreelimit = obj$best_ntreelimit, newdata = data.xgb, type = "response") - as.matrix(data[,label]))
+  }
+
+  if(layer$method_options$objective == 'reg:gamma') {
+    shape <- gamma_fit_shape(as.matrix(data[,label]), predict(layer$fit, ntreelimit = obj$best_ntreelimit, newdata = data.xgb, type = "response"))
+    layer$shape <- shape$shape
+    layer$shape_sd <- shape$s.e.
+  }
+
+  # if(layer$method_options$select_trees == 'last') {
+  #   layer$iter <- layer$method_options$n.trees
+  # } else {
+  #   layer$iter <- gbm.perf(layer$fit, plot.it = FALSE)
+  #
+  #   if(length(layer$iter) == 0) {
+  #     layer$iter <- which.min(layer$fit$oobag.improve[is.finite(layer$fit$oobag.improve)])
+  #   }
+  # }
+  #
+  # if(layer$method_options$distribution == 'gaussian') {
+  #   layer$sigma <- sd(predict(layer$fit, n.trees = layer$iter, type = "response") - layer$fit$data$y)
+  # }
+  #
+  # if(layer$method_options$distribution == 'gamma') {
+  #   shape <- gamma_fit_shape(layer$fit$data$y, predict(layer$fit, n.trees = layer$iter, type = "response"))
+  #   layer$shape <- shape$shape
+  #   layer$shape_sd <- shape$s.e.
+  # }
+
+  return(layer)
+}
+
 #' Fitting layers in a hierarchical reserving model
 #'
 #' fit one or multiple layers of the hierarchical reserving model

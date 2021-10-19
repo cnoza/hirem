@@ -80,6 +80,7 @@ simulate.layer_gbm <- function(obj, data) {
     simulation <- rgamma(length(response), scale = response / obj$shape, shape = obj$shape)
   }
 
+
   ret <- rep(0, nrow(data))
   ret[select] <- simulation
 
@@ -93,12 +94,12 @@ simulate.layer_xgb <- function(obj, data) {
   f <- as.formula(obj$formula)
   label <- as.character(terms(f)[[2]])
 
-  newdata.xgb <- xgb.DMatrix(data = sparse.model.matrix(f, data=data[select, ]),
+  newdata.xgb <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=data[select, ])[,-1]),
                              info = list(
                                'label' = as.matrix(data[select,label])
                              ))
 
-  response <- predict(obj$fit, ntreelimit = obj$best_ntreelimit, newdata = newdata.xgb, type = 'response')
+  response <- predict(obj$fit, newdata = newdata.xgb, type = 'response')
 
   if(obj$method_options$objective == 'binary:logistic') {
     simulation <- runif(length(response)) < response
@@ -126,6 +127,34 @@ simulate.layer_dl <- function(obj, data) {
     simulation <- rnorm(dim(response)[1], mean = as.vector(response), sd = obj$sigma)
   } else if(obj$method_options$distribution == 'gamma') {
     simulation <- rgamma(dim(response)[1], scale = as.vector(response) / obj$shape, shape = obj$shape)
+  }
+
+  if(!is.null(obj$transformation)) {
+    simulation <- obj$transformation$inverse_transform(simulation)
+  }
+
+  ret <- rep(0, nrow(data))
+  ret[select] <- simulation
+
+  return(ret)
+}
+
+#' @export
+simulate.layer_aml <- function(obj, data) {
+
+  select <- obj$filter(data)
+  response <- h2o.predict(obj$fit, newdata = as.h2o(data[select,]))
+
+  if(obj$method_options$distribution == 'bernoulli') {
+    simulation <- runif(dim(response)[1]) < response
+  } else if(obj$method_options$distribution == 'gaussian') {
+    simulation <- rnorm(dim(response)[1], mean = as.vector(response), sd = obj$sigma)
+  } else if(obj$method_options$distribution == 'gamma') {
+    simulation <- rgamma(dim(response)[1], scale = as.vector(response) / obj$shape, shape = obj$shape)
+  }
+
+  if(!is.null(obj$transformation)) {
+    simulation <- obj$transformation$inverse_transform(simulation)
   }
 
   ret <- rep(0, nrow(data))

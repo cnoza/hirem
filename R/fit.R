@@ -4,6 +4,8 @@ fit <- function(object, ...) {
 }
 
 fit.layer_glm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  print("Fitting layer_glm ...")
+
   layer$formula <- formula
 
   data <- obj$data_training
@@ -37,6 +39,7 @@ fit.layer_glm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
 #' @export
 fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  print("Fitting layer_gbm ...")
   layer$formula <- formula
 
   data <- obj$data_training
@@ -86,6 +89,7 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
 #' @export
 fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  print("Fitting layer_xgb ...")
   layer$formula <- formula
 
   data <- obj$data_training
@@ -98,11 +102,10 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   data <- data[layer$filter(data), ]
-
   f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
 
-  data.xgb <- xgb.DMatrix(data = sparse.model.matrix(f, data=data),
+  data.xgb <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=data)[,-1]),
                           info = list(
                             'label' = as.matrix(data[,label])
                           ))
@@ -134,7 +137,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   layer$niter <- layer$fit$niter
 
   if(layer$method_options$objective == 'reg:squarederror') {
-    layer$sigma <- sd(predict(layer$fit, ntreelimit = obj$best_ntreelimit, newdata = data.xgb, type = "response") - as.matrix(data[,label]))
+    layer$sigma <- sd(predict(layer$fit, newdata = data.xgb, type = "response") - as.matrix(data[,label]))
   }
 
   if(layer$method_options$objective == 'reg:gamma') {
@@ -148,7 +151,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
 #' @export
 fit.layer_dl <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-
+  print("Fitting layer_dl ...")
   layer$formula <- formula
 
   data <- obj$data_training
@@ -166,6 +169,8 @@ fit.layer_dl <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   label <- as.character(terms(f)[[2]])
 
   h2o.init()
+  h2o.no_progress()
+
   data.h2o <- as.h2o(data)
   layer$fit <- h2o.deeplearning(x = attr(terms(f),"term.labels"),
                                 y = label,
@@ -186,6 +191,51 @@ fit.layer_dl <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                 stopping_rounds = layer$method_options$stopping_rounds,
                                 input_dropout_ratio = layer$method_options$input_dropout_ratio,
                                 hidden_dropout_ratios = layer$method_options$hidden_dropout_ratios)
+
+  if(layer$method_options$distribution == 'gaussian') {
+    layer$sigma <- sd(h2o.predict(layer$fit, data.h2o) - data[,label])
+  }
+
+  if(layer$method_options$distribution == 'gamma') {
+    shape <- gamma_fit_shape(data[,label], h2o.predict(layer$fit, data.h2o))
+    layer$shape <- shape$shape
+    layer$shape_sd <- shape$s.e.
+  }
+
+
+  return(layer)
+}
+
+#' @export
+fit.layer_aml <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  print("Fitting layer_aml ...")
+  layer$formula <- formula
+
+  data <- obj$data_training
+  if(!training) {
+    data <- obj$data_observed
+  }
+
+  if(!is.null(fold)) {
+    data <- data %>% filter(cv_fold != fold)
+  }
+
+  data <- data[layer$filter(data), ]
+
+  f <- as.formula(formula)
+  label <- as.character(terms(f)[[2]])
+
+  h2o.init()
+  h2o.no_progress()
+
+  data.h2o <- as.h2o(data)
+  layer$fit <- h2o.automl(x = attr(terms(f),"term.labels"),
+                          y = label,
+                          training_frame = data.h2o,
+                          max_models = layer$method_options$max_models)
+
+  lb <- layer$fit@leaderboard
+  print(lb, n = nrow(lb))
 
   if(layer$method_options$distribution == 'gaussian') {
     layer$sigma <- sd(h2o.predict(layer$fit, data.h2o) - data[,label])

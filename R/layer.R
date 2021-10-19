@@ -92,18 +92,18 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #'
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
-#' @param nrounds Max number of boosting iterations, passed to \code{\link[xgboost]{xgboost}}. Default is 1500.
+#' @param nrounds Max number of boosting iterations, passed to \code{\link[xgboost]{xgboost}}. Default is 100.
 #' @param early_stopping_rounds Passed to \code{\link[xgboost]{xgboost}}. If NULL, the early stopping function is not triggered. If set to an integer k, training with a validation set will stop if the performance doesn't improve for k rounds. Default is 20.
 #' @param verbose If 0, \code{\link[xgboost]{xgboost}} will stay silent. If 1, it will print information about performance. Default is 0.
 #' @param booster Passed to \code{\link[xgboost]{xgboost}}. Which booster to use, can be gbtree or gblinear. Default is gbtree.
-#' @param objective Specify the learning task and the corresponding learning objective, passed to \code{\link[xgboost]{xgboost}}. Default options is \code{binary:logistic}.
-#' @param eval_metric Evaluation metrics for validation data. Default is 'poisson-nloglik'.
+#' @param objective Specify the learning task and the corresponding learning objective, passed to \code{\link[xgboost]{xgboost}}.
+#' @param eval_metric Evaluation metrics for validation data. Default is 'rmse'.
 #' @param eta The learning rate passed to \code{\link[xgboost]{xgboost}}. Default is 0.01
 #' @param nthread Number of parallel threads used to run \code{\link[xgboost]{xgboost}}. Default is 1.
-#' @param subsample Subsample ratio of the training instance. Default is 0.75. Setting it to 0.75 means that \code{\link[xgboost]{xgboost}} randomly collected 75 percent of the data instances to grow trees and this will prevent overfitting.
+#' @param subsample Subsample ratio of the training instance. Default is 0.8. Setting it to 0.8 means that \code{\link[xgboost]{xgboost}} randomly collected 80 percent of the data instances to grow trees and this will prevent overfitting.
 #' @param colsample_bynode Subsample ratio of columns for each node (split). Passed to \code{\link[xgboost]{xgboost}}
-#' @param max_depth Maximum depth of a tree, passed to \code{\link[xgboost]{xgboost}}. Default is 3
-#' @param min_child_weight Minimum sum of instance weight (hessian) needed in a child, passed to \code{\link[xgboost]{xgboost}}. Default is 1000.
+#' @param max_depth Maximum depth of a tree, passed to \code{\link[xgboost]{xgboost}}. Default is 2.
+#' @param min_child_weight Minimum sum of instance weight (hessian) needed in a child, passed to \code{\link[xgboost]{xgboost}}. Default is 10.
 #' @param gamma Minimum loss reduction required to make a further partition on a leaf node of the tree, passed to \code{\link[xgboost]{xgboost}}. Default is 0.
 #' @param lambda L2 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.
 #' @param alpha L1 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.
@@ -115,9 +115,9 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_xgb <- function(obj, name, nrounds = 1500, early_stopping_rounds = 20, verbose = F, booster = 'gbtree', objective = 'count:poisson',
-                      eval_metric = 'poisson-nloglik', eta = 0.01, nthread = 1, subsample = .75, colsample_bynode = .5, max_depth = 3,
-                      min_child_weight = 1000, gamma = 0, lambda = .01, alpha = .01, filter = NULL, transformation = NULL) {
+layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verbose = F, booster = 'gbtree', objective,
+                      eval_metric = 'rmse', eta = 0.01, nthread = 1, subsample = .8, colsample_bynode = .8, max_depth = 2,
+                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$nrounds <- nrounds
@@ -200,6 +200,30 @@ layer_dl <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epo
   options$hidden_dropout_ratios <- hidden_dropout_ratios
 
   hirem_layer(obj, name, 'dl', 'layer_dl', options, filter, transformation)
+}
+
+#' Layer estimated using AutoML (H2O)
+#'
+#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using AutoML from the \code{\link[h2o]{h2o}} package.
+#'
+#' @param obj The hierarchical reserving model
+#' @param name Character, name of the layer. This name should match the variable name in the data set
+#' @param filter Function with \itemize{
+#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
+#'         FALSE indicates that this layer is zero for the current record.
+#'  }
+#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' applied before modelling this layer.
+#' @export
+layer_aml <- function(obj, name, distribution = 'gaussian',
+                      max_models = 5, filter = NULL, transformation = NULL) {
+
+  options <- c()
+  options$max_models <- max_models
+  options$distribution <- distribution
+
+  hirem_layer(obj, name, 'aml', 'layer_aml', options, filter, transformation)
 }
 
 #' @export

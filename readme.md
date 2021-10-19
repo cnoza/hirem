@@ -37,6 +37,10 @@ The package is still under development. Currently supported layers are:
 * `layer_glm`: Estimates a layer using a generalized linear model
 * `layer_gbm`: Estimates a layer using a gradient boosting model
 
+Under development:
+* `layer_xgb`: Estimates a layer using an extreme gradient boosting model (xgboost)
+* `layer_aml`: Estimates a layer using AutoMl (h2o)
+
 Supported distributions are:
 
 * `binomial`

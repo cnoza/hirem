@@ -29,7 +29,7 @@ split_data <- function(obj, observed = NULL, validation = NULL, cv_fold = NULL) 
 
   if(!is.null(validation)) {
     if(class(validation) == "numeric") {
-      subset <- runif(nrow(obj$data_observed)) < fraction
+      subset <- runif(nrow(obj$data_observed)) < validation
       obj$data_validation <- obj$data_observed[subset, ]
     } else if(class(validation) == "function") {
       obj$data_validation <- validation(obj$data_observed)
@@ -37,7 +37,7 @@ split_data <- function(obj, observed = NULL, validation = NULL, cv_fold = NULL) 
       obj$data_validation <- validation
     }
 
-    obj$data_training <- fsetdiff(obj$data_observed, obj$data_validation, all = TRUE)
+    obj$data_training <- fsetdiff(as.data.table(obj$data_observed), as.data.table(obj$data_validation), all = TRUE)
   } else {
     obj$data_training <- obj$data_observed
   }

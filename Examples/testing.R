@@ -18,7 +18,9 @@ source(file='./Examples/import/functions.R')
 
 ### Case 1: GLM ###
 
-model1 <- hirem(reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+model1 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_glm('size', Gamma(link = log),
@@ -34,7 +36,8 @@ simulate_rbns(model1)
 ### Case 2: GLM + GBM (gaussian) ###
 
 model2 <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_gbm('size', distribution = 'gaussian',
@@ -51,7 +54,8 @@ simulate_rbns(model2)
 ### Case 2b: GLM + GBM (gamma) ###
 
 model2b <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_gbm('size', distribution = 'gamma',
@@ -68,7 +72,8 @@ simulate_rbns(model2b)
 ### Case 3: GLM + XGB (reg:squarederror) ###
 
 model3 <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_xgb('size', objective = 'reg:squarederror',
@@ -87,14 +92,15 @@ model3 <- hirem::fit(model3,
 
 simulate_rbns(model3)
 
-### Case 3b: GLM + XGB (reg:gamma) ###
+### Case 3b: GLM + XGB (reg:gamma + gamma-deviance) ###
 
 model3b <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_xgb('size', objective = 'reg:gamma',
-            eval_metric = 'rmse',
+            eval_metric = 'gamma-deviance',
             eta = 0.01,
             nrounds = 1500,
             max_depth = 20,
@@ -112,11 +118,12 @@ simulate_rbns(model3b)
 ### Case 4: GLM + DL(MLP) ###
 
 model4 <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_dl('size', distribution = 'gaussian', epochs = 10,
-           hidden = c(100,100,100), hidden_dropout_ratios = c(0.5,0.8,0.5),
+  layer_dl('size', distribution = 'gaussian', epochs = 20,
+           hidden = c(100,100,100), hidden_dropout_ratios = c(0.01,0.01,0.01),
            activation = 'RectifierWithDropout',
            filter = function(data){data$payment == 1})
 
@@ -130,7 +137,8 @@ simulate_rbns(model4)
 ### Case 5: GLM + DL(MLP) ###
 
 model5 <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_dl('size', distribution = 'gaussian', epochs = 10,
@@ -148,7 +156,8 @@ simulate_rbns(model5)
 ### Case 6: GLM + AutoML (h2o) ###
 
 model6 <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_aml('size', distribution = 'gaussian',

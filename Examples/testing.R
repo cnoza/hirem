@@ -96,9 +96,10 @@ model3b <- hirem(reserving_data) %>%
   layer_xgb('size', objective = 'reg:gamma',
             eval_metric = 'rmse',
             eta = 0.01,
-            nrounds = 500,
-            max_depth = 6,
+            nrounds = 1500,
+            max_depth = 20,
             verbose = F,
+            transformation = hirem_transformation_log,
             filter = function(data){data$payment == 1})
 
 model3b <- hirem::fit(model3b,

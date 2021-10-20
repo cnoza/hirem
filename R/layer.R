@@ -173,7 +173,7 @@ layer_dl <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epo
                      single_node_mode = FALSE,
                      balance_classes = FALSE,
                      force_load_balance = FALSE,
-                     seed = 23123,
+                     seed = NULL,
                      tweedie_power = 1.5,
                      score_training_samples = 0,
                      score_validation_samples = 0,

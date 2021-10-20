@@ -80,7 +80,6 @@ simulate.layer_gbm <- function(obj, data) {
     simulation <- rgamma(length(response), scale = response / obj$shape, shape = obj$shape)
   }
 
-
   ret <- rep(0, nrow(data))
   ret[select] <- simulation
 

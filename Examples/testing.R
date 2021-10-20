@@ -1,4 +1,5 @@
 rm(list=ls())
+options(warn=-1)
 require(tidyverse)
 require(hirem)
 require(gbm)
@@ -6,6 +7,10 @@ require(xgboost)
 require(Matrix)
 require(h2o)
 data("reserving_data")
+
+######################### Imports #########################
+
+source(file='./Examples/import/functions.R')
 
 ######################### Models #########################
 
@@ -22,7 +27,9 @@ model1 <- fit(model1,
               payment = 'payment ~ close + factor(development_year)',
               size = 'size ~ close + factor(development_year)')
 
-### Case 2: GLM + GBM ###
+simulate_rbns(model1)
+
+### Case 2: GLM + GBM (gaussian) ###
 
 model2 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
@@ -37,7 +44,26 @@ model2 <- fit(model2,
               payment = 'payment ~ close + factor(development_year)',
               size = 'size ~ close + development_year')
 
-### Case 3: GLM + XGB ###
+simulate_rbns(model2)
+
+### Case 2b: GLM + GBM (gamma) ###
+
+model2b <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_gbm('size', distribution = 'gamma',
+            transformation = hirem_transformation_log,
+            filter = function(data){data$payment == 1})
+
+model2b <- fit(model2b,
+              close = 'close ~ factor(development_year)',
+              payment = 'payment ~ close + factor(development_year)',
+              size = 'size ~ close + development_year')
+
+simulate_rbns(model2b)
+
+### Case 3: GLM + XGB (reg:squarederror) ###
 
 model3 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
@@ -57,6 +83,29 @@ model3 <- hirem::fit(model3,
                      payment = 'payment ~ close + factor(development_year)',
                      size = 'size ~ close + development_year')
 
+simulate_rbns(model3)
+
+### Case 3b: GLM + XGB (reg:gamma) ###
+
+model3b <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6)) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_xgb('size', objective = 'reg:gamma',
+            eval_metric = 'rmse',
+            eta = 0.01,
+            nrounds = 500,
+            max_depth = 6,
+            verbose = F,
+            filter = function(data){data$payment == 1})
+
+model3b <- hirem::fit(model3b,
+                     close = 'close ~ factor(development_year)',
+                     payment = 'payment ~ close + factor(development_year)',
+                     size = 'size ~ close + development_year')
+
+simulate_rbns(model3b)
+
 ### Case 4: GLM + DL(MLP) ###
 
 model4 <- hirem(reserving_data) %>%
@@ -64,7 +113,7 @@ model4 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_dl('size', distribution = 'gaussian', epochs = 10,
-           hidden = c(100,100,100), hidden_dropout_ratios = c(0.8,0.8,0.8),
+           hidden = c(100,100,100), hidden_dropout_ratios = c(0.5,0.8,0.5),
            activation = 'RectifierWithDropout',
            filter = function(data){data$payment == 1})
 
@@ -73,6 +122,8 @@ model4 <- hirem::fit(model4,
                      payment = 'payment ~ close + development_year',
                      size = 'size ~ close + development_year')
 
+simulate_rbns(model4)
+
 ### Case 5: GLM + DL(MLP) ###
 
 model5 <- hirem(reserving_data) %>%
@@ -80,7 +131,7 @@ model5 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_dl('size', distribution = 'gaussian', epochs = 10,
-           hidden = c(10,10), hidden_dropout_ratios = c(0.5,0.5),
+           hidden = c(10,10), hidden_dropout_ratios = c(0.1,0.1),
            activation = 'TanhWithDropout',
            filter = function(data){data$payment == 1})
 
@@ -88,6 +139,8 @@ model5 <- hirem::fit(model5,
                      close = 'close ~ development_year + X1 + X2',
                      payment = 'payment ~ close + development_year + X1 + X2',
                      size = 'size ~ close + development_year + X1 + X2')
+
+simulate_rbns(model5)
 
 ### Case 6: GLM + AutoML (h2o) ###
 
@@ -103,38 +156,5 @@ model6 <- hirem::fit(model6,
                      payment = 'payment ~ close + development_year',
                      size = 'size ~ close + development_year')
 
-######################### Simulations #########################
-
-update <- function(data) {
-  data %>%
-    dplyr::mutate(development_year = development_year + 1,
-                  calendar_year = calendar_year + 1)
-}
-
-### Choose model here for simulation ###
-
-model <- model4
-
-### Run simulation ###
-
-model <- register_updater(model, update)
-
-simul <- simulate(model,
-                  nsim = 5,
-                  filter = function(data){dplyr::filter(data,
-                                                        development_year <= 6,
-                                                        close == 0)},
-                  data = reserving_data %>% dplyr::filter(calendar_year == 6))
-
-rbns_estimate <- simul %>%
-  dplyr::group_by(simulation) %>%
-  dplyr::summarise(rbns = sum(size))
-
-rbns_estimate
-
-rbns_actual <- reserving_data %>%
-  dplyr::filter(calendar_year > 6) %>%
-  dplyr::summarise(rbns = sum(size))
-
-rbns_actual
+simulate_rbns(model6)
 

@@ -110,11 +110,65 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                             'label' = as.matrix(data[,label])
                           ))
 
-  layer$fit <- xgboost(
-    data = data.xgb,
-    nrounds = layer$method_options$nrounds,
-    early_stopping_rounds = layer$method_options$early_stopping_rounds,
-    verbose = layer$method_options$verbose,
+  if(!is.null(layer$method_options$nfolds)) {
+
+    hyper_grid <- expand.grid(
+      eta = 0.01,
+      max_depth = c(3,6),
+      min_child_weight = 1000,
+      subsample = 0.75,
+      colsample_bytree = 0.5,
+      gamma = c(0,0.5,1),
+      lambda = c(0,1),
+      alpha = c(0,1),
+      test_poisson_nloglik_mean = 0,
+      iteration = 0
+    )
+
+    best_eval_metric = Inf
+
+    for(i in seq_len(nrow(hyper_grid))) {
+
+      params = list(
+        booster = "gbtree",
+        eval_metric = layer$method_options$eval_metric,
+        eta = hyper_grid$eta[i],
+        max_depth = hyper_grid$max_depth[i],
+        min_child_weight = hyper_grid$min_child_weight[i],
+        subsample = hyper_grid$subsample[i],
+        colsample_bytree = hyper_grid$colsample_bytree[i],
+        gamma = hyper_grid$gamma[i],
+        lambda = hyper_grid$lambda[i],
+        alpha = hyper_grid$alpha[i]
+      )
+
+      xval <- xgb.cv(
+        data = data.xgb,
+        nrounds = layer$method_options$nrounds,
+        objective = layer$method_options$objective,
+        early_stopping_rounds = layer$method_options$early_stopping_rounds,
+        nfold = layer$method_options$nfolds,
+        stratified = T,
+        verbose = layer$method_options$verbose,
+        params = params)
+
+      min_eval_metric <- min(xval$evaluation_log[,4])
+      min_eval_index <- as.numeric(which.min(as.matrix(xval$evaluation_log[,4])))
+
+      if (min_eval_metric < best_eval_metric) {
+        best_eval_metric = min_eval_metric
+        best_eval_index = min_eval_index
+        best_param = params
+      }
+    }
+
+    nrounds <- best_eval_index
+    params <- best_param
+
+  }
+  else {
+
+    nrounds = layer$method_options$nrounds
     params = list(
       booster = layer$method_options$booster,
       objective = layer$method_options$objective,
@@ -129,6 +183,14 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       lambda = layer$method_options$lambda,
       alpha = layer$method_options$alpha
     )
+
+  }
+
+  layer$fit <- xgb.train(
+    data = data.xgb,
+    nrounds = nrounds,
+    verbose = layer$method_options$verbose,
+    params = params
   )
 
   layer$iter <- layer$fit$best_iteration

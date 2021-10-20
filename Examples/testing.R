@@ -41,7 +41,7 @@ model2 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_gbm('size', distribution = 'gaussian',
+  layer_gbm('size', distribution = 'gaussian', cv.folds = 6,
             transformation = hirem_transformation_log,
             filter = function(data){data$payment == 1})
 
@@ -59,7 +59,7 @@ model2b <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_gbm('size', distribution = 'gamma',
+  layer_gbm('size', distribution = 'gamma', cv.folds = 6,
             transformation = hirem_transformation_log,
             filter = function(data){data$payment == 1})
 
@@ -80,7 +80,8 @@ model3 <- hirem(reserving_data) %>%
   layer_xgb('size', objective = 'reg:squarederror',
             eval_metric = 'rmse',
             eta = 0.01,
-            nrounds = 500,
+            nrounds = 1000,
+            early_stopping_rounds = 20,
             max_depth = 6,
             verbose = F,
             transformation = hirem_transformation_log,
@@ -93,9 +94,31 @@ model3 <- hirem::fit(model3,
 
 simulate_rbns(model3)
 
-### Case 3b: GLM + XGB (reg:gamma + gamma-deviance) ###
+### Case 3b: GLM + XGB (reg:squarederror + nfolds) ###
 
 model3b <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_xgb('size', objective = 'reg:squarederror',
+            eval_metric = 'rmse', nfolds = 6,
+            nrounds = 500,
+            early_stopping_rounds = 10,
+            verbose = F,
+            transformation = hirem_transformation_log,
+            filter = function(data){data$payment == 1})
+
+model3b <- hirem::fit(model3b,
+                     close = 'close ~ factor(development_year)',
+                     payment = 'payment ~ close + factor(development_year)',
+                     size = 'size ~ close + development_year')
+
+simulate_rbns(model3b)
+
+### Case 3c: GLM + XGB (reg:gamma + gamma-deviance) ###
+
+model3c <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
@@ -109,12 +132,12 @@ model3b <- hirem(reserving_data) %>%
             transformation = hirem_transformation_log,
             filter = function(data){data$payment == 1})
 
-model3b <- hirem::fit(model3b,
+model3c <- hirem::fit(model3c,
                      close = 'close ~ factor(development_year)',
                      payment = 'payment ~ close + factor(development_year)',
                      size = 'size ~ close + development_year')
 
-simulate_rbns(model3b)
+simulate_rbns(model3c)
 
 ### Case 4: GLM + DL(MLP) ###
 

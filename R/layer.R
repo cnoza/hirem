@@ -117,7 +117,7 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @export
 layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verbose = F, booster = 'gbtree', objective,
                       eval_metric = 'rmse', eta = 0.01, nthread = 1, subsample = .8, colsample_bynode = .8, max_depth = 2,
-                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, filter = NULL, transformation = NULL) {
+                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, nfolds = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$nrounds <- nrounds
@@ -135,6 +135,7 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
   options$gamma <- gamma
   options$lambda <- lambda
   options$alpha <- alpha
+  options$nfolds <- nfolds
 
   hirem_layer(obj, name, 'xgb', 'layer_xgb', options, filter, transformation)
 }

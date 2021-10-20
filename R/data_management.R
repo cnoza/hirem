@@ -24,7 +24,8 @@ split_data <- function(obj, observed = NULL, validation = NULL, cv_fold = NULL) 
 
   if(!is.null(cv_fold)) {
     fold <- ceiling(runif(nrow(obj$data_observed)) * cv_fold)
-    obj$data_observed <- cbind(obj$data_observed, cv_fold = fold);
+    obj$data_observed <- cbind(obj$data_observed, cv_fold = fold)
+    obj$cv_fold <- cv_fold
   }
 
   if(!is.null(validation)) {

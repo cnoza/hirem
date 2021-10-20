@@ -1,5 +1,5 @@
 rm(list=ls())
-options(warn=-1)
+#options(warn=-1)
 library(tidyverse)
 library(hirem)
 library(devtools)
@@ -8,6 +8,7 @@ library(gbm)
 library(xgboost)
 library(Matrix)
 library(h2o)
+library(data.table)
 data("reserving_data")
 
 ######################### Imports #########################
@@ -122,7 +123,7 @@ model4 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_dl('size', distribution = 'gaussian', epochs = 20,
+  layer_dl('size', distribution = 'gaussian', epochs = 20, nfolds = 6,
            hidden = c(100,100,100), hidden_dropout_ratios = c(0.01,0.01,0.01),
            activation = 'RectifierWithDropout',
            filter = function(data){data$payment == 1})

@@ -4,7 +4,7 @@ fit <- function(object, ...) {
 }
 
 fit.layer_glm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  print("Fitting layer_glm ...")
+  cat("Fitting layer_glm ...\n")
 
   layer$formula <- formula
 
@@ -39,7 +39,7 @@ fit.layer_glm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
 #' @export
 fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  print("Fitting layer_gbm ...")
+  cat("Fitting layer_gbm ...\n")
   layer$formula <- formula
 
   data <- obj$data_training
@@ -89,7 +89,7 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
 #' @export
 fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  print("Fitting layer_xgb ...")
+  cat("Fitting layer_xgb ...\n")
   layer$formula <- formula
 
   data <- obj$data_training
@@ -151,7 +151,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
 #' @export
 fit.layer_dl <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  print("Fitting layer_dl ...")
+  cat("Fitting layer_dl ...\n")
   layer$formula <- formula
 
   data <- obj$data_training
@@ -177,6 +177,7 @@ fit.layer_dl <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                 training_frame = data.h2o,
                                 distribution = layer$method_options$distribution,
                                 hidden = layer$method_options$hidden,
+                                nfolds = layer$method_options$nfolds,
                                 epochs = layer$method_options$epochs,
                                 train_samples_per_iteration = layer$method_options$train_samples_per_iteration,
                                 reproducible = layer$method_options$reproducible,
@@ -208,7 +209,7 @@ fit.layer_dl <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
 #' @export
 fit.layer_aml <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  print("Fitting layer_aml ...")
+  cat("Fitting layer_aml ...\n")
   layer$formula <- formula
 
   data <- obj$data_training

@@ -169,7 +169,7 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
 #' applied before modelling this layer.
 #' @export
 layer_dl <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
-                     reproducible = T, activation = "Tanh",
+                     reproducible = T, activation = "Tanh", nfolds = NULL,
                      single_node_mode = FALSE,
                      balance_classes = FALSE,
                      force_load_balance = FALSE,
@@ -185,6 +185,7 @@ layer_dl <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epo
   options$distribution <- distribution
   options$hidden <- hidden
   options$epochs <- epochs
+  options$nfolds <- nfolds
   options$train_samples_per_iteration <- train_samples_per_iteration
   options$reproducible <- reproducible
   options$activation <- activation

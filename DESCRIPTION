@@ -21,7 +21,8 @@ Imports:
 	purrr,
 	Matrix,
 	xgboost,
-	h2o
+	h2o,
+	data.table
 RoxygenNote: 7.1.2
 Suggests: 
     knitr,

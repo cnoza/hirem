@@ -107,6 +107,8 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @param gamma Minimum loss reduction required to make a further partition on a leaf node of the tree, passed to \code{\link[xgboost]{xgboost}}. Default is 0.
 #' @param lambda L2 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.
 #' @param alpha L1 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.
+#' @param nfolds Number of folds to consider in the cross-validation. Default is NULL (no cross-validation).
+#' @param hyper_grid If \code{nfolds} is not null, the set of tuning parameters can be given in \code{hyper_grid}. If NULL, a default set of parameters is used.
 #' @param filter Function with \itemize{
 #'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
@@ -117,7 +119,7 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @export
 layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verbose = F, booster = 'gbtree', objective,
                       eval_metric = 'rmse', eta = 0.01, nthread = 1, subsample = .8, colsample_bynode = .8, max_depth = 2,
-                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, nfolds = NULL, filter = NULL, transformation = NULL) {
+                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, hyper_grid = NULL, nfolds = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$nrounds <- nrounds
@@ -136,6 +138,7 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
   options$lambda <- lambda
   options$alpha <- alpha
   options$nfolds <- nfolds
+  options$hyper_grid <- hyper_grid
 
   hirem_layer(obj, name, 'xgb', 'layer_xgb', options, filter, transformation)
 }

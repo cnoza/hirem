@@ -94,7 +94,18 @@ model3 <- hirem::fit(model3,
 
 simulate_rbns(model3)
 
-### Case 3b: GLM + XGB (reg:squarederror + nfolds) ###
+### Case 3b: GLM + XGB (reg:squarederror + cross-validation) ###
+
+hyper_grid <- expand.grid(
+  eta = 0.01,
+  max_depth = c(6),
+  min_child_weight = 1000,
+  subsample = c(1),
+  colsample_bytree = 1,
+  gamma = c(0),
+  lambda = c(0),
+  alpha = c(0)
+)
 
 model3b <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -102,9 +113,9 @@ model3b <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_xgb('size', objective = 'reg:squarederror',
-            eval_metric = 'rmse', nfolds = 6,
-            nrounds = 500,
-            early_stopping_rounds = 10,
+            eval_metric = 'rmse', nfolds = 6, hyper_grid = hyper_grid,
+            nrounds = 1000,
+            early_stopping_rounds = 20,
             verbose = F,
             transformation = hirem_transformation_log,
             filter = function(data){data$payment == 1})

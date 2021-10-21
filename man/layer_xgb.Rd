@@ -22,6 +22,8 @@ layer_xgb(
   gamma = 0,
   lambda = 0.01,
   alpha = 0.01,
+  hyper_grid = NULL,
+  nfolds = NULL,
   filter = NULL,
   transformation = NULL
 )
@@ -60,6 +62,10 @@ layer_xgb(
 \item{lambda}{L2 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.}
 
 \item{alpha}{L1 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.}
+
+\item{hyper_grid}{If \code{nfolds} is not null, the set of tuning parameters can be given in \code{hyper_grid}. If NULL, a default set of parameters is used.}
+
+\item{nfolds}{Number of folds to consider in the cross-validation. Default is NULL (no cross-validation).}
 
 \item{filter}{Function with \itemize{
  \item input: Data set with same structure as the data passed to \code{\link{hirem}}

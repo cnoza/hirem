@@ -111,21 +111,24 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                           ))
 
   if(!is.null(layer$method_options$nfolds)) {
-
-    hyper_grid <- expand.grid(
-      eta = 0.01,
-      max_depth = c(3,6),
-      min_child_weight = 1000,
-      subsample = 0.75,
-      colsample_bytree = 0.5,
-      gamma = c(0,0.5,1),
-      lambda = c(0,1),
-      alpha = c(0,1),
-      test_poisson_nloglik_mean = 0,
-      iteration = 0
-    )
-
+    if(!is.null(layer$method_options$hyper_grid)) {
+      hyper_grid <- layer$method_options$hyper_grid
+    }
+    else {
+      hyper_grid <- expand.grid(
+        eta = 0.01,
+        max_depth = c(3,6),
+        min_child_weight = 1000,
+        subsample = c(0.5,0.75),
+        colsample_bytree = 0.5,
+        gamma = c(0),
+        lambda = c(0,.1),
+        alpha = c(0,.1)
+      )
+    }
     best_eval_metric = Inf
+
+    cat('... cross-validation started ... \n')
 
     for(i in seq_len(nrow(hyper_grid))) {
 
@@ -151,6 +154,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         stratified = T,
         verbose = layer$method_options$verbose,
         params = params)
+
 
       min_eval_metric <- min(xval$evaluation_log[,4])
       min_eval_index <- as.numeric(which.min(as.matrix(xval$evaluation_log[,4])))
@@ -193,7 +197,8 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     params = params
   )
 
-  layer$iter <- layer$fit$best_iteration
+  layer$best_params <- params
+  layer$best_iteration <- layer$fit$best_iteration
   layer$best_ntreelimit <- layer$fit$best_ntreelimit
   layer$best_score <- layer$fit$best_score
   layer$niter <- layer$fit$niter

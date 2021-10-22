@@ -98,13 +98,13 @@ simulate_rbns(model3)
 
 hyper_grid <- expand.grid(
   eta = 0.01,
-  max_depth = c(6),
+  max_depth = c(4,5,6),
   min_child_weight = 1000,
-  subsample = c(1),
-  colsample_bytree = 1,
-  gamma = c(0),
-  lambda = c(0),
-  alpha = c(0)
+  subsample = c(.5,.8,1),
+  colsample_bytree = c(.5,.8,1),
+  gamma = c(0,.1),
+  lambda = c(0,.1),
+  alpha = c(0,.1)
 )
 
 model3b <- hirem(reserving_data) %>%
@@ -158,7 +158,7 @@ model4 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_dl('size', distribution = 'gaussian', epochs = 20, nfolds = 6,
-           hidden = c(100,100,100), hidden_dropout_ratios = c(0.01,0.01,0.01),
+           hidden = c(10,40,40,30,10), hidden_dropout_ratios = c(.01,.01,.01,.01,.01),
            activation = 'RectifierWithDropout',
            filter = function(data){data$payment == 1})
 
@@ -182,9 +182,9 @@ model5 <- hirem(reserving_data) %>%
            filter = function(data){data$payment == 1})
 
 model5 <- hirem::fit(model5,
-                     close = 'close ~ development_year + X1 + X2',
-                     payment = 'payment ~ close + development_year + X1 + X2',
-                     size = 'size ~ close + development_year + X1 + X2')
+                     close = 'close ~ development_year',
+                     payment = 'payment ~ close + development_year',
+                     size = 'size ~ close + development_year')
 
 simulate_rbns(model5)
 

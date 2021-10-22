@@ -7,6 +7,7 @@ fit.layer_glm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   layer$formula <- formula
 
   data <- obj$data_training
+
   if(!training) {
     data <- obj$data_observed
   }
@@ -15,19 +16,30 @@ fit.layer_glm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     data <- data %>% filter(cv_fold != fold)
   }
 
+  data.filter <- data[layer$filter(data), ]
+
+  if(!is.null(obj$weights))
+    weights.vec <- obj$weights[data.filter[[obj$weight.var]]] else
+      weights.vec <- NULL
+
   if(layer$method_options$family == 'Gamma') {
-    layer$fit <- glm(as.formula(formula), data[layer$filter(data), ], family = Gamma(link = log))
+    layer$fit <- glm(as.formula(formula), data = data.filter, family = Gamma(link = log),
+                     weights = weights.vec)
 
   } else {
-    layer$fit <- glm(as.formula(formula),
-                     data = data[layer$filter(data), ],
-                     family = layer$method_options)
+    layer$fit <- glm(as.formula(formula), data = data.filter, family = layer$method_options,
+                     weights = weights.vec)
+  }
+
+  if(!is.null(obj$balance.var)){
+    layer$balance.correction <- sapply(data.filter %>% split(data.filter[[obj$balance.var]]),
+                                     function(x) sum(x[[layer$name]])/sum(predict(layer$fit, newdata = x, type = 'response')))
   }
 
   if(layer$method_options$family == 'gaussian') {
     layer$sigma <- sd(layer$fit$residuals)
   } else if(layer$method_options$family == 'Gamma') {
-    shape <- hirem_gamma_shape(layer$fit)
+    shape <- hirem_gamma_shape(observed = layer$fit$y, fitted = layer$fit$fitted.values, weight = layer$fit$weights)
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
   }
@@ -49,6 +61,7 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   data <- data[layer$filter(data), ]
+  weights.vec <- if(is.null(obj$weights)) NULL else obj$weights[data[[obj$weight.var]]]
 
   layer$fit <- gbm(as.formula(formula),
                    data = data,
@@ -59,6 +72,7 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                    shrinkage = layer$method_options$shrinkage,
                    n.minobsinnode = layer$method_options$n.minobsinnode,
                    bag.fraction = layer$method_options$bag.fraction,
+                   weights = weights.vec,
                    keep.data = TRUE)
 
   if(layer$method_options$select_trees == 'last') {
@@ -71,14 +85,20 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     }
   }
 
+  if(!is.null(obj$balance.var)){
+    layer$balance.correction <- sapply(data %>% split(data[[obj$balance.var]]),
+                                       function(x) sum(x[[layer$name]])/sum(predict(layer$fit, newdata = x, n.trees = layer$iter, type = 'response')))
+  }
+
   if(layer$method_options$distribution == 'gaussian') {
     layer$sigma <- sd(predict(layer$fit, n.trees = layer$iter, type = "response") - layer$fit$data$y)
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- gamma_fit_shape(layer$fit$data$y, predict(layer$fit, n.trees = layer$iter, type = "response"))
+    shape <- hirem_gamma_shape(observed = layer$fit$data$y, fitted = predict(layer$fit, n.trees = layer$iter, type = "response"),
+                               weight = layer$fit$data$w)
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$s.e.
+    layer$shape.sd <- shape$se
   }
 
   return(layer)
@@ -93,11 +113,20 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 #'                 FALSE: Fit the layers on the observed data set
 #' @param fold Index of the fold on which the model should be estimated \cr
 #'             When \code{fold == NULL} the layer is estimated on all available records
-#'  @param ... Add for each layer an argument with the same name as the layer and as value a formula describing the regression model
+#' @param weights Optional. Vector of weights per development year since reporting.
+#' @param weight.var Optional. The name of the variable representing the development year since reporting in the data set.
+#' @param balance.var Optional. The name of the variable representing the development year since reporting in the data set, in case you want to perform a balance correction step.
+#' @param ... Add for each layer an argument with the same name as the layer and as value a formula describing the regression model
+#'
+#' @importFrom dplyr filter %>%
+#' @import gbm
 #'
 #' @export
-fit.hirem <- function(obj, training = FALSE, fold = NULL, ...) {
+fit.hirem <- function(obj, training = FALSE, fold = NULL, weights = NULL, weight.var = NULL, balance.var = NULL, ...) {
   formulas <- list(...)
+  obj$balance.var <- balance.var
+  obj$weight.var  <- weight.var
+  obj$weights     <- weights
 
   for(i in 1:length(formulas)) {
     index <- hirem_get_layer_pos(obj, names(formulas)[i])

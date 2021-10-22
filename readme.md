@@ -7,7 +7,7 @@ To install `hirem` from GitHub you will need `devtools`:
 
 ``` r
 install.packages('devtools')
-devtools::install_github('jonascrevecoeur/hirem')
+devtools::install_github('cnoza/hirem')
 ```
 
 ## Overview

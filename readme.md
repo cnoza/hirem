@@ -1,9 +1,9 @@
 # The `hirem` package 
 
-This is the source code for the  `hirem` package, which is currently under development.
+This is the source code for the `hirem` package, forked from Jonas Crevecoeur original version, which contains various additions (see below). 
 
 ## Installation
-To install `hirem` from GitHub you will need `devtools`:
+To install this fork of the `hirem` package from GitHub you will need `devtools`:
 
 ``` r
 install.packages('devtools')

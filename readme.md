@@ -41,8 +41,10 @@ The package is still under development. Currently supported layers are:
 * `layer_glm`: Estimates a layer using a generalized linear model
 * `layer_gbm`: Estimates a layer using a gradient boosting model
 * `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
-*  `layer_dl`: Estimates a layer using an MLP neural network model (`h2o` package)
+* `layer_dl`: Estimates a layer using an MLP neural network model (`h2o` package)
 * `layer_aml`: Estimates a layer using AutoML (`h2o` package)
+
+Examples of tested models can be found in the file [https://github.com/cnoza/hirem/blob/master/Examples/testing.R](testing.R).
 
 Supported distributions are:
 

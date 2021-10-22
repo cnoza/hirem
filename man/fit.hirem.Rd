@@ -4,7 +4,15 @@
 \alias{fit.hirem}
 \title{Fitting layers in a hierarchical reserving model}
 \usage{
-\method{fit}{hirem}(obj, training = FALSE, fold = NULL, ...)
+\method{fit}{hirem}(
+  obj,
+  training = FALSE,
+  fold = NULL,
+  weights = NULL,
+  weight.var = NULL,
+  balance.var = NULL,
+  ...
+)
 }
 \arguments{
 \item{obj}{The hierarchical reserving model}
@@ -13,8 +21,15 @@
 FALSE: Fit the layers on the observed data set}
 
 \item{fold}{Index of the fold on which the model should be estimated \cr
-           When \code{fold == NULL} the layer is estimated on all available records
-@param ... Add for each layer an argument with the same name as the layer and as value a formula describing the regression model}
+When \code{fold == NULL} the layer is estimated on all available records}
+
+\item{weights}{Optional. Vector of weights per development year since reporting.}
+
+\item{weight.var}{Optional. The name of the variable representing the development year since reporting in the data set.}
+
+\item{balance.var}{Optional. The name of the variable representing the development year since reporting in the data set, in case you want to perform a balance correction step.}
+
+\item{...}{Add for each layer an argument with the same name as the layer and as value a formula describing the regression model}
 }
 \description{
 fit one or multiple layers of the hierarchical reserving model

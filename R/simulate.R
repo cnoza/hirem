@@ -95,7 +95,7 @@ simulate.layer_gbm <- function(obj, data, balance.correction, balance.var) {
 }
 
 #' @export
-simulate.layer_xgb <- function(obj, data) {
+simulate.layer_xgb <- function(obj, data, balance.correction, balance.var) {
 
   select <- obj$filter(data)
   f <- as.formula(obj$formula)
@@ -123,7 +123,7 @@ simulate.layer_xgb <- function(obj, data) {
 }
 
 #' @export
-simulate.layer_dl <- function(obj, data) {
+simulate.layer_dl <- function(obj, data, balance.correction, balance.var) {
 
   select <- obj$filter(data)
   response <- h2o.predict(obj$fit, newdata = as.h2o(data[select,]))
@@ -147,7 +147,7 @@ simulate.layer_dl <- function(obj, data) {
 }
 
 #' @export
-simulate.layer_aml <- function(obj, data) {
+simulate.layer_aml <- function(obj, data, balance.correction, balance.var) {
 
   select <- obj$filter(data)
   response <- h2o.predict(obj$fit, newdata = as.h2o(data[select,]))

@@ -1,6 +1,6 @@
 # The `hirem` package 
 
-This is the source code for the `hirem` package, forked from Jonas Crevecoeur original version, which contains various additions (see below). 
+This is the source code for the `hirem` package, forked from Jonas Crevecoeur original version and merged with Jens Robben updates. This version further extends the package with additionnal functionalities (see below). 
 
 ## Installation
 To install this fork of the `hirem` package from GitHub you will need `devtools`:

@@ -44,7 +44,7 @@ The package is still under development. Currently supported layers are:
 * `layer_dl`: Estimates a layer using an MLP neural network model (`h2o` package)
 * `layer_aml`: Estimates a layer using AutoML (`h2o` package)
 
-Examples of tested models can be found in the file [https://github.com/cnoza/hirem/blob/master/Examples/testing.R](testing.R).
+Examples of tested models can be found in the file [testing.R](https://github.com/cnoza/hirem/blob/master/Examples/testing.R).
 
 Supported distributions are:
 

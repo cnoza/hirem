@@ -143,7 +143,7 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
   hirem_layer(obj, name, 'xgb', 'layer_xgb', options, filter, transformation)
 }
 
-#' Layer estimated using a deep learning model
+#' Layer estimated using a multi-layer perceptron model (h2o)
 #'
 #' Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{deeplearning} function of the \code{\link[h2o]{h2o}} package.
 #'
@@ -172,7 +172,7 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
 #' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_dl <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
+layer_mlp <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
                      reproducible = T, activation = "Tanh", nfolds = NULL,
                      single_node_mode = FALSE,
                      balance_classes = FALSE,
@@ -204,7 +204,7 @@ layer_dl <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epo
   options$input_dropout_ratio <- input_dropout_ratio
   options$hidden_dropout_ratios <- hidden_dropout_ratios
 
-  hirem_layer(obj, name, 'dl', 'layer_dl', options, filter, transformation)
+  hirem_layer(obj, name, 'mlp', 'layer_mlp', options, filter, transformation)
 }
 
 #' Layer estimated using AutoML (H2O)

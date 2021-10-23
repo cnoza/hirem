@@ -237,8 +237,8 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 }
 
 #' @export
-fit.layer_dl <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_dl ...\n")
+fit.layer_mlp <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  cat("Fitting layer_mlp ...\n")
   layer$formula <- formula
 
   data <- obj$data_training

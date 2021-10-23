@@ -150,15 +150,15 @@ model3c <- hirem::fit(model3c,
 
 simulate_rbns(model3c)
 
-### Case 4: GLM + DL(MLP) ###
+### Case 4: GLM + MLP (h2o) ###
 
 model4 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_dl('size', distribution = 'gaussian', epochs = 20, nfolds = 6,
-           hidden = c(10,40,40,30,10), hidden_dropout_ratios = c(.01,.01,.01,.01,.01),
+  layer_mlp('size', distribution = 'gaussian', epochs = 1, nfolds = 6,
+           hidden = c(10,30,50,30,10), hidden_dropout_ratios = rep(.01,5),
            activation = 'RectifierWithDropout',
            filter = function(data){data$payment == 1})
 
@@ -169,14 +169,14 @@ model4 <- hirem::fit(model4,
 
 simulate_rbns(model4)
 
-### Case 5: GLM + DL(MLP) ###
+### Case 5: GLM + MLP (h2o) ###
 
 model5 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_dl('size', distribution = 'gaussian', epochs = 10,
+  layer_mlp('size', distribution = 'gaussian', epochs = 10,
            hidden = c(10,10), hidden_dropout_ratios = c(0.1,0.1),
            activation = 'TanhWithDropout',
            filter = function(data){data$payment == 1})
@@ -204,4 +204,3 @@ model6 <- hirem::fit(model6,
                      size = 'size ~ close + development_year')
 
 simulate_rbns(model6)
-

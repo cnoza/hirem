@@ -123,7 +123,7 @@ simulate.layer_xgb <- function(obj, data, balance.correction, balance.var) {
 }
 
 #' @export
-simulate.layer_dl <- function(obj, data, balance.correction, balance.var) {
+simulate.layer_mlp <- function(obj, data, balance.correction, balance.var) {
 
   select <- obj$filter(data)
   response <- h2o.predict(obj$fit, newdata = as.h2o(data[select,]))

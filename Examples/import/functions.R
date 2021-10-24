@@ -1,3 +1,4 @@
+
 ### Functions used for testing purposes
 
 simulate_rbns <- function(model, nsim = 5) {

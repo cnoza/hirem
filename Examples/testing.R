@@ -8,6 +8,9 @@ library(gbm)
 library(xgboost)
 library(Matrix)
 library(h2o)
+library(keras)
+library(tensorflow)
+library(ggplot2)
 library(data.table)
 data("reserving_data")
 
@@ -157,7 +160,7 @@ model4 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp('size', distribution = 'gaussian', epochs = 1, nfolds = 6,
+  layer_mlp_h2o('size', distribution = 'gaussian', epochs = 1, nfolds = 6,
            hidden = c(10,30,50,30,10), hidden_dropout_ratios = rep(.01,5),
            activation = 'RectifierWithDropout',
            filter = function(data){data$payment == 1})
@@ -176,7 +179,7 @@ model5 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp('size', distribution = 'gaussian', epochs = 10,
+  layer_mlp_h2o('size', distribution = 'gaussian', epochs = 10,
            hidden = c(10,10), hidden_dropout_ratios = c(0.1,0.1),
            activation = 'TanhWithDropout',
            filter = function(data){data$payment == 1})
@@ -195,7 +198,7 @@ model6 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_aml('size', distribution = 'gaussian',
+  layer_aml_h2o('size', distribution = 'gaussian',
             filter = function(data){data$payment == 1})
 
 model6 <- hirem::fit(model6,
@@ -204,3 +207,23 @@ model6 <- hirem::fit(model6,
                      size = 'size ~ close + development_year')
 
 simulate_rbns(model6)
+
+### Case 7: GLM + MLP (keras) ###
+
+model7 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_mlp_keras('size', distribution = 'gaussian', loss = 'mse',
+                  optimizer = optimizer_nadam(learning_rate = 0.002),
+                  hidden = c(40,50,40,30), dropout = rep(.01,4), activation = rep('ReLU',4),
+                  epochs = 100, batch_size = 10000,
+                  filter = function(data){data$payment == 1})
+
+model7 <- hirem::fit(model7,
+                     close = 'close ~ development_year',
+                     payment = 'payment ~ close + development_year',
+                     size = 'size ~ close + development_year')
+
+simulate_rbns(model7)

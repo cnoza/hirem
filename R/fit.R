@@ -237,8 +237,8 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 }
 
 #' @export
-fit.layer_mlp <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_mlp ...\n")
+fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  cat("Fitting layer_mlp_h2o ...\n")
   layer$formula <- formula
 
   data <- obj$data_training
@@ -295,8 +295,81 @@ fit.layer_mlp <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 }
 
 #' @export
-fit.layer_aml <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_aml ...\n")
+fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  cat("Fitting layer_mlp_keras ...\n")
+  layer$formula <- formula
+
+  data <- obj$data_training
+  if(!training) {
+    data <- obj$data_observed
+  }
+
+  if(!is.null(fold)) {
+    data <- data %>% filter(cv_fold != fold)
+  }
+
+  data <- data[layer$filter(data), ]
+
+  f <- as.formula(formula)
+  label <- as.character(terms(f)[[2]])
+
+  x <- as.matrix(sparse.model.matrix(f, data=data)[,-1])
+  y <- as.matrix(data[,label])
+
+  model <- keras_model_sequential()
+
+  for(i in seq(from = 1, to=length(layer$method_options$hidden))) {
+    if(i == 1) {
+      model <- model %>%
+        layer_dense(units = layer$method_options$hidden[i],
+                    activation = layer$method_options$activation[i],
+                    input_shape = c(ncol(x))) %>%
+        layer_dropout(rate = layer$method_options$dropout[i])
+    } else {
+      model <- model %>%
+        layer_dense(units = layer$method_options$hidden[i],
+                    activation = layer$method_options$activation[i]) %>%
+        layer_dropout(rate = layer$method_options$dropout[i])
+    }
+  }
+
+  model <- model %>% layer_dense(units = 1, activation = 'linear')
+
+  print(summary(model))
+
+  model %>% compile(
+    loss = layer$method_options$loss,
+    optimizer = layer$method_options$optimizer,
+    metrics = layer$method_options$metrics
+  )
+
+  earlystopping <- callback_early_stopping(
+    monitor = "loss", patience = 20)
+
+  layer$history <- model %>%
+    keras::fit(x, y, epochs = layer$method_options$epochs,
+               batch_size = layer$method_options$batch_size, callbacks = list(earlystopping))
+
+  layer$fit <- model
+
+  plot(layer$history)
+
+  if(layer$method_options$distribution == 'gaussian') {
+    layer$sigma <- sd(model %>% predict(x) - y)
+  }
+
+  if(layer$method_options$distribution == 'gamma') {
+    shape <- gamma_fit_shape(y, model %>% predict(x))
+    layer$shape <- shape$shape
+    layer$shape_sd <- shape$s.e.
+  }
+
+  return(layer)
+}
+
+#' @export
+fit.layer_aml_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  cat("Fitting layer_aml_h2o ...\n")
   layer$formula <- formula
 
   data <- obj$data_training

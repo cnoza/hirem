@@ -123,7 +123,7 @@ simulate.layer_xgb <- function(obj, data, balance.correction, balance.var) {
 }
 
 #' @export
-simulate.layer_mlp <- function(obj, data, balance.correction, balance.var) {
+simulate.layer_mlp_h2o <- function(obj, data, balance.correction, balance.var) {
 
   select <- obj$filter(data)
   response <- h2o.predict(obj$fit, newdata = as.h2o(data[select,]))
@@ -147,7 +147,37 @@ simulate.layer_mlp <- function(obj, data, balance.correction, balance.var) {
 }
 
 #' @export
-simulate.layer_aml <- function(obj, data, balance.correction, balance.var) {
+simulate.layer_mlp_keras <- function(obj, data, balance.correction, balance.var) {
+
+  select <- obj$filter(data)
+
+  f <- as.formula(obj$formula)
+  label <- as.character(terms(f)[[2]])
+
+  x <- as.matrix(sparse.model.matrix(f, data=data[select,])[,-1])
+
+  response <- predict(obj$fit, x)
+
+  if(obj$method_options$distribution == 'bernoulli') {
+    simulation <- runif(dim(response)[1]) < response
+  } else if(obj$method_options$distribution == 'gaussian') {
+    simulation <- rnorm(dim(response)[1], mean = as.vector(response), sd = obj$sigma)
+  } else if(obj$method_options$distribution == 'gamma') {
+    simulation <- rgamma(dim(response)[1], scale = as.vector(response) / obj$shape, shape = obj$shape)
+  }
+
+  if(!is.null(obj$transformation)) {
+    simulation <- obj$transformation$inverse_transform(simulation)
+  }
+
+  ret <- rep(0, nrow(data))
+  ret[select] <- simulation
+
+  return(ret)
+}
+
+#' @export
+simulate.layer_aml_h2o <- function(obj, data, balance.correction, balance.var) {
 
   select <- obj$filter(data)
   response <- h2o.predict(obj$fit, newdata = as.h2o(data[select,]))

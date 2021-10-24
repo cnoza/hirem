@@ -172,7 +172,7 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
 #' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_mlp <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
+layer_mlp_h2o <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
                      reproducible = T, activation = "Tanh", nfolds = NULL,
                      single_node_mode = FALSE,
                      balance_classes = FALSE,
@@ -204,7 +204,41 @@ layer_mlp <- function(obj, name, distribution = "tweedie", hidden = c(10,10), ep
   options$input_dropout_ratio <- input_dropout_ratio
   options$hidden_dropout_ratios <- hidden_dropout_ratios
 
-  hirem_layer(obj, name, 'mlp', 'layer_mlp', options, filter, transformation)
+  hirem_layer(obj, name, 'mlp_h2o', 'layer_mlp_h2o', options, filter, transformation)
+}
+
+#' Layer estimated using a multi-layer perceptron model with Keras
+#'
+#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{\link[keras]{keras}} package.
+#'
+#' @param obj The hierarchical reserving model
+#' @param name Character, name of the layer. This name should match the variable name in the data set
+#' @param distribution Default is tweedie,
+#' @param filter Function with \itemize{
+#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
+#'         FALSE indicates that this layer is zero for the current record.
+#'  }
+#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' applied before modelling this layer.
+#' @export
+layer_mlp_keras <- function(obj, name, distribution = 'gaussian', hidden = c(10,20,10), dropout = rep(.01,3), activation = rep('tanh',3),
+                            loss = 'mse', optimizer = 'adam', epochs = 20, batch_size = 1000, metrics = NULL,
+                            filter = NULL, transformation = NULL) {
+
+  options <- c()
+  options$distribution <- distribution
+  options$hidden <- hidden
+  options$dropout <- dropout
+  options$activation <- activation
+  options$loss <- loss
+  options$optimizer <- optimizer
+  options$epochs <- epochs
+  options$batch_size <- batch_size
+  options$metrics <- metrics
+
+  hirem_layer(obj, name, 'mlp_keras', 'layer_mlp_keras', options, filter, transformation)
+
 }
 
 #' Layer estimated using AutoML (H2O)
@@ -221,14 +255,14 @@ layer_mlp <- function(obj, name, distribution = "tweedie", hidden = c(10,10), ep
 #' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_aml <- function(obj, name, distribution = 'gaussian',
+layer_aml_h2o <- function(obj, name, distribution = 'gaussian',
                       max_models = 5, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$max_models <- max_models
   options$distribution <- distribution
 
-  hirem_layer(obj, name, 'aml', 'layer_aml', options, filter, transformation)
+  hirem_layer(obj, name, 'aml_h2o', 'layer_aml_h2o', options, filter, transformation)
 }
 
 #' @export

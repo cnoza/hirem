@@ -216,8 +216,8 @@ model7 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gaussian', loss = 'mse',
-                  optimizer = optimizer_nadam(learning_rate = 0.002),
-                  hidden = c(40,50,40,30), dropout = rep(.01,4), activation = rep('ReLU',4),
+                  optimizer = 'nadam', validation_split = .2,
+                  hidden = c(60,50,40,30), dropout = rep(.01,4), activation = rep('ReLU',4),
                   epochs = 100, batch_size = 10000,
                   filter = function(data){data$payment == 1})
 

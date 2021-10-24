@@ -348,7 +348,9 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   layer$history <- model %>%
     keras::fit(x, y, epochs = layer$method_options$epochs,
-               batch_size = layer$method_options$batch_size, callbacks = list(earlystopping))
+               batch_size = layer$method_options$batch_size,
+               validation_split = layer$method_options$validation_split,
+               callbacks = list(earlystopping))
 
   layer$fit <- model
 

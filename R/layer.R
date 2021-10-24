@@ -223,7 +223,7 @@ layer_mlp_h2o <- function(obj, name, distribution = "tweedie", hidden = c(10,10)
 #' applied before modelling this layer.
 #' @export
 layer_mlp_keras <- function(obj, name, distribution = 'gaussian', hidden = c(10,20,10), dropout = rep(.01,3), activation = rep('tanh',3),
-                            loss = 'mse', optimizer = 'adam', epochs = 20, batch_size = 1000, metrics = NULL,
+                            loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -236,6 +236,7 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', hidden = c(10,
   options$epochs <- epochs
   options$batch_size <- batch_size
   options$metrics <- metrics
+  options$validation_split <- validation_split
 
   hirem_layer(obj, name, 'mlp_keras', 'layer_mlp_keras', options, filter, transformation)
 

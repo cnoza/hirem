@@ -222,21 +222,25 @@ layer_mlp_h2o <- function(obj, name, distribution = "tweedie", hidden = c(10,10)
 #' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_mlp_keras <- function(obj, name, distribution = 'gaussian', hidden = c(10,20,10), dropout = rep(.01,3), activation = rep('tanh',3),
+layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
+                            hidden = c(10,20,10), dropout.hidden = rep(.01,3),
+                            activation.hidden = rep('tanh',3), activation.output = 'linear',
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
-                            filter = NULL, transformation = NULL) {
+                            family_for_init = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$distribution <- distribution
   options$hidden <- hidden
-  options$dropout <- dropout
-  options$activation <- activation
+  options$dropout.hidden <- dropout.hidden
+  options$activation.hidden <- activation.hidden
+  options$activation.output <- activation.output
   options$loss <- loss
   options$optimizer <- optimizer
   options$epochs <- epochs
   options$batch_size <- batch_size
   options$metrics <- metrics
   options$validation_split <- validation_split
+  options$family_for_init <- family_for_init
 
   hirem_layer(obj, name, 'mlp_keras', 'layer_mlp_keras', options, filter, transformation)
 

@@ -317,23 +317,35 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   y <- as.matrix(data[,label])
 
   model <- keras_model_sequential()
+  n <- length(layer$method_options$hidden)
 
-  for(i in seq(from = 1, to=length(layer$method_options$hidden))) {
+  for(i in seq(from = 1, to=n)) {
     if(i == 1) {
       model <- model %>%
         layer_dense(units = layer$method_options$hidden[i],
-                    activation = layer$method_options$activation[i],
+                    activation = layer$method_options$activation.hidden[i],
                     input_shape = c(ncol(x))) %>%
-        layer_dropout(rate = layer$method_options$dropout[i])
+        layer_dropout(rate = layer$method_options$dropout.hidden[i])
     } else {
       model <- model %>%
         layer_dense(units = layer$method_options$hidden[i],
-                    activation = layer$method_options$activation[i]) %>%
-        layer_dropout(rate = layer$method_options$dropout[i])
+                    activation = layer$method_options$activation.hidden[i]) %>%
+        layer_dropout(rate = layer$method_options$dropout.hidden[i])
     }
   }
 
-  model <- model %>% layer_dense(units = 1, activation = 'linear')
+  # Initialization with the homogeneous model (improves convergence).
+  # See "Insights from Inside Neural Networks" (Ferrario, Noll & Wüthrich, 2020) p.29.
+  if(!is.null(layer$method_options$init)) {
+    f.hom <- paste0(label, '~ 1')
+    glm.hom <- glm(as.formula(f.hom),data = data, family = as.character(layer$method_options$family_for_init))
+    model <- model %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                   weights = list(array(0,dim=c(layer$method_options$hidden[n],1)),
+                                                  array(as.numeric(glm.hom$coefficients)), dim=c(1)))
+  }
+  else {
+    model <- model %>% layer_dense(units = 1, activation = layer$method_options$activation.output)
+  }
 
   print(summary(model))
 
@@ -353,8 +365,6 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                callbacks = list(earlystopping))
 
   layer$fit <- model
-
-  plot(layer$history)
 
   if(layer$method_options$distribution == 'gaussian') {
     layer$sigma <- sd(model %>% predict(x) - y)

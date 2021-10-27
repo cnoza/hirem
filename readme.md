@@ -3,8 +3,9 @@
 This is the source code for the `hirem` package, forked from Jonas Crevecoeur's original version and merged with Jens Robben's  updates. This version further extends this package with additional supported layers, such as:
 
 * `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
-*  `layer_dl`: Estimates a layer using an MLP neural network model (`h2o` package)
-* `layer_aml`: Estimates a layer using AutoML (`h2o` package) 
+* `layer_mlp_h2o`: Estimates a layer using an MLP neural network model (`h2o` package)
+* `layer_mlp_keras`: Estimates a layer using an MLP neural network model (`keras` package)
+* `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
 
 ## Installation
 To install this fork of the `hirem` package from GitHub you will need `devtools`:

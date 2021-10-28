@@ -235,16 +235,14 @@ model8 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
-  layer_mlp_keras('payment', distribution = 'bernoulli', loss = 'mse',
+  layer_mlp_keras('payment', distribution = 'bernoulli', loss = 'binary_crossentropy',
                   optimizer = 'nadam', validation_split = .2,
-                  hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
-                  activation.hidden = rep('ReLU',4), activation.output = 'softmax',
-                  epochs = 100, batch_size = 10000, family_for_init = binomial(link = logit)) %>%
+                  hidden = c(70,60,50), dropout.hidden = rep(.01,3), activation.hidden = rep('ReLU',3),
+                  activation.output = 'softmax', epochs = 100, batch_size = 1000, family_for_init = binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gaussian', loss = 'mse',
                   optimizer = 'nadam', validation_split = .2,
-                  hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
-                  activation.hidden = rep('ReLU',4), activation.output = 'linear',
-                  epochs = 100, batch_size = 10000, family_for_init = Gamma(link = log),
+                  hidden = c(70,50,40), dropout.hidden = rep(.01,3), activation.hidden = rep('ReLU',3),
+                  activation.output = 'linear', epochs = 100, batch_size = 1000, family_for_init = Gamma(link = log),
                   filter = function(data){data$payment == 1})
 
 model8 <- hirem::fit(model8,
@@ -253,4 +251,26 @@ model8 <- hirem::fit(model8,
                      size = 'size ~ close + development_year')
 
 simulate_rbns(model8)
+
+### Case 9: GLM + CANN ###
+
+model9 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_cann('size', distribution = 'gaussian', loss = 'mse',
+                  optimizer = 'nadam', validation_split = .2,
+                  hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
+                  activation.hidden = rep('ReLu',4), activation.output = 'linear',
+                  activation.output.cann = 'linear', fixed.cann = TRUE,
+                  epochs = 100, batch_size = 10000, family_for_glm = Gamma(link = log),
+                  filter = function(data){data$payment == 1})
+
+model9 <- hirem::fit(model9,
+                     close = 'close ~ development_year',
+                     payment = 'payment ~ close + development_year',
+                     size = 'size ~ close + development_year')
+
+simulate_rbns(model9)
 

@@ -246,6 +246,49 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
 
 }
 
+#' Layer estimated using a Combined Actuarial Neural Network (CANN)
+#'
+#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using a CANN architecture,
+#' see Schelldorfer, J., & Wuthrich, M. (2019). Nesting Classical Actuarial Models into Neural Networks. Applied Computing eJournal.
+#'
+#' @param obj The hierarchical reserving model
+#' @param name Character, name of the layer. This name should match the variable name in the data set
+#' @param distribution Default is tweedie,
+#' @param filter Function with \itemize{
+#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
+#'         FALSE indicates that this layer is zero for the current record.
+#'  }
+#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' applied before modelling this layer.
+#' @export
+#'
+layer_cann <- function(obj, name, distribution = 'gaussian',
+                       hidden = c(10,20,10), dropout.hidden = rep(.01,3),
+                       activation.hidden = rep('tanh',3), activation.output = 'linear', activation.output.cann = 'linear', fixed.cann = TRUE,
+                       loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
+                       family_for_glm = NULL, filter = NULL, transformation = NULL) {
+
+  options <- c()
+  options$distribution <- distribution
+  options$hidden <- hidden
+  options$dropout.hidden <- dropout.hidden
+  options$activation.hidden <- activation.hidden
+  options$activation.output <- activation.output
+  options$fixed.cann <- fixed.cann
+  options$activation.output.cann <- activation.output.cann
+  options$loss <- loss
+  options$optimizer <- optimizer
+  options$epochs <- epochs
+  options$batch_size <- batch_size
+  options$metrics <- metrics
+  options$validation_split <- validation_split
+  options$family_for_glm <- family_for_glm
+
+  hirem_layer(obj, name, 'cann', 'layer_cann', options, filter, transformation)
+
+}
+
 #' Layer estimated using AutoML (H2O)
 #'
 #' Adds a new layer to the hierarchical reserving model. This layer will be estimated using AutoML from the \code{\link[h2o]{h2o}} package.

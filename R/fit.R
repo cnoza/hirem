@@ -381,6 +381,103 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 }
 
 #' @export
+fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+  cat("Fitting layer_cann ...\n")
+  layer$formula <- formula
+
+  data <- obj$data_training
+  if(!training) {
+    data <- obj$data_observed
+  }
+
+  if(!is.null(fold)) {
+    data <- data %>% filter(cv_fold != fold)
+  }
+
+  data <- data[layer$filter(data), ]
+
+  f <- as.formula(formula)
+  label <- as.character(terms(f)[[2]])
+
+  model.glm <- glm(as.formula(f),data = data, family = layer$method_options$family_for_glm)
+
+  layer$model.glm <- model.glm
+
+  x <- as.matrix(sparse.model.matrix(f, data=data)[,-1])
+  y <- as.matrix(data[,label])
+
+  Input_nodes <- layer_input(shape = c(ncol(x)), name='input nodes')
+
+  GLMNetwork <- keras_model_sequential()
+  GLMNetwork <- Input_nodes %>%
+    layer_dense(units=1, activation='linear', name='GLMNetwork', trainable=FALSE, input_shape = c(ncol(x)),
+                weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
+                             array(model.glm$coefficients[1],dim=c(1))))
+
+  NNetwork <- keras_model_sequential()
+  n <- length(layer$method_options$hidden)
+
+  for(i in seq(from = 1, to=n)) {
+    if(i == 1) {
+      NNetwork <- Input_nodes %>%
+        layer_dense(units = layer$method_options$hidden[i],
+                    activation = layer$method_options$activation.hidden[i],
+                    input_shape = c(ncol(x))) %>%
+        layer_dropout(rate = layer$method_options$dropout.hidden[i])
+    } else {
+      NNetwork <- NNetwork %>%
+        layer_dense(units = layer$method_options$hidden[i],
+                    activation = layer$method_options$activation.hidden[i]) %>%
+        layer_dropout(rate = layer$method_options$dropout.hidden[i])
+    }
+  }
+
+  NNetwork <- NNetwork %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                       weights = list(array(0, dim=c(layer$method_options$hidden[n],1)),
+                                                      array(0, dim=c(1))))
+
+  CANNoutput <- keras_model_sequential()
+  CANNoutput <- list(GLMNetwork, NNetwork) %>% layer_add() %>%
+    layer_dense(units = 1, activation = layer$method_options$activation.output.cann, trainable = !layer$method_options$fixed.cann,
+                weights = switch(layer$method_options$fixed.cann + 1,NULL,list(array(c(1), dim=c(1,1)),
+                               array(0, dim=c(1)))))
+
+  CANN <- keras_model_sequential()
+  CANN <- keras_model(inputs = Input_nodes, outputs = c(CANNoutput))
+
+  print(summary(CANN))
+
+  CANN %>% compile(
+    loss = layer$method_options$loss,
+    optimizer = layer$method_options$optimizer,
+    metrics = layer$method_options$metrics
+  )
+
+  earlystopping <- callback_early_stopping(
+    monitor = "loss", patience = 20)
+
+  layer$history <- CANN %>%
+    keras::fit(x, y, epochs = layer$method_options$epochs,
+               batch_size = layer$method_options$batch_size,
+               validation_split = layer$method_options$validation_split,
+               callbacks = list(earlystopping))
+
+  layer$fit <- CANN
+
+  if(layer$method_options$distribution == 'gaussian') {
+    layer$sigma <- sd(CANN %>% predict(x) - y)
+  }
+
+  if(layer$method_options$distribution == 'gamma') {
+    shape <- gamma_fit_shape(y, CANN %>% predict(x))
+    layer$shape <- shape$shape
+    layer$shape_sd <- shape$s.e.
+  }
+
+  return(layer)
+}
+
+#' @export
 fit.layer_aml_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   cat("Fitting layer_aml_h2o ...\n")
   layer$formula <- formula

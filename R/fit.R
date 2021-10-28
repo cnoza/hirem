@@ -336,12 +336,13 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   # Initialization with the homogeneous model (improves convergence).
   # See "Insights from Inside Neural Networks" (Ferrario, Noll & Wüthrich, 2020) p.29.
-  if(!is.null(layer$method_options$init)) {
+  if(!is.null(layer$method_options$family_for_init)) {
     f.hom <- paste0(label, '~ 1')
-    glm.hom <- glm(as.formula(f.hom),data = data, family = as.character(layer$method_options$family_for_init))
+    glm.hom <- glm(as.formula(f.hom),data = data, family = layer$method_options$family_for_init)
+    layer$glm.hom <- glm.hom
     model <- model %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
                                    weights = list(array(0,dim=c(layer$method_options$hidden[n],1)),
-                                                  array(as.numeric(glm.hom$coefficients)), dim=c(1)))
+                                                  array(glm.hom$coefficients[1], dim=c(1))))
   }
   else {
     model <- model %>% layer_dense(units = 1, activation = layer$method_options$activation.output)

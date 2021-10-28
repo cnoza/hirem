@@ -5,6 +5,7 @@ This is the source code for the `hirem` package, forked from Jonas Crevecoeur's 
 * `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
 * `layer_mlp_h2o`: Estimates a layer using an MLP neural network model (`h2o` package)
 * `layer_mlp_keras`: Estimates a layer using an MLP neural network model (`keras` package)
+* `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
 * `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
 
 ## Installation
@@ -44,6 +45,7 @@ The package is still under development. Currently supported layers are:
 * `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
 * `layer_mlp_h2o`: Estimates a layer using an MLP neural network model (`h2o` package)
 * `layer_mlp_keras`: Estimates a layer using an MLP neural network model (`keras` package)
+* `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
 * `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
 
 Examples of tested models can be found in the file [testing.R](https://github.com/cnoza/hirem/blob/master/Examples/testing.R).

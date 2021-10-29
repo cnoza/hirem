@@ -228,9 +228,9 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   if(layer$method_options$objective == 'reg:gamma') {
-    shape <- gamma_fit_shape(as.matrix(data[,label]), predict(layer$fit, ntreelimit = obj$best_ntreelimit, newdata = data.xgb, type = "response"))
+    shape <- hirem_gamma_shape(as.matrix(data[,label]), predict(layer$fit, ntreelimit = obj$best_ntreelimit, newdata = data.xgb, type = "response"))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$s.e.
+    layer$shape_sd <- shape$se
   }
 
   return(layer)
@@ -285,9 +285,9 @@ fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- gamma_fit_shape(data[,label], h2o.predict(layer$fit, data.h2o))
+    shape <- hirem_gamma_shape(data[,label], h2o.predict(layer$fit, data.h2o))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$s.e.
+    layer$shape_sd <- shape$se
   }
 
 
@@ -335,7 +335,8 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   }
 
   # Initialization with the homogeneous model (improves convergence).
-  # See "Insights from Inside Neural Networks" (Ferrario, Noll & Wüthrich, 2020) p.29.
+  # See Ferrario, Andrea and Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
+  # Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852 p.29.
   if(!is.null(layer$method_options$family_for_init)) {
     f.hom <- paste0(label, '~ 1')
     glm.hom <- glm(as.formula(f.hom),data = data, family = layer$method_options$family_for_init)
@@ -372,9 +373,9 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- gamma_fit_shape(y, model %>% predict(x))
+    shape <- hirem_gamma_shape(y, model %>% predict(x))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$s.e.
+    layer$shape_sd <- shape$se
   }
 
   return(layer)
@@ -399,7 +400,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
 
-  model.glm <- glm(as.formula(f),data = data, family = layer$method_options$family_for_glm)
+  model.glm <- glm(f,data = data, family = layer$method_options$family_for_glm)
 
   layer$model.glm <- model.glm
 
@@ -469,9 +470,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- gamma_fit_shape(y, CANN %>% predict(x))
+    shape <- hirem_gamma_shape(y, CANN %>% predict(x))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$s.e.
+    layer$shape_sd <- shape$se
   }
 
   return(layer)
@@ -513,9 +514,9 @@ fit.layer_aml_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- gamma_fit_shape(data[,label], h2o.predict(layer$fit, data.h2o))
+    shape <- hirem_gamma_shape(data[,label], h2o.predict(layer$fit, data.h2o))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$s.e.
+    layer$shape_sd <- shape$se
   }
 
 

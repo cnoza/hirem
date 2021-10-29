@@ -8,9 +8,9 @@ layer_mlp_keras(
   obj,
   name,
   distribution = "gaussian",
-  hidden = c(10, 20, 10),
-  dropout.hidden = rep(0.01, 3),
-  activation.hidden = rep("tanh", 3),
+  hidden = c(30, 20, 10),
+  dropout.hidden = NULL,
+  activation.hidden = NULL,
   activation.output = "linear",
   loss = "mse",
   optimizer = "nadam",
@@ -28,7 +28,30 @@ layer_mlp_keras(
 
 \item{name}{Character, name of the layer. This name should match the variable name in the data set}
 
-\item{distribution}{Default is tweedie,}
+\item{distribution}{The distribution used for the simulation. Default is gaussian.}
+
+\item{hidden}{The hidden layer architecture passed to \code{keras}. Default is c(30,20,10).}
+
+\item{dropout.hidden}{The dropout ratios for each hidden layer passed to \code{keras}. Default is 0.}
+
+\item{activation.hidden}{The activation function for each hidden layer passed to \code{keras}. Default is Tanh.}
+
+\item{activation.output}{The activation function for the output layer passed to \code{keras}. Default is Tanh.}
+
+\item{loss}{The loss function argument passed to \code{keras}. Default is 'mse'.}
+
+\item{optimizer}{The optimizer argument passed to \code{keras}. Default is 'nadam'.}
+
+\item{epochs}{The epochs argument passed to \code{keras}. Default is 20.}
+
+\item{batch_size}{The batch_size argument passed to \code{keras}. Default is 1000.}
+
+\item{validation_split}{The validation_split argument passed to \code{keras}. Default is .2}
+
+\item{metrics}{The metrics argument passed to \code{keras}.}
+
+\item{family_for_init}{If not NULL, an homogenous GLM is estimated and the resulting coefficient estimate is used to initialize the bias weight in the output layer, which may improve convergence.
+See Ferrario, Andrea and Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020). Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852}
 
 \item{filter}{Function with \itemize{
  \item input: Data set with same structure as the data passed to \code{\link{hirem}}

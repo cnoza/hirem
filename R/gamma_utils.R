@@ -1,5 +1,5 @@
 #' @export
-hirem_gamma_shape <- function(observed, fitted, weight)
+hirem_gamma_shape <- function(observed, fitted, weight = 1)
 {
   likelihood <- function(k)
   {
@@ -18,7 +18,6 @@ hirem_gamma_shape <- function(observed, fitted, weight)
 gamma_deviance <- function(yobs, yhat, weights) {
   c(2*sum(weights*((yobs-yhat)/yhat - log(ifelse(yobs == 0, 1, yobs/yhat))), na.rm = TRUE))
 }
-
 
 #' @export
 get_family_gamlss <- function(family_gam) {

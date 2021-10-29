@@ -31,3 +31,12 @@ simulate_rbns <- function(model, nsim = 5) {
   print(rbns_actual)
 
 }
+
+gamma_deviance_keras <- function(yobs, yhat) {
+  K <- backend()
+  2*K$sum((yobs-yhat)/yhat - K$log(yobs/yhat))
+}
+
+metric_gamma_deviance_keras <- keras::custom_metric("gamma_deviance_keras", function(yobs, yhat) {
+  gamma_deviance_keras(yobs, yhat)
+})

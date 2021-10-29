@@ -8,9 +8,10 @@ layer_cann(
   obj,
   name,
   distribution = "gaussian",
+  family_for_glm = Gamma(link = log),
   hidden = c(10, 20, 10),
-  dropout.hidden = rep(0.01, 3),
-  activation.hidden = rep("tanh", 3),
+  dropout.hidden = NULL,
+  activation.hidden = NULL,
   activation.output = "linear",
   activation.output.cann = "linear",
   fixed.cann = TRUE,
@@ -20,7 +21,6 @@ layer_cann(
   batch_size = 1000,
   validation_split = 0.2,
   metrics = NULL,
-  family_for_glm = NULL,
   filter = NULL,
   transformation = NULL
 )
@@ -30,7 +30,34 @@ layer_cann(
 
 \item{name}{Character, name of the layer. This name should match the variable name in the data set}
 
-\item{distribution}{Default is tweedie,}
+\item{distribution}{The distribution used for the simulation. Default is gaussian,}
+
+\item{family_for_glm}{The family used to estimate the GLM model. The coefficient estimates are then used to initialize the weights of the associated GLM neural network.
+Default is Gamma(link = log).}
+
+\item{hidden}{The hidden layer architecture of the Neural Network, passed to \code{keras}. Default is c(30,20,10).}
+
+\item{dropout.hidden}{The dropout ratios for each hidden layer of the Neural Network, passed to \code{keras}. Default is 0.}
+
+\item{activation.hidden}{The activation function for each hidden layer of the Neural Network, passed to \code{keras}. Default is tanh.}
+
+\item{activation.output}{The activation function for the output layer of the Neural Network, passed to \code{keras}. Default is linear.}
+
+\item{activation.output.cann}{The activation function for the output layer of the CANN, passed to \code{keras}. Default is linear.}
+
+\item{fixed.cann}{If TRUE (default), the weights of the CANN's output layer are fixed and non trainable.}
+
+\item{loss}{The loss function argument passed to \code{keras}. Default is 'mse'.}
+
+\item{optimizer}{The optimizer argument passed to \code{keras}. Default is 'nadam'.}
+
+\item{epochs}{The epochs argument passed to \code{keras}. Default is 20.}
+
+\item{batch_size}{The batch_size argument passed to \code{keras}. Default is 1000.}
+
+\item{validation_split}{The validation_split argument passed to \code{keras}. Default is .2}
+
+\item{metrics}{The metrics argument passed to \code{keras}.}
 
 \item{filter}{Function with \itemize{
  \item input: Data set with same structure as the data passed to \code{\link{hirem}}

@@ -30,7 +30,7 @@ model1 <- hirem(reserving_data) %>%
   layer_glm('size', Gamma(link = log),
             filter = function(data){data$payment == 1})
 
-model1 <- fit(model1,
+model1 <- hirem::fit(model1,
               close = 'close ~ factor(development_year)',
               payment = 'payment ~ close + factor(development_year)',
               size = 'size ~ close + factor(development_year)')
@@ -45,7 +45,6 @@ model2 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_gbm('size', distribution = 'gaussian', cv.folds = 6,
-            transformation = hirem_transformation_log,
             filter = function(data){data$payment == 1})
 
 model2 <- fit(model2,
@@ -63,10 +62,9 @@ model2b <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_gbm('size', distribution = 'gamma', cv.folds = 6,
-            transformation = hirem_transformation_log,
             filter = function(data){data$payment == 1})
 
-model2b <- fit(model2b,
+model2b <- hirem::fit(model2b,
               close = 'close ~ factor(development_year)',
               payment = 'payment ~ close + factor(development_year)',
               size = 'size ~ close + development_year')
@@ -87,7 +85,6 @@ model3 <- hirem(reserving_data) %>%
             early_stopping_rounds = 20,
             max_depth = 6,
             verbose = F,
-            transformation = hirem_transformation_log,
             filter = function(data){data$payment == 1})
 
 model3 <- hirem::fit(model3,
@@ -160,10 +157,13 @@ model4 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_h2o('size', distribution = 'gaussian', epochs = 1, nfolds = 6,
-           hidden = c(10,30,50,30,10), hidden_dropout_ratios = rep(.01,5),
-           activation = 'RectifierWithDropout',
-           filter = function(data){data$payment == 1})
+  layer_mlp_h2o('size', distribution = 'gaussian',
+                epochs = 1,
+                nfolds = 6,
+                hidden = c(10,30,50,30,10),
+                hidden_dropout_ratios = rep(.01,5),
+                activation = 'RectifierWithDropout',
+                filter = function(data){data$payment == 1})
 
 model4 <- hirem::fit(model4,
                      close = 'close ~ development_year',
@@ -179,10 +179,12 @@ model5 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_h2o('size', distribution = 'gaussian', epochs = 10,
-           hidden = c(10,10), hidden_dropout_ratios = c(0.1,0.1),
-           activation = 'TanhWithDropout',
-           filter = function(data){data$payment == 1})
+  layer_mlp_h2o('size', distribution = 'gaussian',
+                epochs = 10,
+                hidden = c(10,10),
+                hidden_dropout_ratios = c(0.1,0.1),
+                activation = 'TanhWithDropout',
+                filter = function(data){data$payment == 1})
 
 model5 <- hirem::fit(model5,
                      close = 'close ~ development_year',
@@ -215,11 +217,17 @@ model7 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gaussian', loss = 'mse',
-                  optimizer = 'nadam', validation_split = .2,
-                  hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
-                  activation.hidden = rep('ReLU',4), activation.output = 'linear',
-                  epochs = 100, batch_size = 10000, family_for_init = Gamma(link = log),
+  layer_mlp_keras('size', distribution = 'gaussian',
+                  loss = 'mse',
+                  optimizer = 'nadam',
+                  validation_split = .2,
+                  hidden = c(10,30,60,50,40,30),
+                  dropout.hidden = rep(.01,6),
+                  activation.hidden = rep('relu',6),
+                  activation.output = 'linear',
+                  epochs = 100,
+                  batch_size = 10000,
+                  family_for_init = Gamma(link = log),
                   filter = function(data){data$payment == 1})
 
 model7 <- hirem::fit(model7,
@@ -229,6 +237,34 @@ model7 <- hirem::fit(model7,
 
 simulate_rbns(model7)
 
+### Case 7b: GLM + MLP (keras) with weight initialization by an homogeneous GLM + gamma deviance ###
+
+model7b <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_mlp_keras('size', distribution = 'gamma',
+                  loss = gamma_deviance_keras,
+                  metrics = metric_gamma_deviance_keras,
+                  optimizer = optimizer_nadam(learning_rate = 0.01),
+                  validation_split = .2,
+                  hidden = c(80,70,60,50,40,30),
+                  dropout.hidden = rep(.01,6),
+                  activation.hidden = rep('relu',6),
+                  activation.output = 'linear',
+                  epochs = 100,
+                  batch_size = 1000,
+                  #family_for_init = Gamma(link = log),
+                  filter = function(data){data$payment == 1})
+
+model7b <- hirem::fit(model7b,
+                     close = 'close ~ development_year',
+                     payment = 'payment ~ close + development_year',
+                     size = 'size ~ close + development_year')
+
+simulate_rbns(model7b)
+
 ### Case 8: MLP (keras) with weight initialization by an homogeneous GLM ###
 
 model8 <- hirem(reserving_data) %>%
@@ -237,11 +273,11 @@ model8 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_mlp_keras('payment', distribution = 'bernoulli', loss = 'binary_crossentropy',
                   optimizer = 'nadam', validation_split = .2,
-                  hidden = c(70,60,50), dropout.hidden = rep(.01,3), activation.hidden = rep('ReLU',3),
+                  hidden = c(70,60,50), dropout.hidden = rep(.01,3), activation.hidden = rep('relU',3),
                   activation.output = 'softmax', epochs = 100, batch_size = 1000, family_for_init = binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gaussian', loss = 'mse',
                   optimizer = 'nadam', validation_split = .2,
-                  hidden = c(70,50,40), dropout.hidden = rep(.01,3), activation.hidden = rep('ReLU',3),
+                  hidden = c(70,50,40), dropout.hidden = rep(.01,3), activation.hidden = rep('relU',3),
                   activation.output = 'linear', epochs = 100, batch_size = 1000, family_for_init = Gamma(link = log),
                   filter = function(data){data$payment == 1})
 
@@ -259,12 +295,12 @@ model9 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_cann('size', distribution = 'gaussian', loss = 'mse',
+  layer_cann('size', distribution = 'gaussian', family_for_glm = Gamma(link = log), loss = 'mse',
                   optimizer = 'nadam', validation_split = .2,
                   hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
-                  activation.hidden = rep('ReLu',4), activation.output = 'linear',
+                  activation.hidden = rep('relu',4), activation.output = 'linear',
                   activation.output.cann = 'linear', fixed.cann = TRUE,
-                  epochs = 100, batch_size = 10000, family_for_glm = Gamma(link = log),
+                  epochs = 100, batch_size = 10000,
                   filter = function(data){data$payment == 1})
 
 model9 <- hirem::fit(model9,
@@ -274,3 +310,48 @@ model9 <- hirem::fit(model9,
 
 simulate_rbns(model9)
 
+### Case 10: GLM + CANN (gamma with custom metric) ###
+
+model10 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_cann('size', distribution = 'gamma', family_for_glm = Gamma(link = log),
+             loss = gamma_deviance_keras, metrics = metric_gamma_deviance_keras,
+             optimizer = 'nadam', validation_split = .2,
+             hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
+             activation.hidden = rep('relu',4), activation.output = 'linear',
+             activation.output.cann = 'linear', fixed.cann = TRUE,
+             epochs = 100, batch_size = 10000,
+             filter = function(data){data$payment == 1})
+
+model10 <- hirem::fit(model10,
+                     close = 'close ~ development_year',
+                     payment = 'payment ~ close + development_year',
+                     size = 'size ~ close + development_year')
+
+simulate_rbns(model10)
+
+### Case 10: GLM + CANN (gamma with custom metric) ###
+
+model10 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_cann('size', distribution = 'gamma', family_for_glm = Gamma(link = log),
+             loss = gamma_deviance_keras, metrics = metric_gamma_deviance_keras,
+             optimizer = 'nadam', validation_split = .2,
+             hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
+             activation.hidden = rep('relu',4), activation.output = 'linear',
+             activation.output.cann = 'linear', fixed.cann = TRUE,
+             epochs = 100, batch_size = 10000,
+             filter = function(data){data$payment == 1})
+
+model10 <- hirem::fit(model10,
+                      close = 'close ~ development_year',
+                      payment = 'payment ~ close + development_year',
+                      size = 'size ~ close + development_year')
+
+simulate_rbns(model10)

@@ -149,21 +149,23 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
 #'
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
-#' @param distribution Default is tweedie,
-#' @param hidden Default is c(10,10)
-#' @param epochs Default is 1000
-#' @param train_samples_per_iteration Default is -1
-#' @param reproducible Default is True,
-#' @param activation Default is "Tanh",
-#' @param single_node_mode Default is FALSE,
-#' @param balance_classes Default is FALSE,
-#' @param force_load_balance Default is FALSE,
-#' @param seed Default is 23123,
-#' @param tweedie_power Default is 1.5,
-#' @param score_training_samples Default is 0,
-#' @param score_validation_samples Default is 0,
-#' @param stopping_rounds Default is 0
-#' @param input_dropout_ratio Default is 0.1
+#' @param distribution The distribution used for the simulation. Default is gaussian.
+#' @param hidden The hidden layer architecture passed to \code{h2o}. Default is c(10,10).
+#' @param epochs The epochs argument passed to \code{h2o}. Default is 1000
+#' @param train_samples_per_iteration The train_samples_per_iteration argument passed to \code{h2o}. Default is -1
+#' @param reproducible The reproducible argument passed to \code{h2o}. Default is True.
+#' @param activation The activation function (same for all layers) passed to \code{h2o}. Default is "Tanh".
+#' @param single_node_mode The single_node_mode argument passed to \code{h2o}. Default is FALSE,
+#' @param balance_classes The balance_classes argument passed to \code{h2o}. Default is FALSE,
+#' @param force_load_balance The force_load_balance argument passed to \code{h2o}. Default is FALSE,
+#' @param seed The seed argument passed to \code{h2o}.
+#' @param tweedie_power The tweedie_power argument passed to \code{h2o}. Only used if distribution is "tweedie".
+#' @param score_training_samples The score_training_samples argument passed to \code{h2o}. Default is 0,
+#' @param score_validation_samples The score_validation_samples argument passed to \code{h2o}. Default is 0,
+#' @param stopping_rounds The stopping_rounds argument passed to \code{h2o}. Default is 0
+#' @param input_dropout_ratio The input_dropout_ratio argument passed to \code{h2o}. Default is 0.1
+#' @param hidden_dropout_ratios The input_dropout_ratio argument passed to \code{h2o}. Default is 0.5
+#' @param stopping_rounds The stopping_rounds argument passed to \code{h2o}. Default is 0
 #' @param filter Function with \itemize{
 #'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
@@ -172,7 +174,7 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
 #' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_mlp_h2o <- function(obj, name, distribution = "tweedie", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
+layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
                      reproducible = T, activation = "Tanh", nfolds = NULL,
                      single_node_mode = FALSE,
                      balance_classes = FALSE,
@@ -213,7 +215,19 @@ layer_mlp_h2o <- function(obj, name, distribution = "tweedie", hidden = c(10,10)
 #'
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
-#' @param distribution Default is tweedie,
+#' @param distribution The distribution used for the simulation. Default is gaussian.
+#' @param hidden The hidden layer architecture passed to \code{keras}. Default is c(30,20,10).
+#' @param dropout.hidden The dropout ratios for each hidden layer passed to \code{keras}. Default is 0.
+#' @param activation.hidden The activation function for each hidden layer passed to \code{keras}. Default is Tanh.
+#' @param activation.output The activation function for the output layer passed to \code{keras}. Default is Tanh.
+#' @param loss The loss function argument passed to \code{keras}. Default is 'mse'.
+#' @param optimizer The optimizer argument passed to \code{keras}. Default is 'nadam'.
+#' @param epochs The epochs argument passed to \code{keras}. Default is 20.
+#' @param batch_size The batch_size argument passed to \code{keras}. Default is 1000.
+#' @param validation_split The validation_split argument passed to \code{keras}. Default is .2
+#' @param metrics The metrics argument passed to \code{keras}.
+#' @param family_for_init If not NULL, an homogenous GLM is estimated and the resulting coefficient estimate is used to initialize the bias weight in the output layer, which may improve convergence.
+#' See Ferrario, Andrea and Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020). Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852
 #' @param filter Function with \itemize{
 #'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
@@ -223,16 +237,24 @@ layer_mlp_h2o <- function(obj, name, distribution = "tweedie", hidden = c(10,10)
 #' applied before modelling this layer.
 #' @export
 layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
-                            hidden = c(10,20,10), dropout.hidden = rep(.01,3),
-                            activation.hidden = rep('tanh',3), activation.output = 'linear',
+                            hidden = c(30,20,10), dropout.hidden = NULL,
+                            activation.hidden = NULL, activation.output = 'linear',
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             family_for_init = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$distribution <- distribution
   options$hidden <- hidden
-  options$dropout.hidden <- dropout.hidden
-  options$activation.hidden <- activation.hidden
+  if(is.null(dropout.hidden)) options$dropout.hidden <- rep(0,length(hidden))
+  else options$dropout.hidden <- dropout.hidden
+  if(length(hidden) != length(dropout.hidden)) {
+    stop('The length of hidden and dropout.hidden should match.')
+  }
+  if(is.null(activation.hidden)) options$activation.hidden <- rep('tanh',length(hidden))
+  else options$activation.hidden <- activation.hidden
+  if(length(hidden) != length(activation.hidden)) {
+    stop('The length of hidden and activation.hidden should match.')
+  }
   options$activation.output <- activation.output
   options$loss <- loss
   options$optimizer <- optimizer
@@ -253,7 +275,21 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
 #'
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
-#' @param distribution Default is tweedie,
+#' @param distribution The distribution used for the simulation. Default is gaussian,
+#' @param family_for_glm The family used to estimate the GLM model. The coefficient estimates are then used to initialize the weights of the associated GLM neural network.
+#' Default is Gamma(link = log).
+#' @param hidden The hidden layer architecture of the Neural Network, passed to \code{keras}. Default is c(30,20,10).
+#' @param dropout.hidden The dropout ratios for each hidden layer of the Neural Network, passed to \code{keras}. Default is 0.
+#' @param activation.hidden The activation function for each hidden layer of the Neural Network, passed to \code{keras}. Default is tanh.
+#' @param activation.output The activation function for the output layer of the Neural Network, passed to \code{keras}. Default is linear.
+#' @param activation.output.cann The activation function for the output layer of the CANN, passed to \code{keras}. Default is linear.
+#' @param fixed.cann If TRUE (default), the weights of the CANN's output layer are fixed and non trainable.
+#' @param loss The loss function argument passed to \code{keras}. Default is 'mse'.
+#' @param optimizer The optimizer argument passed to \code{keras}. Default is 'nadam'.
+#' @param epochs The epochs argument passed to \code{keras}. Default is 20.
+#' @param batch_size The batch_size argument passed to \code{keras}. Default is 1000.
+#' @param validation_split The validation_split argument passed to \code{keras}. Default is .2
+#' @param metrics The metrics argument passed to \code{keras}.
 #' @param filter Function with \itemize{
 #'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
@@ -263,17 +299,25 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
 #' applied before modelling this layer.
 #' @export
 #'
-layer_cann <- function(obj, name, distribution = 'gaussian',
-                       hidden = c(10,20,10), dropout.hidden = rep(.01,3),
-                       activation.hidden = rep('tanh',3), activation.output = 'linear', activation.output.cann = 'linear', fixed.cann = TRUE,
+layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Gamma(link = log),
+                       hidden = c(10,20,10), dropout.hidden = NULL,
+                       activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear', fixed.cann = TRUE,
                        loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
-                       family_for_glm = NULL, filter = NULL, transformation = NULL) {
+                       filter = NULL, transformation = NULL) {
 
   options <- c()
   options$distribution <- distribution
   options$hidden <- hidden
-  options$dropout.hidden <- dropout.hidden
-  options$activation.hidden <- activation.hidden
+  if(is.null(dropout.hidden)) options$dropout.hidden <- rep(0,length(hidden))
+  else options$dropout.hidden <- dropout.hidden
+  if(length(hidden) != length(dropout.hidden)) {
+    stop('The length of hidden and dropout.hidden should match.')
+  }
+  if(is.null(activation.hidden)) options$activation.hidden <- rep('tanh',length(hidden))
+  else options$activation.hidden <- activation.hidden
+  if(length(hidden) != length(activation.hidden)) {
+    stop('The length of hidden and activation.hidden should match.')
+  }
   options$activation.output <- activation.output
   options$fixed.cann <- fixed.cann
   options$activation.output.cann <- activation.output.cann

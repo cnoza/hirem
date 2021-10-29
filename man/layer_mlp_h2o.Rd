@@ -7,7 +7,7 @@
 layer_mlp_h2o(
   obj,
   name,
-  distribution = "tweedie",
+  distribution = "gaussian",
   hidden = c(10, 10),
   epochs = 1000,
   train_samples_per_iteration = -1,
@@ -33,35 +33,37 @@ layer_mlp_h2o(
 
 \item{name}{Character, name of the layer. This name should match the variable name in the data set}
 
-\item{distribution}{Default is tweedie,}
+\item{distribution}{The distribution used for the simulation. Default is gaussian.}
 
-\item{hidden}{Default is c(10,10)}
+\item{hidden}{The hidden layer architecture passed to \code{h2o}. Default is c(10,10).}
 
-\item{epochs}{Default is 1000}
+\item{epochs}{The epochs argument passed to \code{h2o}. Default is 1000}
 
-\item{train_samples_per_iteration}{Default is -1}
+\item{train_samples_per_iteration}{The train_samples_per_iteration argument passed to \code{h2o}. Default is -1}
 
-\item{reproducible}{Default is True,}
+\item{reproducible}{The reproducible argument passed to \code{h2o}. Default is True.}
 
-\item{activation}{Default is "Tanh",}
+\item{activation}{The activation function (same for all layers) passed to \code{h2o}. Default is "Tanh".}
 
-\item{single_node_mode}{Default is FALSE,}
+\item{single_node_mode}{The single_node_mode argument passed to \code{h2o}. Default is FALSE,}
 
-\item{balance_classes}{Default is FALSE,}
+\item{balance_classes}{The balance_classes argument passed to \code{h2o}. Default is FALSE,}
 
-\item{force_load_balance}{Default is FALSE,}
+\item{force_load_balance}{The force_load_balance argument passed to \code{h2o}. Default is FALSE,}
 
-\item{seed}{Default is 23123,}
+\item{seed}{The seed argument passed to \code{h2o}.}
 
-\item{tweedie_power}{Default is 1.5,}
+\item{tweedie_power}{The tweedie_power argument passed to \code{h2o}. Only used if distribution is "tweedie".}
 
-\item{score_training_samples}{Default is 0,}
+\item{score_training_samples}{The score_training_samples argument passed to \code{h2o}. Default is 0,}
 
-\item{score_validation_samples}{Default is 0,}
+\item{score_validation_samples}{The score_validation_samples argument passed to \code{h2o}. Default is 0,}
 
-\item{input_dropout_ratio}{Default is 0.1}
+\item{input_dropout_ratio}{The input_dropout_ratio argument passed to \code{h2o}. Default is 0.1}
 
-\item{stopping_rounds}{Default is 0}
+\item{hidden_dropout_ratios}{The input_dropout_ratio argument passed to \code{h2o}. Default is 0.5}
+
+\item{stopping_rounds}{The stopping_rounds argument passed to \code{h2o}. Default is 0}
 
 \item{filter}{Function with \itemize{
  \item input: Data set with same structure as the data passed to \code{\link{hirem}}

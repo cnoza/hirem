@@ -15,6 +15,8 @@ layer_cann(
   activation.output = "linear",
   activation.output.cann = "linear",
   fixed.cann = TRUE,
+  monitor = "loss",
+  patience = 20,
   loss = "mse",
   optimizer = "nadam",
   epochs = 20,
@@ -46,6 +48,10 @@ Default is Gamma(link = log).}
 \item{activation.output.cann}{The activation function for the output layer of the CANN, passed to \code{keras}. Default is linear.}
 
 \item{fixed.cann}{If TRUE (default), the weights of the CANN's output layer are fixed and non trainable.}
+
+\item{monitor}{The monitor argument passed to \code{keras}. Default is 'loss'.}
+
+\item{patience}{The patience argument passed to \code{keras}. Default is 20.}
 
 \item{loss}{The loss function argument passed to \code{keras}. Default is 'mse'.}
 

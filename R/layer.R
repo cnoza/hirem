@@ -220,7 +220,11 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @param dropout.hidden The dropout ratios for each hidden layer passed to \code{keras}. Default is 0.
 #' @param activation.hidden The activation function for each hidden layer passed to \code{keras}. Default is Tanh.
 #' @param activation.output The activation function for the output layer passed to \code{keras}. Default is Tanh.
+#' @param batch_normalization If TRUE (default), apply the batch normalization between each hidden layer.
 #' @param loss The loss function argument passed to \code{keras}. Default is 'mse'.
+#' @param monitor The monitor argument passed to \code{keras}. Default is 'loss'.
+#' @param patience The patience argument passed to \code{keras}. Default is 20.
+#' @param scale If TRUE (default), the data used for training is scaled.
 #' @param optimizer The optimizer argument passed to \code{keras}. Default is 'nadam'.
 #' @param epochs The epochs argument passed to \code{keras}. Default is 20.
 #' @param batch_size The batch_size argument passed to \code{keras}. Default is 1000.
@@ -238,9 +242,9 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @export
 layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
                             hidden = c(30,20,10), dropout.hidden = NULL,
-                            activation.hidden = NULL, activation.output = 'linear',
+                            activation.hidden = NULL, activation.output = 'linear', batch_normalization = TRUE, scale = TRUE,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
-                            family_for_init = NULL, filter = NULL, transformation = NULL) {
+                            monitor = "loss", patience = 20, family_for_init = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$distribution <- distribution
@@ -263,6 +267,10 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
   options$metrics <- metrics
   options$validation_split <- validation_split
   options$family_for_init <- family_for_init
+  options$monitor <- monitor
+  options$patience <- patience
+  options$batch_normalization <- batch_normalization
+  options$scale <- scale
 
   hirem_layer(obj, name, 'mlp_keras', 'layer_mlp_keras', options, filter, transformation)
 
@@ -284,6 +292,8 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
 #' @param activation.output The activation function for the output layer of the Neural Network, passed to \code{keras}. Default is linear.
 #' @param activation.output.cann The activation function for the output layer of the CANN, passed to \code{keras}. Default is linear.
 #' @param fixed.cann If TRUE (default), the weights of the CANN's output layer are fixed and non trainable.
+#' @param monitor The monitor argument passed to \code{keras}. Default is 'loss'.
+#' @param patience The patience argument passed to \code{keras}. Default is 20.
 #' @param loss The loss function argument passed to \code{keras}. Default is 'mse'.
 #' @param optimizer The optimizer argument passed to \code{keras}. Default is 'nadam'.
 #' @param epochs The epochs argument passed to \code{keras}. Default is 20.
@@ -302,7 +312,7 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
 layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Gamma(link = log),
                        hidden = c(10,20,10), dropout.hidden = NULL,
                        activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear', fixed.cann = TRUE,
-                       loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
+                       monitor = 'loss', patience = 20, loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                        filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -328,6 +338,8 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$metrics <- metrics
   options$validation_split <- validation_split
   options$family_for_glm <- family_for_glm
+  options$monitor <- monitor
+  options$patience <- patience
 
   hirem_layer(obj, name, 'cann', 'layer_cann', options, filter, transformation)
 

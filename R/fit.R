@@ -314,6 +314,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   label <- as.character(terms(f)[[2]])
 
   x <- as.matrix(sparse.model.matrix(f, data=data)[,-1])
+  if(layer$method_options$scale) x <- scale(x)
   y <- as.matrix(data[,label])
 
   model <- keras_model_sequential()
@@ -321,21 +322,25 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   for(i in seq(from = 1, to=n)) {
     if(i == 1) {
-      model <- model %>%
-        layer_dense(units = layer$method_options$hidden[i],
-                    activation = layer$method_options$activation.hidden[i],
-                    input_shape = c(ncol(x))) %>%
-        layer_dropout(rate = layer$method_options$dropout.hidden[i])
-    } else {
-      model <- model %>%
-        layer_dense(units = layer$method_options$hidden[i],
-                    activation = layer$method_options$activation.hidden[i]) %>%
-        layer_dropout(rate = layer$method_options$dropout.hidden[i])
+      if(layer$method_options$batch_normalization) {
+        model <- model %>% layer_batch_normalization(input_shape = c(ncol(x)))
+        model <- model %>% layer_dense(units = layer$method_options$hidden[i])
+      }
+      else {
+        model <- model %>% layer_dense(units = layer$method_options$hidden[i], input_shape = c(ncol(x)))
+      }
     }
+    else {
+      model <- model %>% layer_dense(units = layer$method_options$hidden[i])
+    }
+    model <- model %>%
+      layer_activation(activation = layer$method_options$activation.hidden[i])
+    model <- model %>%
+      layer_dropout(rate = layer$method_options$dropout.hidden[i])
   }
 
-  # Initialization with the homogeneous model (improves convergence).
-  # See Ferrario, Andrea and Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
+  # Initialization with the homogeneous model (may improve convergence).
+  # See Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
   # Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852 p.29.
   if(!is.null(layer$method_options$family_for_init)) {
     f.hom <- paste0(label, '~ 1')
@@ -358,7 +363,8 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   )
 
   earlystopping <- callback_early_stopping(
-    monitor = "loss", patience = 20)
+    monitor = layer$method_options$monitor,
+    patience = layer$method_options$patience)
 
   layer$history <- model %>%
     keras::fit(x, y, epochs = layer$method_options$epochs,
@@ -421,6 +427,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   for(i in seq(from = 1, to=n)) {
     if(i == 1) {
       NNetwork <- Input_nodes %>%
+        layer_batch_normalization(input_shape = c(ncol(x)))
         layer_dense(units = layer$method_options$hidden[i],
                     activation = layer$method_options$activation.hidden[i],
                     input_shape = c(ncol(x))) %>%
@@ -455,7 +462,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   )
 
   earlystopping <- callback_early_stopping(
-    monitor = "loss", patience = 20)
+    monitor = layer$method_options$monitor,
+    patience = layer$method_options$patience)
 
   layer$history <- CANN %>%
     keras::fit(x, y, epochs = layer$method_options$epochs,

@@ -10,9 +10,11 @@ library(Matrix)
 library(h2o)
 library(keras)
 library(tensorflow)
-library(ggplot2)
 library(data.table)
 data("reserving_data")
+
+set.seed(265)
+set_random_seed(265)
 
 ######################### Imports #########################
 
@@ -237,7 +239,7 @@ model7 <- hirem::fit(model7,
 
 simulate_rbns(model7)
 
-### Case 7b: GLM + MLP (keras) with weight initialization by an homogeneous GLM + gamma deviance ###
+### Case 7b: GLM + MLP (gamma deviance) ###
 
 model7b <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -248,14 +250,17 @@ model7b <- hirem(reserving_data) %>%
                   loss = gamma_deviance_keras,
                   metrics = metric_gamma_deviance_keras,
                   optimizer = optimizer_nadam(learning_rate = 0.01),
-                  validation_split = .2,
+                  validation_split = 0.2,
                   hidden = c(80,70,60,50,40,30),
                   dropout.hidden = rep(.01,6),
                   activation.hidden = rep('relu',6),
                   activation.output = 'linear',
+                  batch_normalization = F,
                   epochs = 100,
-                  batch_size = 1000,
-                  #family_for_init = Gamma(link = log),
+                  scale = F,
+                  batch_size = 10000,
+                  monitor = 'val_gamma_deviance_keras',
+                  patience = 20,
                   filter = function(data){data$payment == 1})
 
 model7b <- hirem::fit(model7b,
@@ -273,11 +278,11 @@ model8 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_mlp_keras('payment', distribution = 'bernoulli', loss = 'binary_crossentropy',
                   optimizer = 'nadam', validation_split = .2,
-                  hidden = c(70,60,50), dropout.hidden = rep(.01,3), activation.hidden = rep('relU',3),
+                  hidden = c(70,60,50), dropout.hidden = rep(.01,3), activation.hidden = rep('relu',3),
                   activation.output = 'softmax', epochs = 100, batch_size = 1000, family_for_init = binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gaussian', loss = 'mse',
                   optimizer = 'nadam', validation_split = .2,
-                  hidden = c(70,50,40), dropout.hidden = rep(.01,3), activation.hidden = rep('relU',3),
+                  hidden = c(70,50,40), dropout.hidden = rep(.01,3), activation.hidden = rep('relu',3),
                   activation.output = 'linear', epochs = 100, batch_size = 1000, family_for_init = Gamma(link = log),
                   filter = function(data){data$payment == 1})
 

@@ -12,12 +12,16 @@ layer_mlp_keras(
   dropout.hidden = NULL,
   activation.hidden = NULL,
   activation.output = "linear",
+  batch_normalization = TRUE,
+  scale = TRUE,
   loss = "mse",
   optimizer = "nadam",
   epochs = 20,
   batch_size = 1000,
   validation_split = 0.2,
   metrics = NULL,
+  monitor = "loss",
+  patience = 20,
   family_for_init = NULL,
   filter = NULL,
   transformation = NULL
@@ -38,6 +42,10 @@ layer_mlp_keras(
 
 \item{activation.output}{The activation function for the output layer passed to \code{keras}. Default is Tanh.}
 
+\item{batch_normalization}{If TRUE (default), apply the batch normalization between each hidden layer.}
+
+\item{scale}{If TRUE (default), the data used for training is scaled.}
+
 \item{loss}{The loss function argument passed to \code{keras}. Default is 'mse'.}
 
 \item{optimizer}{The optimizer argument passed to \code{keras}. Default is 'nadam'.}
@@ -49,6 +57,10 @@ layer_mlp_keras(
 \item{validation_split}{The validation_split argument passed to \code{keras}. Default is .2}
 
 \item{metrics}{The metrics argument passed to \code{keras}.}
+
+\item{monitor}{The monitor argument passed to \code{keras}. Default is 'loss'.}
+
+\item{patience}{The patience argument passed to \code{keras}. Default is 20.}
 
 \item{family_for_init}{If not NULL, an homogenous GLM is estimated and the resulting coefficient estimate is used to initialize the bias weight in the output layer, which may improve convergence.
 See Ferrario, Andrea and Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020). Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852}

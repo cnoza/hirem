@@ -217,7 +217,7 @@ model6 <- hirem::fit(model6,
 
 simulate_rbns(model6)
 
-### Case 7: GLM + MLP (keras) with weight initialization by an homogeneous GLM ###
+### Case 7: GLM + MLP shallow case (no hidden layer) ###
 
 model7 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -225,17 +225,18 @@ model7 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gamma',
+                  step_log = F,
+                  step_normalize = F,
                   loss = gamma_deviance_keras,
                   metrics = metric_gamma_deviance_keras,
-                  optimizer = optimizer_nadam(learning_rate = 0.01),
-                  validation_split = 0.2,
-                  hidden = c(30,20,10),
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = 0,
+                  hidden = NULL,
                   activation.output = 'exponential',
                   batch_normalization = F,
                   epochs = 100,
-                  scale = F,
-                  batch_size = 1000,
-                  monitor = 'val_gamma_deviance_keras',
+                  batch_size = 10000,
+                  monitor = 'gamma_deviance_keras',
                   patience = 20,
                   filter = function(data){data$payment == 1})
 
@@ -254,18 +255,17 @@ model7b <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gamma',
-                  log = F,
-                  normalize = T,
+                  step_log = F,
+                  step_normalize = F,
                   loss = gamma_deviance_keras,
                   metrics = metric_gamma_deviance_keras,
-                  optimizer = optimizer_nadam(),
-                  validation_split = 0.2,
-                  hidden = NULL,
-                  activation.output = 'exponential',
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = .3,
+                  hidden = c(10,10,10),
+                  activation.output = 'linear',
                   batch_normalization = F,
                   epochs = 100,
-                  scale = F,
-                  batch_size = 1000,
+                  batch_size = 10000,
                   monitor = 'val_gamma_deviance_keras',
                   patience = 20,
                   filter = function(data){data$payment == 1})
@@ -273,7 +273,7 @@ model7b <- hirem(reserving_data) %>%
 model7b <- hirem::fit(model7b,
                      close = 'close ~ factor(development_year)',
                      payment = 'payment ~ close + factor(development_year)',
-                     size = 'size ~ close + development_year_factor')
+                     size = 'size ~ close + development_year')
 
 simulate_rbns(model7b)
 

@@ -314,28 +314,21 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   label <- as.character(terms(f)[[2]])
 
   data_recipe <- recipe(f, data=data)
-  if(layer$method_options$log)
+  if(layer$method_options$step_log)
     data_recipe <- data_recipe %>% step_log(as.name(label))
-  if(layer$method_options$normalize)
+  if(layer$method_options$step_normalize)
     data_recipe <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
-
   data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE)
-
   data_recipe <- data_recipe %>% prep()
   layer$data_recipe <- data_recipe
 
   data_baked <- bake(data_recipe, new_data = data)
 
   x <- select(data_baked,-as.name(label)) %>% as.matrix()
-  #x <- as.matrix(sparse.model.matrix(f, data=data)[,-1])
-  if(layer$method_options$scale) x <- scale(x)
-
-  #y <- as.matrix(data[,label])
   y <- data_baked %>% pull(as.name(label))
 
   inputs <- layer_input(shape = c(ncol(x)))
 
-  #output <- keras_model_sequential()
   if(layer$method_options$batch_normalization)
     output <- inputs %>% layer_batch_normalization()
 

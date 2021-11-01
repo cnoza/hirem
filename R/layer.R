@@ -241,14 +241,14 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' applied before modelling this layer.
 #' @export
 layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
-                            hidden = NULL, dropout.hidden = NULL, log = FALSE, normalize = FALSE,
-                            activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE, scale = TRUE,
+                            hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE,
+                            activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             monitor = "loss", patience = 20, family_for_init = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
-  options$log <- log
-  options$normalize <- normalize
+  options$step_log <- step_log
+  options$step_normalize <- step_normalize
   options$distribution <- distribution
   options$hidden <- hidden
   options$dropout.hidden <- dropout.hidden
@@ -281,7 +281,6 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
   options$monitor <- monitor
   options$patience <- patience
   options$batch_normalization <- batch_normalization
-  options$scale <- scale
 
   hirem_layer(obj, name, 'mlp_keras', 'layer_mlp_keras', options, filter, transformation)
 

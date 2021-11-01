@@ -1,11 +1,13 @@
 
 ### Functions used for testing purposes
-
 simulate_rbns <- function(model, nsim = 5) {
+
+  levels <- unique(reserving_data$development_year)
 
   update <- function(data) {
     data %>%
       dplyr::mutate(development_year = development_year + 1,
+                    development_year_factor = factor(development_year, levels=levels),
                     calendar_year = calendar_year + 1)
   }
 

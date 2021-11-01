@@ -313,30 +313,52 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
 
-  x <- as.matrix(sparse.model.matrix(f, data=data)[,-1])
+  data_recipe <- recipe(f, data=data)
+  if(layer$method_options$log)
+    data_recipe <- data_recipe %>% step_log(as.name(label))
+  if(layer$method_options$normalize)
+    data_recipe <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
+
+  data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE)
+
+  data_recipe <- data_recipe %>% prep()
+  layer$data_recipe <- data_recipe
+
+  data_baked <- bake(data_recipe, new_data = data)
+
+  x <- select(data_baked,-as.name(label)) %>% as.matrix()
+  #x <- as.matrix(sparse.model.matrix(f, data=data)[,-1])
   if(layer$method_options$scale) x <- scale(x)
-  y <- as.matrix(data[,label])
 
-  model <- keras_model_sequential()
-  n <- length(layer$method_options$hidden)
+  #y <- as.matrix(data[,label])
+  y <- data_baked %>% pull(as.name(label))
 
-  for(i in seq(from = 1, to=n)) {
-    if(i == 1) {
-      if(layer$method_options$batch_normalization) {
-        model <- model %>% layer_batch_normalization(input_shape = c(ncol(x)))
-        model <- model %>% layer_dense(units = layer$method_options$hidden[i])
+  inputs <- layer_input(shape = c(ncol(x)))
+
+  #output <- keras_model_sequential()
+  if(layer$method_options$batch_normalization)
+    output <- inputs %>% layer_batch_normalization()
+
+
+  if(!is.null(layer$method_options$hidden)) {
+
+    n <- length(layer$method_options$hidden)
+
+    for(i in seq(from = 1, to=n)) {
+      if(i==1 & !layer$method_options$batch_normalization) {
+        output <- inputs %>% layer_dense(units = layer$method_options$hidden[i]) %>%
+          layer_activation(activation = layer$method_options$activation.hidden[i])
+        if(!is.null(layer$method_options$dropout.hidden))
+          output <- output %>% layer_dropout(rate = layer$method_options$dropout.hidden[i])
       }
       else {
-        model <- model %>% layer_dense(units = layer$method_options$hidden[i], input_shape = c(ncol(x)))
+        output <- output %>% layer_dense(units = layer$method_options$hidden[i]) %>%
+          layer_activation(activation = layer$method_options$activation.hidden[i])
+        if(!is.null(layer$method_options$dropout.hidden))
+          layer_dropout(rate = layer$method_options$dropout.hidden[i])
       }
     }
-    else {
-      model <- model %>% layer_dense(units = layer$method_options$hidden[i])
-    }
-    model <- model %>%
-      layer_activation(activation = layer$method_options$activation.hidden[i])
-    model <- model %>%
-      layer_dropout(rate = layer$method_options$dropout.hidden[i])
+
   }
 
   # Initialization with the homogeneous model (may improve convergence).
@@ -346,14 +368,24 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     f.hom <- paste0(label, '~ 1')
     glm.hom <- glm(as.formula(f.hom),data = data, family = layer$method_options$family_for_init)
     layer$glm.hom <- glm.hom
-    model <- model %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
-                                   weights = list(array(0,dim=c(layer$method_options$hidden[n],1)),
-                                                  array(glm.hom$coefficients[1], dim=c(1))))
+    if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
+      output <- inputs %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                       weights = list(array(0,dim=c(ifelse(!is.null(layer$method_options$hidden),layer$method_options$hidden[n],c(ncol(x))),1)),
+                                                      array(glm.hom$coefficients[1], dim=c(1))))
+    else
+      output <- output %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                       weights = list(array(0,dim=c(ifelse(!is.null(layer$method_options$hidden),layer$method_options$hidden[n],c(ncol(x))),1)),
+                                                      array(glm.hom$coefficients[1], dim=c(1))))
   }
   else {
-    model <- model %>% layer_dense(units = 1, activation = layer$method_options$activation.output)
+    if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
+      output <- inputs %>% layer_dense(units = 1, activation = layer$method_options$activation.output)
+    else
+      output <- output %>% layer_dense(units = 1, activation = layer$method_options$activation.output)
   }
 
+  model <- keras_model_sequential()
+  model <- keras_model(inputs = inputs, outputs = c(output))
   print(summary(model))
 
   model %>% compile(

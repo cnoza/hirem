@@ -150,7 +150,9 @@ simulate.layer_mlp_keras <- function(obj, data, balance.correction, balance.var)
   f <- as.formula(obj$formula)
   label <- as.character(terms(f)[[2]])
 
-  x <- as.matrix(sparse.model.matrix(f, data=data[select,])[,-1])
+  #x <- as.matrix(sparse.model.matrix(f, data=data[select,])[,-1])
+  data_baked <- bake(obj$data_recipe, new_data = data[select,])
+  x <- select(data_baked,-as.name(label)) %>% as.matrix()
 
   response <- predict(obj$fit, x)
 

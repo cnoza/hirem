@@ -1,6 +1,7 @@
 rm(list=ls())
 #options(warn=-1)
 library(tidyverse)
+library(data.table)
 library(hirem)
 library(devtools)
 #devtools::install_github("harrysouthworth/gbm")
@@ -10,13 +11,18 @@ library(Matrix)
 library(h2o)
 library(keras)
 library(tensorflow)
-library(data.table)
-data("reserving_data")
-
+library(recipes)
 set.seed(265)
 set_random_seed(265)
 
-######################### Imports #########################
+######################### Loading data ###################
+
+data("reserving_data")
+reserving_data <- reserving_data %>%
+  mutate(development_year_factor = factor(development_year))
+
+
+######################### Imports ########################
 
 source(file='./Examples/import/functions.R')
 
@@ -49,7 +55,7 @@ model2 <- hirem(reserving_data) %>%
   layer_gbm('size', distribution = 'gaussian', cv.folds = 6,
             filter = function(data){data$payment == 1})
 
-model2 <- fit(model2,
+model2 <- hirem::fit(model2,
               close = 'close ~ factor(development_year)',
               payment = 'payment ~ close + factor(development_year)',
               size = 'size ~ close + development_year')
@@ -92,7 +98,7 @@ model3 <- hirem(reserving_data) %>%
 model3 <- hirem::fit(model3,
                      close = 'close ~ factor(development_year)',
                      payment = 'payment ~ close + factor(development_year)',
-                     size = 'size ~ close + development_year')
+                     size = 'size ~ close + development_year_factor')
 
 simulate_rbns(model3)
 
@@ -142,13 +148,12 @@ model3c <- hirem(reserving_data) %>%
             nrounds = 1500,
             max_depth = 20,
             verbose = F,
-            transformation = hirem_transformation_log,
             filter = function(data){data$payment == 1})
 
 model3c <- hirem::fit(model3c,
                      close = 'close ~ factor(development_year)',
                      payment = 'payment ~ close + factor(development_year)',
-                     size = 'size ~ close + development_year')
+                     size = 'size ~ close + development_year_factor')
 
 simulate_rbns(model3c)
 
@@ -219,17 +224,19 @@ model7 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gaussian',
-                  loss = 'mse',
-                  optimizer = 'nadam',
-                  validation_split = .2,
-                  hidden = c(10,30,60,50,40,30),
-                  dropout.hidden = rep(.01,6),
-                  activation.hidden = rep('relu',6),
-                  activation.output = 'linear',
+  layer_mlp_keras('size', distribution = 'gamma',
+                  loss = gamma_deviance_keras,
+                  metrics = metric_gamma_deviance_keras,
+                  optimizer = optimizer_nadam(learning_rate = 0.01),
+                  validation_split = 0.2,
+                  hidden = c(30,20,10),
+                  activation.output = 'exponential',
+                  batch_normalization = F,
                   epochs = 100,
-                  batch_size = 10000,
-                  family_for_init = Gamma(link = log),
+                  scale = F,
+                  batch_size = 1000,
+                  monitor = 'val_gamma_deviance_keras',
+                  patience = 20,
                   filter = function(data){data$payment == 1})
 
 model7 <- hirem::fit(model7,
@@ -247,26 +254,26 @@ model7b <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gamma',
+                  log = F,
+                  normalize = T,
                   loss = gamma_deviance_keras,
                   metrics = metric_gamma_deviance_keras,
-                  optimizer = optimizer_nadam(learning_rate = 0.01),
+                  optimizer = optimizer_nadam(),
                   validation_split = 0.2,
-                  hidden = c(80,70,60,50,40,30),
-                  dropout.hidden = rep(.01,6),
-                  activation.hidden = rep('relu',6),
-                  activation.output = 'linear',
+                  hidden = NULL,
+                  activation.output = 'exponential',
                   batch_normalization = F,
                   epochs = 100,
                   scale = F,
-                  batch_size = 10000,
+                  batch_size = 1000,
                   monitor = 'val_gamma_deviance_keras',
                   patience = 20,
                   filter = function(data){data$payment == 1})
 
 model7b <- hirem::fit(model7b,
-                     close = 'close ~ development_year',
-                     payment = 'payment ~ close + development_year',
-                     size = 'size ~ close + development_year')
+                     close = 'close ~ factor(development_year)',
+                     payment = 'payment ~ close + factor(development_year)',
+                     size = 'size ~ close + development_year_factor')
 
 simulate_rbns(model7b)
 

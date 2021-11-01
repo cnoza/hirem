@@ -216,10 +216,10 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
 #' @param distribution The distribution used for the simulation. Default is gaussian.
-#' @param hidden The hidden layer architecture passed to \code{keras}. Default is c(30,20,10).
+#' @param hidden The hidden layer architecture passed to \code{keras}.
 #' @param dropout.hidden The dropout ratios for each hidden layer passed to \code{keras}. Default is 0.
-#' @param activation.hidden The activation function for each hidden layer passed to \code{keras}. Default is Tanh.
-#' @param activation.output The activation function for the output layer passed to \code{keras}. Default is Tanh.
+#' @param activation.hidden The activation function for each hidden layer passed to \code{keras}. Default is Relu
+#' @param activation.output The activation function for the output layer passed to \code{keras}. Default is Linear
 #' @param batch_normalization If TRUE (default), apply the batch normalization between each hidden layer.
 #' @param loss The loss function argument passed to \code{keras}. Default is 'mse'.
 #' @param monitor The monitor argument passed to \code{keras}. Default is 'loss'.
@@ -241,24 +241,35 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' applied before modelling this layer.
 #' @export
 layer_mlp_keras <- function(obj, name, distribution = 'gaussian',
-                            hidden = c(30,20,10), dropout.hidden = NULL,
-                            activation.hidden = NULL, activation.output = 'linear', batch_normalization = TRUE, scale = TRUE,
+                            hidden = NULL, dropout.hidden = NULL, log = FALSE, normalize = FALSE,
+                            activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE, scale = TRUE,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             monitor = "loss", patience = 20, family_for_init = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
+  options$log <- log
+  options$normalize <- normalize
   options$distribution <- distribution
   options$hidden <- hidden
-  if(is.null(dropout.hidden)) options$dropout.hidden <- rep(0,length(hidden))
-  else options$dropout.hidden <- dropout.hidden
-  if(length(hidden) != length(dropout.hidden)) {
-    stop('The length of hidden and dropout.hidden should match.')
+  options$dropout.hidden <- dropout.hidden
+  options$activation.hidden <- activation.hidden
+
+  if(is.null(options$hidden)) {
+    if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')
+    if(!is.null(activation.hidden)) stop('If hidden is NULL, so should be activation.hidden.')
   }
-  if(is.null(activation.hidden)) options$activation.hidden <- rep('tanh',length(hidden))
-  else options$activation.hidden <- activation.hidden
-  if(length(hidden) != length(activation.hidden)) {
-    stop('The length of hidden and activation.hidden should match.')
+  else {
+    if(!is.null(options$dropout.hidden)) {
+      if(length(options$hidden) != length(options$dropout.hidden)) {
+        stop('The length of hidden and dropout.hidden should match.')
+      }
+    }
+    if(is.null(options$activation.hidden)) options$activation.hidden <- rep('relu',length(options$hidden))
+    if(length(options$hidden) != length(options$activation.hidden)) {
+      stop('The length of hidden and activation.hidden should match.')
+    }
   }
+
   options$activation.output <- activation.output
   options$loss <- loss
   options$optimizer <- optimizer

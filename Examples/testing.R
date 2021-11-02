@@ -1,10 +1,10 @@
 ### Imports ###
-
 source(file='./Examples/import/functions.R')
 
 #=========================================================================#
 #                              Case 1: GLM                                #
 #=========================================================================#
+
 init()
 model1 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -27,6 +27,7 @@ simulate_rbns(model1)
 #=========================================================================#
 #                     Case 2: GLM + GBM (gaussian)                        #
 #=========================================================================#
+
 init()
 model2 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -43,7 +44,10 @@ model2 <- hirem::fit(model2,
 
 simulate_rbns(model2)
 
-### Case 2b: GLM + GBM (gamma) ###
+#=========================================================================#
+#                     Case 2b: GLM + GBM (gamma)                          #
+#=========================================================================#
+
 init()
 model2b <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -66,6 +70,7 @@ simulate_rbns(model2b)
 #=========================================================================#
 #                   Case 3: GLM + XGB (reg:squarederror)                  #
 #=========================================================================#
+
 init()
 model3 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -91,6 +96,7 @@ simulate_rbns(model3)
 #=========================================================================#
 #         Case 3b: GLM + XGB (reg:squarederror + cross-validation)        #
 #=========================================================================#
+
 init()
 hyper_grid <- expand.grid(
   eta = 0.01,
@@ -126,6 +132,7 @@ simulate_rbns(model3b)
 #=========================================================================#
 #         Case 3c: GLM + XGB (reg:gamma + gamma-deviance)                 #
 #=========================================================================#
+
 init()
 model3c <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -156,6 +163,7 @@ simulate_rbns(model3c)
 
 # Goal: show that homogeneous GLM (gamma, log link) is equivalent to
 #       shallow neural network (loss:gamma deviance, activation:exponential)
+
 init()
 model4 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -217,6 +225,7 @@ print(model4$layers$size$shape)
 # of the homogeneous GLM (parameter 'family_for_init'):
 # See Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
 # Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852 p.29.
+
 init()
 model4b <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -257,6 +266,7 @@ simulate_rbns(model4b)
 #=========================================================================#
 #         Case 4c: GLM + MLP (gamma, 3 hidden layers)        #
 #=========================================================================#
+
 init()
 model4c <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -296,8 +306,9 @@ print(model1$layers$size$shape.se)
 simulate_rbns(model4c)
 
 #=========================================================================#
-#             Case 5: GLM + CANN (gamma)               #
+#             Case 5: GLM + CANN (gamma)                                  #
 #=========================================================================#
+
 init()
 model5 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -355,7 +366,9 @@ modelA.1 <- hirem::fit(modelA.1,
                      payment = 'payment ~ close + development_year',
                      size = 'size ~ close + development_year')
 
+# Rmk: bias regularization not implemented in layer_mlp_h2o
 simulate_rbns(modelA.1)
+
 
 ### Case A.2: GLM + MLP (h2o) ###
 init()
@@ -376,6 +389,7 @@ modelA.2 <- hirem::fit(modelA.2,
                      payment = 'payment ~ close + development_year',
                      size = 'size ~ close + development_year')
 
+# Rmk: bias regularization not implemented in layer_mlp_h2o
 simulate_rbns(modelA.2)
 
 ### Case A.3: GLM + AutoML (h2o) ###
@@ -393,4 +407,5 @@ modelA.3 <- hirem::fit(modelA.3,
                      payment = 'payment ~ close + development_year',
                      size = 'size ~ close + development_year')
 
+# Rmk: bias regularization not implemented in layer_aml_h2o
 simulate_rbns(modelA.3)

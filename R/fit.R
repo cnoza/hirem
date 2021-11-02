@@ -370,18 +370,24 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
       output <- inputs %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
                                        weights = list(array(0,dim=c(ifelse(!is.null(layer$method_options$hidden),layer$method_options$hidden[n],c(ncol(x))),1)),
-                                                      array(glm.hom$coefficients[1], dim=c(1))))
+                                                      array(glm.hom$coefficients[1], dim=c(1))),
+                                       use_bias = layer$method_options$use_bias,
+                                       name = 'output_layer')
     else
       output <- output %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
                                        weights = list(array(0,dim=c(ifelse(!is.null(layer$method_options$hidden),layer$method_options$hidden[n],c(ncol(x))),1)),
-                                                      array(glm.hom$coefficients[1], dim=c(1))))
+                                                      array(glm.hom$coefficients[1], dim=c(1))),
+                                       use_bias = layer$method_options$use_bias,
+                                       name = 'output_layer')
   }
   else {
     if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
       output <- inputs %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
-                                       use_bias = layer$method_options$use_bias)
+                                       use_bias = layer$method_options$use_bias,
+                                       name = 'output_layer')
     else
-      output <- output %>% layer_dense(units = 1, activation = layer$method_options$activation.output)
+      output <- output %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                       name = 'output_layer')
   }
 
   model <- keras_model_sequential()

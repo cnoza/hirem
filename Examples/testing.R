@@ -276,7 +276,7 @@ print(model1$layers$size$shape.se)
 simulate_rbns(model4b)
 
 #=========================================================================#
-#         Case 4c: GLM + MLP (gamma, 1 hidden layer)        #
+#         Case 4c: GLM + MLP (gamma, 3 hidden layers)        #
 #=========================================================================#
 
 model4c <- hirem(reserving_data) %>%
@@ -291,10 +291,10 @@ model4c <- hirem(reserving_data) %>%
                   metrics = metric_gamma_deviance_keras,
                   optimizer = optimizer_nadam(learning_rate = .01),
                   validation_split = 0,
-                  hidden = c(7),
+                  hidden = c(20,15,10),
                   activation.output = 'exponential',
                   batch_normalization = F,
-                  family_for_init = Gamma(link = log),
+                  family_for_init = Gamma(link=log),
                   epochs = 100,
                   batch_size = 1000,
                   monitor = 'gamma_deviance_keras',
@@ -313,6 +313,7 @@ print(model4c$layers$size$shape.se)
 print(model1$layers$size$shape)
 print(model1$layers$size$shape.se)
 
+# Due to the bias regularization, we obtain RBNS simulations close to the true value:
 simulate_rbns(model4c)
 
 #=========================================================================#

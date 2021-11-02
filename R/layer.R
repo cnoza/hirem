@@ -276,8 +276,12 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
     options$bias_regularization <- FALSE
   }
   else {
-    if(options$distribution == 'gamma')
-      options$bias_regularization <- TRUE
+    if(options$distribution == 'gamma') {
+      if(options$activation.output == 'exponential')
+        options$bias_regularization <- TRUE
+      else
+        stop('For the bias regularization to work, the output layer activation function should be exponential.')
+    }
     else
       stop('Bias regularization is not supported (yet) for this choice of distribution.')
   }
@@ -331,37 +335,66 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
 #' applied before modelling this layer.
 #' @export
 #'
-layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Gamma(link = log),
-                       hidden = c(10,20,10), dropout.hidden = NULL,
-                       activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear', fixed.cann = TRUE,
-                       monitor = 'loss', patience = 20, loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
+layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Gamma(link = log), use_bias = TRUE,
+                       hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE,
+                       activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear',
+                       fixed.cann = TRUE, batch_normalization = FALSE, monitor = 'loss', patience = 20,
+                       loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                        filter = NULL, transformation = NULL) {
 
   options <- c()
   options$distribution <- distribution
+  options$step_log <- step_log
+  options$step_normalize <- step_normalize
   options$hidden <- hidden
-  if(is.null(dropout.hidden)) options$dropout.hidden <- rep(0,length(hidden))
-  else options$dropout.hidden <- dropout.hidden
-  if(length(hidden) != length(dropout.hidden)) {
-    stop('The length of hidden and dropout.hidden should match.')
-  }
-  if(is.null(activation.hidden)) options$activation.hidden <- rep('tanh',length(hidden))
-  else options$activation.hidden <- activation.hidden
-  if(length(hidden) != length(activation.hidden)) {
-    stop('The length of hidden and activation.hidden should match.')
-  }
+  options$dropout.hidden <- dropout.hidden
+  options$activation.hidden <- activation.hidden
   options$activation.output <- activation.output
-  options$fixed.cann <- fixed.cann
   options$activation.output.cann <- activation.output.cann
+  options$use_bias <- use_bias
+
+  if(is.null(options$hidden)) {
+    if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')
+    if(!is.null(activation.hidden)) stop('If hidden is NULL, so should be activation.hidden.')
+  }
+  else {
+    if(!is.null(options$dropout.hidden)) {
+      if(length(options$hidden) != length(options$dropout.hidden)) {
+        stop('The length of hidden and dropout.hidden should match.')
+      }
+    }
+    if(is.null(options$activation.hidden)) options$activation.hidden <- rep('relu',length(options$hidden))
+    if(length(options$hidden) != length(options$activation.hidden)) {
+      stop('The length of hidden and activation.hidden should match.')
+    }
+  }
+
+  if(is.null(options$hidden)) {
+    # If no hidden layer, no need for bias regularization
+    options$bias_regularization <- FALSE
+  }
+  else {
+    if(options$distribution == 'gamma') {
+      if(options$activation.output.cann == 'exponential')
+        options$bias_regularization <- TRUE
+      else
+        stop('For the bias regularization to work, the CANN output layer activation function should be exponential.')
+    }
+    else
+      stop('Bias regularization is not supported (yet) for this choice of distribution.')
+  }
+
   options$loss <- loss
   options$optimizer <- optimizer
   options$epochs <- epochs
   options$batch_size <- batch_size
   options$metrics <- metrics
   options$validation_split <- validation_split
-  options$family_for_glm <- family_for_glm
   options$monitor <- monitor
   options$patience <- patience
+  options$batch_normalization <- batch_normalization
+  options$fixed.cann <- fixed.cann
+  options$family_for_glm <- family_for_glm
 
   hirem_layer(obj, name, 'cann', 'layer_cann', options, filter, transformation)
 

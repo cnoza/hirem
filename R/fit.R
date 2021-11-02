@@ -470,52 +470,115 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
 
-  model.glm <- glm(f,data = data, family = layer$method_options$family_for_glm)
+  data_recipe <- recipe(f, data=data)
 
+  if(layer$method_options$step_log)
+    data_recipe <- data_recipe %>% step_log(as.name(label))
+  if(layer$method_options$step_normalize)
+    data_recipe <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
+
+  data_recipe <- data_recipe %>% prep()
+
+  data_baked.glm <- bake(data_recipe, new_data = data)
+
+  if(ncol(data_baked.glm) == 1)
+    data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
+
+  model.glm <- glm(f,data = data_baked.glm, family = layer$method_options$family_for_glm)
   layer$model.glm <- model.glm
 
-  x <- as.matrix(sparse.model.matrix(f, data=data)[,-1])
-  y <- as.matrix(data[,label])
+  data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = FALSE) %>% prep()
 
-  Input_nodes <- layer_input(shape = c(ncol(x)), name='input nodes')
+  data_baked <- bake(data_recipe, new_data = data)
+  layer$data_recipe <- data_recipe
 
-  GLMNetwork <- keras_model_sequential()
-  GLMNetwork <- Input_nodes %>%
-    layer_dense(units=1, activation='linear', name='GLMNetwork', trainable=FALSE, input_shape = c(ncol(x)),
+  if(ncol(data_baked) == 1)
+    data_baked <- data_baked %>% mutate(intercept = 1)
+
+  x <- select(data_baked,-as.name(label)) %>% as.matrix()
+  y <- data_baked %>% pull(as.name(label))
+
+  inputs <- layer_input(shape = c(length(model.glm$coefficients)-1), name = 'input_layer')
+
+  # GLM Neural network
+
+  GLMNetwork <- inputs %>%
+    layer_dense(units=1, activation='linear', name='output_layer_GLM', trainable=FALSE,
                 weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
                              array(model.glm$coefficients[1],dim=c(1))))
 
-  NNetwork <- keras_model_sequential()
-  n <- length(layer$method_options$hidden)
+  # Neural network
 
-  for(i in seq(from = 1, to=n)) {
-    if(i == 1) {
-      NNetwork <- Input_nodes %>%
-        layer_batch_normalization(input_shape = c(ncol(x)))
-        layer_dense(units = layer$method_options$hidden[i],
-                    activation = layer$method_options$activation.hidden[i],
-                    input_shape = c(ncol(x))) %>%
-        layer_dropout(rate = layer$method_options$dropout.hidden[i])
-    } else {
-      NNetwork <- NNetwork %>%
-        layer_dense(units = layer$method_options$hidden[i],
-                    activation = layer$method_options$activation.hidden[i]) %>%
-        layer_dropout(rate = layer$method_options$dropout.hidden[i])
+  NNetwork <- keras_model_sequential(name = 'NNetwork')
+
+  if(layer$method_options$batch_normalization)
+    NNetwork <- inputs %>% layer_batch_normalization()
+
+  if(!is.null(layer$method_options$hidden)) {
+
+    n <- length(layer$method_options$hidden)
+
+    for(i in seq(from = 1, to=n)) {
+      if(i==1 & !layer$method_options$batch_normalization) {
+        NNetwork <- inputs %>%
+          layer_dense(units = layer$method_options$hidden[i],
+                      name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
+          layer_activation(activation = layer$method_options$activation.hidden[i])
+        if(!is.null(layer$method_options$dropout.hidden))
+          NNetwork <- NNetwork %>% layer_dropout(rate = layer$method_options$dropout.hidden[i])
+      }
+      else {
+        NNetwork <- NNetwork %>% layer_dense(units = layer$method_options$hidden[i],
+                                         name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
+          layer_activation(activation = layer$method_options$activation.hidden[i])
+        if(!is.null(layer$method_options$dropout.hidden))
+          NNetwork <- NNetwork %>% layer_dropout(rate = layer$method_options$dropout.hidden[i])
+      }
     }
+
   }
 
-  NNetwork <- NNetwork %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
-                                       weights = list(array(0, dim=c(layer$method_options$hidden[n],1)),
-                                                      array(0, dim=c(1))))
 
-  CANNoutput <- keras_model_sequential()
+  # Initialization with the homogeneous model
+  # See Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
+  # Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852 p.29.
+  if(!is.null(layer$method_options$family_for_init)) {
+    f.hom <- paste0(label, '~ 1')
+    glm.hom <- glm(as.formula(f.hom),data = data, family = layer$method_options$family_for_init)
+    layer$glm.hom <- glm.hom
+    if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
+      NNetwork <- NNetwork %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                       weights = list(array(0,dim=c(ifelse(!is.null(layer$method_options$hidden),layer$method_options$hidden[n],c(ncol(x))),1)),
+                                                      array(glm.hom$coefficients[1], dim=c(1))),
+                                       use_bias = layer$method_options$use_bias,
+                                       name = 'output_layer')
+    else
+      NNetwork <- NNetwork %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                       weights = list(array(0,dim=c(ifelse(!is.null(layer$method_options$hidden),layer$method_options$hidden[n],c(ncol(x))),1)),
+                                                      array(glm.hom$coefficients[1], dim=c(1))),
+                                       use_bias = layer$method_options$use_bias,
+                                       name = 'output_layer')
+  }
+  else {
+    if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
+      NNetwork <- inputs %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                       use_bias = layer$method_options$use_bias,
+                                       name = 'output_layer')
+    else
+      NNetwork <- NNetwork %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                       use_bias = layer$method_options$use_bias,
+                                       name = 'output_layer')
+  }
+
+  # CANN
+
   CANNoutput <- list(GLMNetwork, NNetwork) %>% layer_add() %>%
     layer_dense(units = 1, activation = layer$method_options$activation.output.cann, trainable = !layer$method_options$fixed.cann,
                 weights = switch(layer$method_options$fixed.cann + 1,NULL,list(array(c(1), dim=c(1,1)),
-                               array(0, dim=c(1)))))
+                               array(0, dim=c(1)))),
+                name = 'output_layer_CANN')
 
-  CANN <- keras_model_sequential()
-  CANN <- keras_model(inputs = Input_nodes, outputs = c(CANNoutput))
+  CANN <- keras_model(inputs = inputs, outputs = c(CANNoutput), name = 'CANN')
 
   print(summary(CANN))
 
@@ -535,14 +598,40 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                validation_split = layer$method_options$validation_split,
                callbacks = list(earlystopping))
 
-  layer$fit <- CANN
+  if(!layer$method_options$bias_regularization) {
+    layer$fit <- CANN
+  }
+  else {
+    # We keep track of the neural network (biased) model
+    layer$fit.biased <- CANN
+    # Source: Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020), p.52
+    glm.formula <- function(nb) {
+      string <- "yy ~ X1 "
+      if(nb>1) {for (i in 2:nb) {string <- paste(string,"+ X",i, sep="")}}
+      string
+    }
+
+    zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'last_hidden_layer')$output)
+    layer$zz  <- zz
+
+    Zlearn    <- data.frame(zz %>% predict(x))
+    Zlearn$yy <- y
+    if(layer$method_options$distribution == 'gamma')
+      fam <- Gamma(link = log)
+    else
+      stop('Bias regularization is not supported for this distribution.')
+    layer$fit <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
+  }
 
   if(layer$method_options$distribution == 'gaussian') {
-    layer$sigma <- sd(CANN %>% predict(x) - y)
+    layer$sigma <- sd(layer$fit %>% predict(x) - y)
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- hirem_gamma_shape(y, CANN %>% predict(x))
+    if(layer$method_options$bias_regularization)
+      shape <- hirem_gamma_shape(observed = layer$fit$y, fitted = layer$fit$fitted.values)
+    else
+      shape <- hirem_gamma_shape(y, layer$fit %>% predict(x))
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
   }

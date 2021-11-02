@@ -1,32 +1,11 @@
-rm(list=ls())
-#options(warn=-1)
-library(tidyverse)
-library(data.table)
-library(hirem)
-library(devtools)
-#devtools::install_github("harrysouthworth/gbm")
-library(gbm)
-library(xgboost)
-library(Matrix)
-library(h2o)
-library(keras)
-library(tensorflow)
-library(recipes)
-set.seed(265)
-set_random_seed(265)
-
 ### Imports ###
-source(file='./Examples/import/functions.R')
 
-### Loading data ###
-data("reserving_data")
-reserving_data <- reserving_data %>%
-  mutate(development_year_factor = factor(development_year))
+source(file='./Examples/import/functions.R')
 
 #=========================================================================#
 #                              Case 1: GLM                                #
 #=========================================================================#
-
+init()
 model1 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -48,7 +27,7 @@ simulate_rbns(model1)
 #=========================================================================#
 #                     Case 2: GLM + GBM (gaussian)                        #
 #=========================================================================#
-
+init()
 model2 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -65,7 +44,7 @@ model2 <- hirem::fit(model2,
 simulate_rbns(model2)
 
 ### Case 2b: GLM + GBM (gamma) ###
-
+init()
 model2b <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -87,7 +66,7 @@ simulate_rbns(model2b)
 #=========================================================================#
 #                   Case 3: GLM + XGB (reg:squarederror)                  #
 #=========================================================================#
-
+init()
 model3 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -112,7 +91,7 @@ simulate_rbns(model3)
 #=========================================================================#
 #         Case 3b: GLM + XGB (reg:squarederror + cross-validation)        #
 #=========================================================================#
-
+init()
 hyper_grid <- expand.grid(
   eta = 0.01,
   max_depth = c(4,5,6),
@@ -147,7 +126,7 @@ simulate_rbns(model3b)
 #=========================================================================#
 #         Case 3c: GLM + XGB (reg:gamma + gamma-deviance)                 #
 #=========================================================================#
-
+init()
 model3c <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -177,7 +156,7 @@ simulate_rbns(model3c)
 
 # Goal: show that homogeneous GLM (gamma, log link) is equivalent to
 #       shallow neural network (loss:gamma deviance, activation:exponential)
-
+init()
 model4 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -238,7 +217,7 @@ print(model4$layers$size$shape)
 # of the homogeneous GLM (parameter 'family_for_init'):
 # See Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
 # Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852 p.29.
-
+init()
 model4b <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -278,7 +257,7 @@ simulate_rbns(model4b)
 #=========================================================================#
 #         Case 4c: GLM + MLP (gamma, 3 hidden layers)        #
 #=========================================================================#
-
+init()
 model4c <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -317,85 +296,47 @@ print(model1$layers$size$shape.se)
 simulate_rbns(model4c)
 
 #=========================================================================#
-#                          Case 5: GLM + CANN                             #
+#             Case 5: GLM + CANN (gamma)               #
 #=========================================================================#
-
+init()
 model5 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_cann('size', distribution = 'gaussian', family_for_glm = Gamma(link = log), loss = 'mse',
-                  optimizer = 'nadam', validation_split = .2,
-                  hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
-                  activation.hidden = rep('relu',4), activation.output = 'linear',
-                  activation.output.cann = 'linear', fixed.cann = TRUE,
-                  epochs = 100, batch_size = 10000,
-                  filter = function(data){data$payment == 1})
+  layer_cann('size', distribution = 'gamma',
+             family_for_glm = Gamma(link = log),
+             loss = gamma_deviance_keras,
+             metrics = metric_gamma_deviance_keras,
+             optimizer = optimizer_nadam(learning_rate = .01),
+             validation_split = 0,
+             hidden = c(10,10),
+             activation.output = 'exponential',
+             activation.output.cann = 'exponential',
+             fixed.cann = TRUE,
+             monitor = 'gamma_deviance_keras',
+             patience = 20,
+             epochs = 100,
+             batch_size = 1000,
+             filter = function(data){data$payment == 1})
 
 model5 <- hirem::fit(model5,
-                     close = 'close ~ development_year',
-                     payment = 'payment ~ close + development_year',
-                     size = 'size ~ close + development_year')
+                     close = 'close ~ factor(development_year)',
+                     payment = 'payment ~ close + factor(development_year)',
+                     size = 'size ~ close + development_year_factor')
+
+print(model5$layers$size$shape)
+print(model5$layers$size$shape.se)
 
 simulate_rbns(model5)
 
-#=========================================================================#
-#             Case 6: GLM + CANN (gamma with custom metric)               #
-#=========================================================================#
-
-model6 <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
-             validation = .7, cv_fold = 6) %>%
-  layer_glm('close', binomial(link = logit)) %>%
-  layer_glm('payment', binomial(link = logit)) %>%
-  layer_cann('size', distribution = 'gamma', family_for_glm = Gamma(link = log),
-             loss = gamma_deviance_keras, metrics = metric_gamma_deviance_keras,
-             optimizer = 'nadam', validation_split = .2,
-             hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
-             activation.hidden = rep('relu',4), activation.output = 'linear',
-             activation.output.cann = 'linear', fixed.cann = TRUE,
-             epochs = 100, batch_size = 10000,
-             filter = function(data){data$payment == 1})
-
-model6 <- hirem::fit(model6,
-                     close = 'close ~ development_year',
-                     payment = 'payment ~ close + development_year',
-                     size = 'size ~ close + development_year')
-
-simulate_rbns(model6)
-
-#=========================================================================#
-#             Case 7: GLM + CANN (gamma with custom metric)               #
-#=========================================================================#
-
-model7 <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
-             validation = .7, cv_fold = 6) %>%
-  layer_glm('close', binomial(link = logit)) %>%
-  layer_glm('payment', binomial(link = logit)) %>%
-  layer_cann('size', distribution = 'gamma', family_for_glm = Gamma(link = log),
-             loss = gamma_deviance_keras, metrics = metric_gamma_deviance_keras,
-             optimizer = 'nadam', validation_split = .2,
-             hidden = c(60,50,40,30), dropout.hidden = rep(.01,4),
-             activation.hidden = rep('relu',4), activation.output = 'linear',
-             activation.output.cann = 'linear', fixed.cann = TRUE,
-             epochs = 100, batch_size = 10000,
-             filter = function(data){data$payment == 1})
-
-model7 <- hirem::fit(model7,
-                      close = 'close ~ development_year',
-                      payment = 'payment ~ close + development_year',
-                      size = 'size ~ close + development_year')
-
-simulate_rbns(model7)
 
 #=========================================================================#
 #                                 Annex                                   #
 #=========================================================================#
 
 ### Case A.1: GLM + MLP (h2o) ###
-
+init()
 modelA.1 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -417,7 +358,7 @@ modelA.1 <- hirem::fit(modelA.1,
 simulate_rbns(modelA.1)
 
 ### Case A.2: GLM + MLP (h2o) ###
-
+init()
 modelA.2 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -438,7 +379,7 @@ modelA.2 <- hirem::fit(modelA.2,
 simulate_rbns(modelA.2)
 
 ### Case A.3: GLM + AutoML (h2o) ###
-
+init()
 modelA.3 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%

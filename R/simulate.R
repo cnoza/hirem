@@ -187,9 +187,20 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   f <- as.formula(obj$formula)
   label <- as.character(terms(f)[[2]])
 
-  x <- as.matrix(sparse.model.matrix(f, data=data[select,])[,-1])
+  #x <- as.matrix(sparse.model.matrix(f, data=data[select,])[,-1])
+  data_baked <- bake(obj$data_recipe, new_data = data[select,])
+  if(ncol(data_baked) == 1)
+    data_baked <- data_baked %>% mutate(intercept = 1)
 
-  response <- predict(obj$fit, x)
+  x <- select(data_baked,-as.name(label)) %>% as.matrix()
+
+  if(!obj$method_options$bias_regularization) {
+    response <- predict(obj$fit, x)
+  }
+  else {
+    Zlearn   <- data.frame(obj$zz %>% predict(x))
+    response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
+  }
 
   if(obj$method_options$distribution == 'bernoulli') {
     simulation <- runif(dim(response)[1]) < response

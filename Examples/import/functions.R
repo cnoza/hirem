@@ -1,3 +1,27 @@
+### Initialization
+init <- function() {
+  rm(list=ls())
+  #options(warn=-1)
+  library(tidyverse)
+  library(data.table)
+  library(hirem)
+  library(devtools)
+  #devtools::install_github("harrysouthworth/gbm")
+  library(gbm)
+  library(xgboost)
+  library(Matrix)
+  library(h2o)
+  library(keras)
+  library(tensorflow)
+  library(recipes)
+  set.seed(265)
+  set_random_seed(265)
+
+  ### Loading data ###
+  data("reserving_data")
+  reserving_data <<- reserving_data %>%
+    mutate(development_year_factor = factor(development_year))
+}
 
 ### Functions used for testing purposes
 simulate_rbns <- function(model, nsim = 5) {

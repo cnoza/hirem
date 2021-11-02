@@ -15,20 +15,17 @@ library(recipes)
 set.seed(265)
 set_random_seed(265)
 
-######################### Loading data ###################
+### Imports ###
+source(file='./Examples/import/functions.R')
 
+### Loading data ###
 data("reserving_data")
 reserving_data <- reserving_data %>%
   mutate(development_year_factor = factor(development_year))
 
-
-######################### Imports ########################
-
-source(file='./Examples/import/functions.R')
-
-######################### Models #########################
-
-### Case 1: GLM ###
+#=========================================================================#
+#                              Case 1: GLM                                #
+#=========================================================================#
 
 model1 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -41,11 +38,16 @@ model1 <- hirem(reserving_data) %>%
 model1 <- hirem::fit(model1,
               close = 'close ~ factor(development_year)',
               payment = 'payment ~ close + factor(development_year)',
-              size = 'size ~ close + factor(development_year)')
+              size = 'size ~ close + development_year_factor')
+
+print(model1$layers$size$shape)
+print(model1$layers$size$shape.se)
 
 simulate_rbns(model1)
 
-### Case 2: GLM + GBM (gaussian) ###
+#=========================================================================#
+#                     Case 2: GLM + GBM (gaussian)                        #
+#=========================================================================#
 
 model2 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -58,7 +60,7 @@ model2 <- hirem(reserving_data) %>%
 model2 <- hirem::fit(model2,
               close = 'close ~ factor(development_year)',
               payment = 'payment ~ close + factor(development_year)',
-              size = 'size ~ close + development_year')
+              size = 'size ~ close + development_year_factor')
 
 simulate_rbns(model2)
 
@@ -75,11 +77,16 @@ model2b <- hirem(reserving_data) %>%
 model2b <- hirem::fit(model2b,
               close = 'close ~ factor(development_year)',
               payment = 'payment ~ close + factor(development_year)',
-              size = 'size ~ close + development_year')
+              size = 'size ~ close + development_year_factor')
+
+print(model2b$layers$size$shape)
+print(model2b$layers$size$shape.se)
 
 simulate_rbns(model2b)
 
-### Case 3: GLM + XGB (reg:squarederror) ###
+#=========================================================================#
+#                   Case 3: GLM + XGB (reg:squarederror)                  #
+#=========================================================================#
 
 model3 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -102,7 +109,9 @@ model3 <- hirem::fit(model3,
 
 simulate_rbns(model3)
 
-### Case 3b: GLM + XGB (reg:squarederror + cross-validation) ###
+#=========================================================================#
+#         Case 3b: GLM + XGB (reg:squarederror + cross-validation)        #
+#=========================================================================#
 
 hyper_grid <- expand.grid(
   eta = 0.01,
@@ -135,7 +144,9 @@ model3b <- hirem::fit(model3b,
 
 simulate_rbns(model3b)
 
-### Case 3c: GLM + XGB (reg:gamma + gamma-deviance) ###
+#=========================================================================#
+#         Case 3c: GLM + XGB (reg:gamma + gamma-deviance)                 #
+#=========================================================================#
 
 model3c <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -155,71 +166,80 @@ model3c <- hirem::fit(model3c,
                      payment = 'payment ~ close + factor(development_year)',
                      size = 'size ~ close + development_year_factor')
 
+print(model3c$layers$size$shape)
+print(model3c$layers$size$shape.se)
+
 simulate_rbns(model3c)
 
-### Case 4: GLM + MLP (h2o) ###
+#=========================================================================#
+#   Case 4: GLM + MLP shallow case (homogeneous, gamma, no hidden layer)  #
+#=========================================================================#
+
+# Goal: show that homogeneous GLM (gamma, log link) is equivalent to
+#       shallow neural network (loss:gamma deviance, activation:exponential)
 
 model4 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_h2o('size', distribution = 'gaussian',
-                epochs = 1,
-                nfolds = 6,
-                hidden = c(10,30,50,30,10),
-                hidden_dropout_ratios = rep(.01,5),
-                activation = 'RectifierWithDropout',
-                filter = function(data){data$payment == 1})
+  layer_mlp_keras('size', distribution = 'gamma',
+                  step_log = F,
+                  step_normalize = F,
+                  loss = gamma_deviance_keras,
+                  use_bias = FALSE,
+                  metrics = metric_gamma_deviance_keras,
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = 0,
+                  hidden = NULL,
+                  activation.output = 'exponential',
+                  batch_normalization = F,
+                  epochs = 100,
+                  batch_size = 1000,
+                  monitor = 'gamma_deviance_keras',
+                  patience = 20,
+                  filter = function(data){data$payment == 1})
 
 model4 <- hirem::fit(model4,
                      close = 'close ~ development_year',
                      payment = 'payment ~ close + development_year',
-                     size = 'size ~ close + development_year')
+                     size = 'size ~ 1')
 
-simulate_rbns(model4)
-
-### Case 5: GLM + MLP (h2o) ###
-
-model5 <- hirem(reserving_data) %>%
+# Let's compare with the homogeneous GLM (gamma log link)
+glm.hom <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
-  layer_glm('close', binomial(link = logit)) %>%
-  layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_h2o('size', distribution = 'gaussian',
-                epochs = 10,
-                hidden = c(10,10),
-                hidden_dropout_ratios = c(0.1,0.1),
-                activation = 'TanhWithDropout',
-                filter = function(data){data$payment == 1})
-
-model5 <- hirem::fit(model5,
-                     close = 'close ~ development_year',
-                     payment = 'payment ~ close + development_year',
-                     size = 'size ~ close + development_year')
-
-simulate_rbns(model5)
-
-### Case 6: GLM + AutoML (h2o) ###
-
-model6 <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
-             validation = .7, cv_fold = 6) %>%
-  layer_glm('close', binomial(link = logit)) %>%
-  layer_glm('payment', binomial(link = logit)) %>%
-  layer_aml_h2o('size', distribution = 'gaussian',
+  layer_glm('size', Gamma(link = log),
             filter = function(data){data$payment == 1})
 
-model6 <- hirem::fit(model6,
-                     close = 'close ~ development_year',
-                     payment = 'payment ~ close + development_year',
-                     size = 'size ~ close + development_year')
+glm.hom <- hirem::fit(glm.hom,
+                     size = 'size ~ 1')
 
-simulate_rbns(model6)
+# The obtained coefficients are (almost) identical:
+print(glm.hom$layers$size$fit$coefficients)
+print(model4$layers$size$fit$weights)
 
-### Case 7: GLM + MLP shallow case (no hidden layer) ###
+# The shape parameter of the gamma distribution are (almost) identical:
+print(glm.hom$layers$size$shape)
+print(model4$layers$size$shape)
 
-model7 <- hirem(reserving_data) %>%
+#=========================================================================#
+#         Case 4b: GLM + MLP shallow case (gamma, no hidden layer)        #
+#=========================================================================#
+
+# Goal:
+# -----
+# Show that model 1 (glm, gamma log link) is equivalent to
+# shallow neural network (loss:gamma deviance, activation:exponential)
+#
+# For the neural network:
+# -----------------------
+# Initialization of the bias weight of the output layer with the coefficient estimate
+# of the homogeneous GLM (parameter 'family_for_init'):
+# See Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
+# Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852 p.29.
+
+model4b <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
@@ -234,22 +254,32 @@ model7 <- hirem(reserving_data) %>%
                   hidden = NULL,
                   activation.output = 'exponential',
                   batch_normalization = F,
+                  family_for_init = Gamma(link = log),
                   epochs = 100,
-                  batch_size = 10000,
+                  batch_size = 1000,
                   monitor = 'gamma_deviance_keras',
                   patience = 20,
                   filter = function(data){data$payment == 1})
 
-model7 <- hirem::fit(model7,
-                     close = 'close ~ development_year',
-                     payment = 'payment ~ close + development_year',
-                     size = 'size ~ close + development_year')
+model4b <- hirem::fit(model4b,
+                     close = 'close ~ factor(development_year)',
+                     payment = 'payment ~ close + factor(development_year)',
+                     size = 'size ~ close + development_year_factor')
 
-simulate_rbns(model7)
+# The shape parameter is (almost) identical to model 1 (glm, gamma log link for size):
+print(model4b$layers$size$shape)
+print(model4b$layers$size$shape.se)
 
-### Case 7b: GLM + MLP (gamma deviance) ###
+print(model1$layers$size$shape)
+print(model1$layers$size$shape.se)
 
-model7b <- hirem(reserving_data) %>%
+simulate_rbns(model4b)
+
+#=========================================================================#
+#         Case 4c: GLM + MLP (gamma, 1 hidden layer)        #
+#=========================================================================#
+
+model4c <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
@@ -260,49 +290,36 @@ model7b <- hirem(reserving_data) %>%
                   loss = gamma_deviance_keras,
                   metrics = metric_gamma_deviance_keras,
                   optimizer = optimizer_nadam(learning_rate = .01),
-                  validation_split = .3,
-                  hidden = c(10,10,10),
-                  activation.output = 'linear',
+                  validation_split = 0,
+                  hidden = c(7),
+                  activation.output = 'exponential',
                   batch_normalization = F,
+                  family_for_init = Gamma(link = log),
                   epochs = 100,
-                  batch_size = 10000,
-                  monitor = 'val_gamma_deviance_keras',
+                  batch_size = 1000,
+                  monitor = 'gamma_deviance_keras',
                   patience = 20,
                   filter = function(data){data$payment == 1})
 
-model7b <- hirem::fit(model7b,
-                     close = 'close ~ factor(development_year)',
-                     payment = 'payment ~ close + factor(development_year)',
-                     size = 'size ~ close + development_year')
+model4c <- hirem::fit(model4c,
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + factor(development_year)',
+                      size = 'size ~ close + development_year_factor')
 
-simulate_rbns(model7b)
+# The shape parameter is (almost) identical to model 1 (glm, gamma log link for size):
+print(model4c$layers$size$shape)
+print(model4c$layers$size$shape.se)
 
-### Case 8: MLP (keras) with weight initialization by an homogeneous GLM ###
+print(model1$layers$size$shape)
+print(model1$layers$size$shape.se)
 
-model8 <- hirem(reserving_data) %>%
-  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
-             validation = .7, cv_fold = 6) %>%
-  layer_glm('close', binomial(link = logit)) %>%
-  layer_mlp_keras('payment', distribution = 'bernoulli', loss = 'binary_crossentropy',
-                  optimizer = 'nadam', validation_split = .2,
-                  hidden = c(70,60,50), dropout.hidden = rep(.01,3), activation.hidden = rep('relu',3),
-                  activation.output = 'softmax', epochs = 100, batch_size = 1000, family_for_init = binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gaussian', loss = 'mse',
-                  optimizer = 'nadam', validation_split = .2,
-                  hidden = c(70,50,40), dropout.hidden = rep(.01,3), activation.hidden = rep('relu',3),
-                  activation.output = 'linear', epochs = 100, batch_size = 1000, family_for_init = Gamma(link = log),
-                  filter = function(data){data$payment == 1})
+simulate_rbns(model4c)
 
-model8 <- hirem::fit(model8,
-                     close = 'close ~ development_year',
-                     payment = 'payment ~ close + development_year',
-                     size = 'size ~ close + development_year')
+#=========================================================================#
+#                          Case 5: GLM + CANN                             #
+#=========================================================================#
 
-simulate_rbns(model8)
-
-### Case 9: GLM + CANN ###
-
-model9 <- hirem(reserving_data) %>%
+model5 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
@@ -315,16 +332,18 @@ model9 <- hirem(reserving_data) %>%
                   epochs = 100, batch_size = 10000,
                   filter = function(data){data$payment == 1})
 
-model9 <- hirem::fit(model9,
+model5 <- hirem::fit(model5,
                      close = 'close ~ development_year',
                      payment = 'payment ~ close + development_year',
                      size = 'size ~ close + development_year')
 
-simulate_rbns(model9)
+simulate_rbns(model5)
 
-### Case 10: GLM + CANN (gamma with custom metric) ###
+#=========================================================================#
+#             Case 6: GLM + CANN (gamma with custom metric)               #
+#=========================================================================#
 
-model10 <- hirem(reserving_data) %>%
+model6 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
@@ -338,16 +357,18 @@ model10 <- hirem(reserving_data) %>%
              epochs = 100, batch_size = 10000,
              filter = function(data){data$payment == 1})
 
-model10 <- hirem::fit(model10,
+model6 <- hirem::fit(model6,
                      close = 'close ~ development_year',
                      payment = 'payment ~ close + development_year',
                      size = 'size ~ close + development_year')
 
-simulate_rbns(model10)
+simulate_rbns(model6)
 
-### Case 10: GLM + CANN (gamma with custom metric) ###
+#=========================================================================#
+#             Case 7: GLM + CANN (gamma with custom metric)               #
+#=========================================================================#
 
-model10 <- hirem(reserving_data) %>%
+model7 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
@@ -361,9 +382,73 @@ model10 <- hirem(reserving_data) %>%
              epochs = 100, batch_size = 10000,
              filter = function(data){data$payment == 1})
 
-model10 <- hirem::fit(model10,
+model7 <- hirem::fit(model7,
                       close = 'close ~ development_year',
                       payment = 'payment ~ close + development_year',
                       size = 'size ~ close + development_year')
 
-simulate_rbns(model10)
+simulate_rbns(model7)
+
+#=========================================================================#
+#                                 Annex                                   #
+#=========================================================================#
+
+### Case A.1: GLM + MLP (h2o) ###
+
+modelA.1 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_mlp_h2o('size', distribution = 'gaussian',
+                epochs = 1,
+                nfolds = 6,
+                hidden = c(10,30,50,30,10),
+                hidden_dropout_ratios = rep(.01,5),
+                activation = 'RectifierWithDropout',
+                filter = function(data){data$payment == 1})
+
+modelA.1 <- hirem::fit(modelA.1,
+                     close = 'close ~ development_year',
+                     payment = 'payment ~ close + development_year',
+                     size = 'size ~ close + development_year')
+
+simulate_rbns(modelA.1)
+
+### Case A.2: GLM + MLP (h2o) ###
+
+modelA.2 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_mlp_h2o('size', distribution = 'gaussian',
+                epochs = 10,
+                hidden = c(10,10),
+                hidden_dropout_ratios = c(0.1,0.1),
+                activation = 'TanhWithDropout',
+                filter = function(data){data$payment == 1})
+
+modelA.2 <- hirem::fit(modelA.2,
+                     close = 'close ~ development_year',
+                     payment = 'payment ~ close + development_year',
+                     size = 'size ~ close + development_year')
+
+simulate_rbns(modelA.2)
+
+### Case A.3: GLM + AutoML (h2o) ###
+
+modelA.3 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_aml_h2o('size', distribution = 'gaussian',
+                filter = function(data){data$payment == 1})
+
+modelA.3 <- hirem::fit(modelA.3,
+                     close = 'close ~ development_year',
+                     payment = 'payment ~ close + development_year',
+                     size = 'size ~ close + development_year')
+
+simulate_rbns(modelA.3)

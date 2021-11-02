@@ -101,7 +101,7 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     shape <- hirem_gamma_shape(observed = layer$fit$data$y, fitted = predict(layer$fit, n.trees = layer$iter, type = "response"),
                                weight = layer$fit$data$w)
     layer$shape <- shape$shape
-    layer$shape.sd <- shape$se
+    layer$shape.se <- shape$se
   }
 
   return(layer)
@@ -230,7 +230,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(layer$method_options$objective == 'reg:gamma') {
     shape <- hirem_gamma_shape(as.matrix(data[,label]), predict(layer$fit, ntreelimit = obj$best_ntreelimit, newdata = data.xgb, type = "response"))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$se
+    layer$shape.se <- shape$se
   }
 
   return(layer)
@@ -287,7 +287,7 @@ fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
   if(layer$method_options$distribution == 'gamma') {
     shape <- hirem_gamma_shape(data[,label], h2o.predict(layer$fit, data.h2o))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$se
+    layer$shape.se <- shape$se
   }
 
 
@@ -314,15 +314,19 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   label <- as.character(terms(f)[[2]])
 
   data_recipe <- recipe(f, data=data)
+
   if(layer$method_options$step_log)
     data_recipe <- data_recipe %>% step_log(as.name(label))
   if(layer$method_options$step_normalize)
     data_recipe <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
+
   data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE)
   data_recipe <- data_recipe %>% prep()
   layer$data_recipe <- data_recipe
 
   data_baked <- bake(data_recipe, new_data = data)
+  if(ncol(data_baked) == 1)
+    data_baked <- data_baked %>% mutate(intercept = 1)
 
   x <- select(data_baked,-as.name(label)) %>% as.matrix()
   y <- data_baked %>% pull(as.name(label))
@@ -339,22 +343,24 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
     for(i in seq(from = 1, to=n)) {
       if(i==1 & !layer$method_options$batch_normalization) {
-        output <- inputs %>% layer_dense(units = layer$method_options$hidden[i]) %>%
+        output <- inputs %>% layer_dense(units = layer$method_options$hidden[i],
+                                         name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
           layer_activation(activation = layer$method_options$activation.hidden[i])
         if(!is.null(layer$method_options$dropout.hidden))
           output <- output %>% layer_dropout(rate = layer$method_options$dropout.hidden[i])
       }
       else {
-        output <- output %>% layer_dense(units = layer$method_options$hidden[i]) %>%
+        output <- output %>% layer_dense(units = layer$method_options$hidden[i],
+                                         name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
           layer_activation(activation = layer$method_options$activation.hidden[i])
         if(!is.null(layer$method_options$dropout.hidden))
-          layer_dropout(rate = layer$method_options$dropout.hidden[i])
+          output <- output %>% layer_dropout(rate = layer$method_options$dropout.hidden[i])
       }
     }
 
   }
 
-  # Initialization with the homogeneous model (may improve convergence).
+  # Initialization with the homogeneous model
   # See Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
   # Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852 p.29.
   if(!is.null(layer$method_options$family_for_init)) {
@@ -372,7 +378,8 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   }
   else {
     if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
-      output <- inputs %>% layer_dense(units = 1, activation = layer$method_options$activation.output)
+      output <- inputs %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                       use_bias = layer$method_options$use_bias)
     else
       output <- output %>% layer_dense(units = 1, activation = layer$method_options$activation.output)
   }
@@ -397,16 +404,42 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                validation_split = layer$method_options$validation_split,
                callbacks = list(earlystopping))
 
-  layer$fit <- model
+  if(!layer$method_options$bias_regularization) {
+    layer$fit <- model
+  }
+  else {
+    # We keep track of the neural network (biased) model
+    layer$fit.biased <- model
+    # Source: Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020), p.52
+    glm.formula <- function(nb) {
+      string <- "yy ~ X1 "
+      if(nb>1) {for (i in 2:nb) {string <- paste(string,"+ X",i, sep="")}}
+      string
+    }
+
+    zz        <- keras_model(inputs = model$input, outputs=get_layer(model,'last_hidden_layer')$output)
+    layer$zz  <- zz
+
+    Zlearn    <- data.frame(zz %>% predict(x))
+    Zlearn$yy <- y
+    if(layer$method_options$distribution == 'gamma')
+      fam <- Gamma(link = log)
+    else
+      stop('Bias regularization is not supported for this distribution.')
+    layer$fit <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
+  }
 
   if(layer$method_options$distribution == 'gaussian') {
-    layer$sigma <- sd(model %>% predict(x) - y)
+    layer$sigma <- sd(layer$fit %>% predict(x) - y)
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- hirem_gamma_shape(y, model %>% predict(x))
+    if(layer$method_options$bias_regularization)
+      shape <- hirem_gamma_shape(observed = layer$fit$y, fitted = layer$fit$fitted.values)
+    else
+      shape <- hirem_gamma_shape(y, layer$fit %>% predict(x))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$se
+    layer$shape.se <- shape$se
   }
 
   return(layer)
@@ -505,7 +538,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(layer$method_options$distribution == 'gamma') {
     shape <- hirem_gamma_shape(y, CANN %>% predict(x))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$se
+    layer$shape.se <- shape$se
   }
 
   return(layer)
@@ -549,7 +582,7 @@ fit.layer_aml_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
   if(layer$method_options$distribution == 'gamma') {
     shape <- hirem_gamma_shape(data[,label], h2o.predict(layer$fit, data.h2o))
     layer$shape <- shape$shape
-    layer$shape_sd <- shape$se
+    layer$shape.se <- shape$se
   }
 
 

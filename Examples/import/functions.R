@@ -1,6 +1,6 @@
 ### Initialization
 init <- function() {
-  rm(list=ls())
+  rm(list = ls(envir = .GlobalEnv), envir = .GlobalEnv)
   #options(warn=-1)
   library(tidyverse)
   library(data.table)
@@ -16,7 +16,7 @@ init <- function() {
   library(recipes)
   set.seed(265)
   set_random_seed(265)
-
+  source(file='./Examples/import/functions.R')
   ### Loading data ###
   data("reserving_data")
   reserving_data <<- reserving_data %>%

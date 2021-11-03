@@ -254,6 +254,17 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
   options$dropout.hidden <- dropout.hidden
   options$activation.hidden <- activation.hidden
   options$use_bias <- use_bias
+  options$activation.output <- activation.output
+  options$loss <- loss
+  options$optimizer <- optimizer
+  options$epochs <- epochs
+  options$batch_size <- batch_size
+  options$metrics <- metrics
+  options$validation_split <- validation_split
+  options$family_for_init <- family_for_init
+  options$monitor <- monitor
+  options$patience <- patience
+  options$batch_normalization <- batch_normalization
 
   if(is.null(options$hidden)) {
     if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')
@@ -285,18 +296,6 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
     else
       stop('Bias regularization is not supported (yet) for this choice of distribution.')
   }
-
-  options$activation.output <- activation.output
-  options$loss <- loss
-  options$optimizer <- optimizer
-  options$epochs <- epochs
-  options$batch_size <- batch_size
-  options$metrics <- metrics
-  options$validation_split <- validation_split
-  options$family_for_init <- family_for_init
-  options$monitor <- monitor
-  options$patience <- patience
-  options$batch_normalization <- batch_normalization
 
   hirem_layer(obj, name, 'mlp_keras', 'layer_mlp_keras', options, filter, transformation)
 

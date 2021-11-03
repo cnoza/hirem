@@ -1,0 +1,157 @@
+#' ---
+#' title: "Extreme Gradient Boosting models as layer in `hirem`"
+#' author: "Christophe Nozaradan"
+#' output:
+#'    html_document:
+#'      toc: true
+#'      toc_depth: 2
+#'      toc_float:
+#'        collapsed: true
+#'        smooth_scroll: true
+#'      number_sections: false
+#'      fig_caption: true
+#'      df_print: paged
+#'    fontsize: 11pt
+#' bibliography: references.bib
+#' ---
+
+#+ setup, include=FALSE
+rm(list=ls())
+defaultW <- getOption("warn")
+options(warn = -1)
+
+#' # Setup
+#' We illustrate the use of an Extreme Gradient Boosting model as layer in a hierarchical model. The `xgboost` package is used to fit the Extreme GBM.
+#' We first load the required packages.
+#+ message=FALSE
+library(tidyverse)
+library(data.table)
+library(hirem)
+library(devtools)
+#devtools::install_github("harrysouthworth/gbm")
+library(xgboost)
+library(Matrix)
+
+#' We load and prepare the data. We use the data provided in the hirem package.
+#+ message=FALSE
+data("reserving_data")
+reserving_data <- reserving_data %>%
+  mutate(development_year_factor = factor(development_year))
+
+#' We here define a function that computes the simulated RBNS reserve based on the choice of a given model.
+#+ message=FALSE
+simulate_rbns <- function(model, nsim = 5) {
+
+  levels <- unique(reserving_data$development_year)
+
+  update <- function(data) {
+    data %>%
+      dplyr::mutate(development_year = development_year + 1,
+                    development_year_factor = factor(development_year, levels=levels),
+                    calendar_year = calendar_year + 1)
+  }
+
+  model <- register_updater(model, update)
+
+  simul <- simulate(model,
+                    nsim = nsim,
+                    filter = function(data){dplyr::filter(data,
+                                                          development_year <= 6,
+                                                          close == 0)},
+                    data = reserving_data %>% dplyr::filter(calendar_year == 6))
+
+  rbns_estimate <- simul %>%
+    dplyr::group_by(simulation) %>%
+    dplyr::summarise(rbns_simulated = sum(size))
+
+  print(rbns_estimate)
+
+  rbns_actual <- reserving_data %>%
+    dplyr::filter(calendar_year > 6) %>%
+    dplyr::summarise(rbns_actual = sum(size))
+
+  print(rbns_actual)
+
+}
+
+#' # Benchmark model
+#' We use the following model as benchmark.
+model1 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_glm('size', Gamma(link = log),
+            filter = function(data){data$payment == 1})
+
+model1 <- hirem::fit(model1,
+                     close = 'close ~ factor(development_year)',
+                     payment = 'payment ~ close + factor(development_year)',
+                     size = 'size ~ close + development_year_factor')
+
+#' We obtain the shape parameter estimate and standard error.
+print(model1$layers$size$shape)
+print(model1$layers$size$shape.se)
+
+#' We then compute the simulated RBNS reserves and compare them with the true value.
+simulate_rbns(model1)
+
+#' # Extreme Gradient Boosting layer
+#' As first example, we use an Extreme Gradient Boosting model (`layer_xgb`) with `size` as response variable and `close`, `development_year` as predictors.
+#' We use `reg:gamma` as objective and the gamma deviance as evaluation metric.
+model.xgb <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_xgb('size', objective = 'reg:gamma',
+            eval_metric = 'gamma-deviance',
+            eta = 0.01,
+            nrounds = 1500,
+            max_depth = 20,
+            verbose = F,
+            filter = function(data){data$payment == 1})
+
+model.xgb <- hirem::fit(model.xgb,
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + factor(development_year)',
+                      size = 'size ~ close + development_year_factor')
+
+#' The shape parameter estimate and standard error are close to the benchmark model.
+print(model.xgb$layers$size$shape)
+print(model.xgb$layers$size$shape.se)
+
+#' Similarly for the simulated RBNS reserves:
+simulate_rbns(model.xgb)
+
+
+#' # Cross-validation
+#' In the next example, we show how one can pass a hypergrid as parameter to perform a cross-validation.
+#+ eval=FALSE
+hyper_grid <- expand.grid(
+  eta = 0.01,
+  max_depth = c(4,5,6),
+  min_child_weight = 1000,
+  subsample = c(.5,.8,1),
+  colsample_bytree = c(.5,.8,1),
+  gamma = c(0,.1),
+  lambda = c(0,.1),
+  alpha = c(0,.1)
+)
+#+ eval=FALSE
+model2 <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_xgb('size', objective = 'reg:squarederror',
+            eval_metric = 'rmse',
+            nfolds = 6,
+            hyper_grid = hyper_grid,
+            nrounds = 1000,
+            early_stopping_rounds = 20,
+            verbose = F,
+            filter = function(data){data$payment == 1})
+
+#' The best model is automatically retained at the end of the cross-validation process.
+#'

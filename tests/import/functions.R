@@ -16,7 +16,7 @@ init <- function() {
   library(recipes)
   set.seed(265)
   set_random_seed(265)
-  source(file='./Examples/import/functions.R')
+  source(file='./tests/import/functions.R')
   ### Loading data ###
   data("reserving_data")
   reserving_data <<- reserving_data %>%

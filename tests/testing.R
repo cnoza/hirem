@@ -1,5 +1,5 @@
 ### Imports ###
-source(file='./Examples/import/functions.R')
+source(file='./tests/import/functions.R')
 
 #=========================================================================#
 #                              Case 1: GLM                                #

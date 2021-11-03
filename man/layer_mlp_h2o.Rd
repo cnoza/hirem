@@ -66,12 +66,12 @@ layer_mlp_h2o(
 \item{stopping_rounds}{The stopping_rounds argument passed to \code{h2o}. Default is 0}
 
 \item{filter}{Function with \itemize{
- \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+ \item input: Data set with same structure as the data passed to \code{hirem}
  \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
        FALSE indicates that this layer is zero for the current record.
 }}
 
-\item{transformation}{Object of class \code{\link{hirem_transformation}} specifying the transformation
+\item{transformation}{Object of class \code{hirem_transformation} specifying the transformation
 applied before modelling this layer.}
 }
 \description{

@@ -24,32 +24,32 @@ layer_gbm(
 
 \item{name}{Character, name of the layer. This name should match the variable name in the data set}
 
-\item{distribution}{distribution argument passed to \code{\link[gbm]{gbm}}}
+\item{distribution}{distribution argument passed to \code{gbm}}
 
-\item{n.trees}{n.trees argument passed to \code{\link[gbm]{gbm}}}
+\item{n.trees}{n.trees argument passed to \code{gbm}}
 
-\item{interaction.depth}{interaction.depth argument passed to \code{\link[gbm]{gbm}}}
+\item{interaction.depth}{interaction.depth argument passed to \code{gbm}}
 
-\item{n.minobsinnode}{n.minobsinnode argument passed to \code{\link[gbm]{gbm}}}
+\item{n.minobsinnode}{n.minobsinnode argument passed to \code{gbm}}
 
-\item{shrinkage}{shrinkage argument passed to \code{\link[gbm]{gbm}}}
+\item{shrinkage}{shrinkage argument passed to \code{gbm}}
 
-\item{bag.fraction}{bag.fraction argument passed to \code{\link[gbm]{gbm}}}
+\item{bag.fraction}{bag.fraction argument passed to \code{gbm}}
 
 \item{select_trees}{Character string specifying the method for selecting the optimal number of trees after fitting the gbm \itemize{
    \item "fixed": Use the number of trees specified in n.trees
-   \item "perf": Update the number of trees using \code{\link[gbm]{gbm.perf}}
+   \item "perf": Update the number of trees using \code{gbm.perf}
 }}
 
 \item{filter}{Function with \itemize{
- \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+ \item input: Data set with same structure as the data passed to \code{hirem}
  \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
        FALSE indicates that this layer is zero for the current record.
 }}
 
-\item{transformation}{Object of class \code{\link{hirem_transformation}} specifying the transformation
+\item{transformation}{Object of class \code{hirem_transformation} specifying the transformation
 applied before modelling this layer.}
 }
 \description{
-Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{\link[gbm]{gbm}} package.
+Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{gbm} package.
 }

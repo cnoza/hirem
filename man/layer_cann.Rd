@@ -9,12 +9,16 @@ layer_cann(
   name,
   distribution = "gaussian",
   family_for_glm = Gamma(link = log),
-  hidden = c(10, 20, 10),
+  use_bias = TRUE,
+  hidden = NULL,
   dropout.hidden = NULL,
+  step_log = FALSE,
+  step_normalize = FALSE,
   activation.hidden = NULL,
   activation.output = "linear",
   activation.output.cann = "linear",
   fixed.cann = TRUE,
+  batch_normalization = FALSE,
   monitor = "loss",
   patience = 20,
   loss = "mse",
@@ -66,12 +70,12 @@ Default is Gamma(link = log).}
 \item{metrics}{The metrics argument passed to \code{keras}.}
 
 \item{filter}{Function with \itemize{
- \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+ \item input: Data set with same structure as the data passed to \code{hirem}
  \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
        FALSE indicates that this layer is zero for the current record.
 }}
 
-\item{transformation}{Object of class \code{\link{hirem_transformation}} specifying the transformation
+\item{transformation}{Object of class \code{hirem_transformation} specifying the transformation
 applied before modelling this layer.}
 }
 \description{

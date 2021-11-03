@@ -19,14 +19,14 @@ layer_aml_h2o(
 \item{name}{Character, name of the layer. This name should match the variable name in the data set}
 
 \item{filter}{Function with \itemize{
- \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+ \item input: Data set with same structure as the data passed to \code{hirem}
  \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
        FALSE indicates that this layer is zero for the current record.
 }}
 
-\item{transformation}{Object of class \code{\link{hirem_transformation}} specifying the transformation
+\item{transformation}{Object of class \code{hirem_transformation} specifying the transformation
 applied before modelling this layer.}
 }
 \description{
-Adds a new layer to the hierarchical reserving model. This layer will be estimated using AutoML from the \code{\link[h2o]{h2o}} package.
+Adds a new layer to the hierarchical reserving model. This layer will be estimated using AutoML from the \code{h2o} package.
 }

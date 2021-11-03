@@ -11,15 +11,15 @@ layer_glm(obj, name, family, filter = NULL, transformation = NULL)
 
 \item{name}{Character, name of the layer. This name should match the variable name in the data set}
 
-\item{family}{family argument passed to the \code{\link[stats]{glm}} function}
+\item{family}{family argument passed to the \code{glm} function}
 
 \item{filter}{Function with \itemize{
- \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+ \item input: Data set with same structure as the data passed to \code{hirem}
  \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
        FALSE indicates that this layer is zero for the current record.
 }}
 
-\item{transformation}{Object of class \code{\link{hirem_transformation}} specifying the transformation
+\item{transformation}{Object of class \code{hirem_transformation} specifying the transformation
 applied before modelling this layer.}
 }
 \description{

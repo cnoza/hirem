@@ -33,47 +33,47 @@ layer_xgb(
 
 \item{name}{Character, name of the layer. This name should match the variable name in the data set}
 
-\item{nrounds}{Max number of boosting iterations, passed to \code{\link[xgboost]{xgboost}}. Default is 100.}
+\item{nrounds}{Max number of boosting iterations, passed to \code{xgboost}. Default is 100.}
 
-\item{early_stopping_rounds}{Passed to \code{\link[xgboost]{xgboost}}. If NULL, the early stopping function is not triggered. If set to an integer k, training with a validation set will stop if the performance doesn't improve for k rounds. Default is 20.}
+\item{early_stopping_rounds}{Passed to \code{xgboost}. If NULL, the early stopping function is not triggered. If set to an integer k, training with a validation set will stop if the performance doesn't improve for k rounds. Default is 20.}
 
-\item{verbose}{If 0, \code{\link[xgboost]{xgboost}} will stay silent. If 1, it will print information about performance. Default is 0.}
+\item{verbose}{If 0, \code{xgboost} will stay silent. If 1, it will print information about performance. Default is 0.}
 
-\item{booster}{Passed to \code{\link[xgboost]{xgboost}}. Which booster to use, can be gbtree or gblinear. Default is gbtree.}
+\item{booster}{Passed to \code{xgboost}. Which booster to use, can be gbtree or gblinear. Default is gbtree.}
 
-\item{objective}{Specify the learning task and the corresponding learning objective, passed to \code{\link[xgboost]{xgboost}}.}
+\item{objective}{Specify the learning task and the corresponding learning objective, passed to \code{xgboost}.}
 
 \item{eval_metric}{Evaluation metrics for validation data. Default is 'rmse'.}
 
-\item{eta}{The learning rate passed to \code{\link[xgboost]{xgboost}}. Default is 0.01}
+\item{eta}{The learning rate passed to \code{xgboost}. Default is 0.01}
 
-\item{nthread}{Number of parallel threads used to run \code{\link[xgboost]{xgboost}}. Default is 1.}
+\item{nthread}{Number of parallel threads used to run \code{xgboost}. Default is 1.}
 
-\item{subsample}{Subsample ratio of the training instance. Default is 0.8. Setting it to 0.8 means that \code{\link[xgboost]{xgboost}} randomly collected 80 percent of the data instances to grow trees and this will prevent overfitting.}
+\item{subsample}{Subsample ratio of the training instance. Default is 0.8. Setting it to 0.8 means that \code{xgboost} randomly collected 80 percent of the data instances to grow trees and this will prevent overfitting.}
 
-\item{colsample_bynode}{Subsample ratio of columns for each node (split). Passed to \code{\link[xgboost]{xgboost}}}
+\item{colsample_bynode}{Subsample ratio of columns for each node (split). Passed to \code{xgboost}}
 
-\item{max_depth}{Maximum depth of a tree, passed to \code{\link[xgboost]{xgboost}}. Default is 2.}
+\item{max_depth}{Maximum depth of a tree, passed to \code{xgboost}. Default is 2.}
 
-\item{min_child_weight}{Minimum sum of instance weight (hessian) needed in a child, passed to \code{\link[xgboost]{xgboost}}. Default is 10.}
+\item{min_child_weight}{Minimum sum of instance weight (hessian) needed in a child, passed to \code{xgboost}. Default is 10.}
 
-\item{gamma}{Minimum loss reduction required to make a further partition on a leaf node of the tree, passed to \code{\link[xgboost]{xgboost}}. Default is 0.}
+\item{gamma}{Minimum loss reduction required to make a further partition on a leaf node of the tree, passed to \code{xgboost}. Default is 0.}
 
-\item{lambda}{L2 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.}
+\item{lambda}{L2 regularization term on weights, passed to \code{xgboost}. Default is 0.01.}
 
-\item{alpha}{L1 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.}
+\item{alpha}{L1 regularization term on weights, passed to \code{xgboost}. Default is 0.01.}
 
 \item{hyper_grid}{If \code{nfolds} is not null, the set of tuning parameters can be given in \code{hyper_grid}. If NULL, a default set of parameters is used.}
 
 \item{nfolds}{Number of folds to consider in the cross-validation. Default is NULL (no cross-validation).}
 
 \item{filter}{Function with \itemize{
- \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+ \item input: Data set with same structure as the data passed to \code{hirem}
  \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
        FALSE indicates that this layer is zero for the current record.
 }}
 
-\item{transformation}{Object of class \code{\link{hirem_transformation}} specifying the transformation
+\item{transformation}{Object of class \code{hirem_transformation} specifying the transformation
 applied before modelling this layer.}
 }
 \description{

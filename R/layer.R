@@ -33,13 +33,13 @@ hirem_layer <- function(obj, name, method, method_class, method_options, filter 
 #'
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
-#' @param family family argument passed to the \code{\link[stats]{glm}} function
+#' @param family family argument passed to the \code{glm} function
 #' @param filter Function with \itemize{
-#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item input: Data set with same structure as the data passed to \code{hirem}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
 #'         FALSE indicates that this layer is zero for the current record.
 #'  }
-#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
 layer_glm <- function(obj, name, family, filter = NULL, transformation = NULL) {
@@ -63,11 +63,11 @@ layer_glm <- function(obj, name, family, filter = NULL, transformation = NULL) {
 #'    \item "perf": Update the number of trees using \code{gbm.perf}
 #' }
 #' @param filter Function with \itemize{
-#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item input: Data set with same structure as the data passed to \code{hirem}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
 #'         FALSE indicates that this layer is zero for the current record.
 #'  }
-#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
 layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth = 2, n.minobsinnode = 10,
@@ -92,29 +92,29 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #'
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
-#' @param nrounds Max number of boosting iterations, passed to \code{\link[xgboost]{xgboost}}. Default is 100.
-#' @param early_stopping_rounds Passed to \code{\link[xgboost]{xgboost}}. If NULL, the early stopping function is not triggered. If set to an integer k, training with a validation set will stop if the performance doesn't improve for k rounds. Default is 20.
-#' @param verbose If 0, \code{\link[xgboost]{xgboost}} will stay silent. If 1, it will print information about performance. Default is 0.
-#' @param booster Passed to \code{\link[xgboost]{xgboost}}. Which booster to use, can be gbtree or gblinear. Default is gbtree.
-#' @param objective Specify the learning task and the corresponding learning objective, passed to \code{\link[xgboost]{xgboost}}.
+#' @param nrounds Max number of boosting iterations, passed to \code{xgboost}. Default is 100.
+#' @param early_stopping_rounds Passed to \code{xgboost}. If NULL, the early stopping function is not triggered. If set to an integer k, training with a validation set will stop if the performance doesn't improve for k rounds. Default is 20.
+#' @param verbose If 0, \code{xgboost} will stay silent. If 1, it will print information about performance. Default is 0.
+#' @param booster Passed to \code{xgboost}. Which booster to use, can be gbtree or gblinear. Default is gbtree.
+#' @param objective Specify the learning task and the corresponding learning objective, passed to \code{xgboost}.
 #' @param eval_metric Evaluation metrics for validation data. Default is 'rmse'.
-#' @param eta The learning rate passed to \code{\link[xgboost]{xgboost}}. Default is 0.01
-#' @param nthread Number of parallel threads used to run \code{\link[xgboost]{xgboost}}. Default is 1.
-#' @param subsample Subsample ratio of the training instance. Default is 0.8. Setting it to 0.8 means that \code{\link[xgboost]{xgboost}} randomly collected 80 percent of the data instances to grow trees and this will prevent overfitting.
-#' @param colsample_bynode Subsample ratio of columns for each node (split). Passed to \code{\link[xgboost]{xgboost}}
-#' @param max_depth Maximum depth of a tree, passed to \code{\link[xgboost]{xgboost}}. Default is 2.
-#' @param min_child_weight Minimum sum of instance weight (hessian) needed in a child, passed to \code{\link[xgboost]{xgboost}}. Default is 10.
-#' @param gamma Minimum loss reduction required to make a further partition on a leaf node of the tree, passed to \code{\link[xgboost]{xgboost}}. Default is 0.
-#' @param lambda L2 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.
-#' @param alpha L1 regularization term on weights, passed to \code{\link[xgboost]{xgboost}}. Default is 0.01.
+#' @param eta The learning rate passed to \code{xgboost}. Default is 0.01
+#' @param nthread Number of parallel threads used to run \code{xgboost}. Default is 1.
+#' @param subsample Subsample ratio of the training instance. Default is 0.8. Setting it to 0.8 means that \code{xgboost} randomly collected 80 percent of the data instances to grow trees and this will prevent overfitting.
+#' @param colsample_bynode Subsample ratio of columns for each node (split). Passed to \code{xgboost}
+#' @param max_depth Maximum depth of a tree, passed to \code{xgboost}. Default is 2.
+#' @param min_child_weight Minimum sum of instance weight (hessian) needed in a child, passed to \code{xgboost}. Default is 10.
+#' @param gamma Minimum loss reduction required to make a further partition on a leaf node of the tree, passed to \code{xgboost}. Default is 0.
+#' @param lambda L2 regularization term on weights, passed to \code{xgboost}. Default is 0.01.
+#' @param alpha L1 regularization term on weights, passed to \code{xgboost}. Default is 0.01.
 #' @param nfolds Number of folds to consider in the cross-validation. Default is NULL (no cross-validation).
 #' @param hyper_grid If \code{nfolds} is not null, the set of tuning parameters can be given in \code{hyper_grid}. If NULL, a default set of parameters is used.
 #' @param filter Function with \itemize{
-#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item input: Data set with same structure as the data passed to \code{hirem}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
 #'         FALSE indicates that this layer is zero for the current record.
 #'  }
-#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
 layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verbose = F, booster = 'gbtree', objective,
@@ -167,11 +167,11 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
 #' @param hidden_dropout_ratios The input_dropout_ratio argument passed to \code{h2o}. Default is 0.5
 #' @param stopping_rounds The stopping_rounds argument passed to \code{h2o}. Default is 0
 #' @param filter Function with \itemize{
-#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item input: Data set with same structure as the data passed to \code{hirem}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
 #'         FALSE indicates that this layer is zero for the current record.
 #'  }
-#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
 layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
@@ -233,11 +233,11 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @param family_for_init If not NULL, an homogenous GLM is estimated and the resulting coefficient estimate is used to initialize the bias weight in the output layer, which may improve convergence.
 #' See Ferrario, Andrea and Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020). Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852
 #' @param filter Function with \itemize{
-#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item input: Data set with same structure as the data passed to \code{hirem}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
 #'         FALSE indicates that this layer is zero for the current record.
 #'  }
-#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
 layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRUE,
@@ -326,11 +326,11 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
 #' @param validation_split The validation_split argument passed to \code{keras}. Default is .2
 #' @param metrics The metrics argument passed to \code{keras}.
 #' @param filter Function with \itemize{
-#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item input: Data set with same structure as the data passed to \code{hirem}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
 #'         FALSE indicates that this layer is zero for the current record.
 #'  }
-#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
 #'
@@ -400,16 +400,16 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
 
 #' Layer estimated using AutoML (H2O)
 #'
-#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using AutoML from the \code{\link[h2o]{h2o}} package.
+#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using AutoML from the \code{h2o} package.
 #'
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
 #' @param filter Function with \itemize{
-#'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+#'   \item input: Data set with same structure as the data passed to \code{hirem}
 #'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
 #'         FALSE indicates that this layer is zero for the current record.
 #'  }
-#' @param transformation Object of class \code{\link{hirem_transformation}} specifying the transformation
+#' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
 layer_aml_h2o <- function(obj, name, distribution = 'gaussian',

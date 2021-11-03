@@ -8,12 +8,14 @@ layer_mlp_keras(
   obj,
   name,
   distribution = "gaussian",
-  hidden = c(30, 20, 10),
+  use_bias = TRUE,
+  hidden = NULL,
   dropout.hidden = NULL,
+  step_log = FALSE,
+  step_normalize = FALSE,
   activation.hidden = NULL,
   activation.output = "linear",
-  batch_normalization = TRUE,
-  scale = TRUE,
+  batch_normalization = FALSE,
   loss = "mse",
   optimizer = "nadam",
   epochs = 20,
@@ -34,17 +36,15 @@ layer_mlp_keras(
 
 \item{distribution}{The distribution used for the simulation. Default is gaussian.}
 
-\item{hidden}{The hidden layer architecture passed to \code{keras}. Default is c(30,20,10).}
+\item{hidden}{The hidden layer architecture passed to \code{keras}.}
 
 \item{dropout.hidden}{The dropout ratios for each hidden layer passed to \code{keras}. Default is 0.}
 
-\item{activation.hidden}{The activation function for each hidden layer passed to \code{keras}. Default is Tanh.}
+\item{activation.hidden}{The activation function for each hidden layer passed to \code{keras}. Default is Relu}
 
-\item{activation.output}{The activation function for the output layer passed to \code{keras}. Default is Tanh.}
+\item{activation.output}{The activation function for the output layer passed to \code{keras}. Default is Linear}
 
 \item{batch_normalization}{If TRUE (default), apply the batch normalization between each hidden layer.}
-
-\item{scale}{If TRUE (default), the data used for training is scaled.}
 
 \item{loss}{The loss function argument passed to \code{keras}. Default is 'mse'.}
 
@@ -66,13 +66,15 @@ layer_mlp_keras(
 See Ferrario, Andrea and Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020). Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852}
 
 \item{filter}{Function with \itemize{
- \item input: Data set with same structure as the data passed to \code{\link{hirem}}
+ \item input: Data set with same structure as the data passed to \code{hirem}
  \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
        FALSE indicates that this layer is zero for the current record.
 }}
 
-\item{transformation}{Object of class \code{\link{hirem_transformation}} specifying the transformation
+\item{transformation}{Object of class \code{hirem_transformation} specifying the transformation
 applied before modelling this layer.}
+
+\item{scale}{If TRUE (default), the data used for training is scaled.}
 }
 \description{
 Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{\link[keras]{keras}} package.

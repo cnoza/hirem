@@ -48,19 +48,19 @@ layer_glm <- function(obj, name, family, filter = NULL, transformation = NULL) {
 
 #' Layer estimated using a gradient boosting model
 #'
-#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{\link[gbm]{gbm}} package.
+#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{gbm} package.
 #'
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
-#' @param distribution distribution argument passed to \code{\link[gbm]{gbm}}
-#' @param n.trees n.trees argument passed to \code{\link[gbm]{gbm}}
-#' @param interaction.depth interaction.depth argument passed to \code{\link[gbm]{gbm}}
-#' @param n.minobsinnode n.minobsinnode argument passed to \code{\link[gbm]{gbm}}
-#' @param shrinkage shrinkage argument passed to \code{\link[gbm]{gbm}}
-#' @param bag.fraction bag.fraction argument passed to \code{\link[gbm]{gbm}}
+#' @param distribution distribution argument passed to \code{gbm}
+#' @param n.trees n.trees argument passed to \code{gbm}
+#' @param interaction.depth interaction.depth argument passed to \code{gbm}
+#' @param n.minobsinnode n.minobsinnode argument passed to \code{gbm}
+#' @param shrinkage shrinkage argument passed to \code{gbm}
+#' @param bag.fraction bag.fraction argument passed to \code{gbm}
 #' @param select_trees Character string specifying the method for selecting the optimal number of trees after fitting the gbm \itemize{
 #'    \item "fixed": Use the number of trees specified in n.trees
-#'    \item "perf": Update the number of trees using \code{\link[gbm]{gbm.perf}}
+#'    \item "perf": Update the number of trees using \code{gbm.perf}
 #' }
 #' @param filter Function with \itemize{
 #'   \item input: Data set with same structure as the data passed to \code{\link{hirem}}
@@ -351,6 +351,17 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$activation.output <- activation.output
   options$activation.output.cann <- activation.output.cann
   options$use_bias <- use_bias
+  options$loss <- loss
+  options$optimizer <- optimizer
+  options$epochs <- epochs
+  options$batch_size <- batch_size
+  options$metrics <- metrics
+  options$validation_split <- validation_split
+  options$monitor <- monitor
+  options$patience <- patience
+  options$batch_normalization <- batch_normalization
+  options$fixed.cann <- fixed.cann
+  options$family_for_glm <- family_for_glm
 
   if(is.null(options$hidden)) {
     if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')
@@ -382,18 +393,6 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
     else
       stop('Bias regularization is not supported (yet) for this choice of distribution.')
   }
-
-  options$loss <- loss
-  options$optimizer <- optimizer
-  options$epochs <- epochs
-  options$batch_size <- batch_size
-  options$metrics <- metrics
-  options$validation_split <- validation_split
-  options$monitor <- monitor
-  options$patience <- patience
-  options$batch_normalization <- batch_normalization
-  options$fixed.cann <- fixed.cann
-  options$family_for_glm <- family_for_glm
 
   hirem_layer(obj, name, 'cann', 'layer_cann', options, filter, transformation)
 

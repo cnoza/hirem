@@ -162,6 +162,7 @@ simulate.layer_mlp_keras <- function(obj, data, balance.correction, balance.var)
   }
   else {
     Zlearn   <- data.frame(obj$zz %>% predict(x))
+    names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
     response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
   }
 
@@ -199,6 +200,7 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   }
   else {
     Zlearn   <- data.frame(obj$zz %>% predict(x))
+    names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
     response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
   }
 

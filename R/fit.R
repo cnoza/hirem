@@ -320,7 +320,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   if(layer$method_options$step_normalize)
     data_recipe <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
 
-  data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE)
+  data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = FALSE)
   data_recipe <- data_recipe %>% prep()
   layer$data_recipe <- data_recipe
 
@@ -330,6 +330,9 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   x <- select(data_baked,-as.name(label)) %>% as.matrix()
   y <- data_baked %>% pull(as.name(label))
+
+  layer$x <- x
+  layer$y <- y
 
   inputs <- layer_input(shape = c(ncol(x)))
 
@@ -427,11 +430,18 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     layer$zz  <- zz
 
     Zlearn    <- data.frame(zz %>% predict(x))
+    names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
+
+    # We keep track of the pre-processed data for analysis purposes
+    layer$Zlearn <- Zlearn
+
     Zlearn$yy <- y
+
     if(layer$method_options$distribution == 'gamma')
       fam <- Gamma(link = log)
     else
       stop('Bias regularization is not supported for this distribution.')
+
     layer$fit <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
   }
 
@@ -498,6 +508,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   x <- select(data_baked,-as.name(label)) %>% as.matrix()
   y <- data_baked %>% pull(as.name(label))
 
+  layer$x <- x
+  layer$y <- y
+
   inputs <- layer_input(shape = c(length(model.glm$coefficients)-1), name = 'input_layer')
 
   # GLM Neural network
@@ -538,37 +551,14 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   }
 
-
-  # Initialization with the homogeneous model
-  # See Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
-  # Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852 p.29.
-  if(!is.null(layer$method_options$family_for_init)) {
-    f.hom <- paste0(label, '~ 1')
-    glm.hom <- glm(as.formula(f.hom),data = data, family = layer$method_options$family_for_init)
-    layer$glm.hom <- glm.hom
-    if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
-      NNetwork <- NNetwork %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
-                                       weights = list(array(0,dim=c(ifelse(!is.null(layer$method_options$hidden),layer$method_options$hidden[n],c(ncol(x))),1)),
-                                                      array(glm.hom$coefficients[1], dim=c(1))),
-                                       use_bias = layer$method_options$use_bias,
-                                       name = 'output_layer')
-    else
-      NNetwork <- NNetwork %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
-                                       weights = list(array(0,dim=c(ifelse(!is.null(layer$method_options$hidden),layer$method_options$hidden[n],c(ncol(x))),1)),
-                                                      array(glm.hom$coefficients[1], dim=c(1))),
-                                       use_bias = layer$method_options$use_bias,
-                                       name = 'output_layer')
-  }
-  else {
-    if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
-      NNetwork <- inputs %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
-                                       use_bias = layer$method_options$use_bias,
-                                       name = 'output_layer')
-    else
-      NNetwork <- NNetwork %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
-                                       use_bias = layer$method_options$use_bias,
-                                       name = 'output_layer')
-  }
+  if(!layer$method_options$batch_normalization & is.null(layer$method_options$hidden))
+    NNetwork <- inputs %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                     use_bias = layer$method_options$use_bias,
+                                     name = 'output_layer')
+  else
+    NNetwork <- NNetwork %>% layer_dense(units = 1, activation = layer$method_options$activation.output,
+                                     use_bias = layer$method_options$use_bias,
+                                     name = 'output_layer')
 
   # CANN
 
@@ -615,6 +605,10 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     layer$zz  <- zz
 
     Zlearn    <- data.frame(zz %>% predict(x))
+    names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
+    # We keep track of the pre-processed data for analysis purposes
+    layer$Zlearn <- Zlearn
+
     Zlearn$yy <- y
     if(layer$method_options$distribution == 'gamma')
       fam <- Gamma(link = log)

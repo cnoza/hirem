@@ -50,8 +50,8 @@ The package is still under development. Currently supported layers are:
 
 Examples of tested models can be found in the following files:  
 
-* [Use of an Extreme Gradient Boosting model as layer in `hirem` layer](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-Extreme-Gradient-Boosting-layers.html)
-* [Use of a MultiLayer Perceptron model as layer in `hirem` layers](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-MultiLayer-Perceptron-model-as-layer-in-hirem.html)
+* [Use of an Extreme Gradient Boosting model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-Extreme-Gradient-Boosting-layers.html)
+* [Use of a MultiLayer Perceptron model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-MultiLayer-Perceptron-model-as-layer-in-hirem.html)
 * [Use of CANN model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-CANN-model-as-layer-in-hirem.html)
 * [Other tested models](https://github.com/cnoza/hirem/blob/master/Examples/testing.R)
 

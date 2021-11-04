@@ -3,7 +3,7 @@
 #' author: "Christophe Nozaradan"
 #' output:
 #'    html_document:
-#'      toc: true
+#'      toc: false
 #'      toc_depth: 2
 #'      toc_float:
 #'        collapsed: true

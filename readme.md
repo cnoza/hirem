@@ -1,6 +1,6 @@
 # The `hirem` package 
 
-This is the source code for the `hirem` package, forked from Jonas Crevecoeur's original version and merged with Jens Robben's  updates. This version further extends this package with additional supported layers, such as:
+This is the source code for the `hirem` package, forked from Jonas Crevecoeur's original version and merged with Jens Robben's updates. This version further extends the package with additional supported layers, such as:
 
 * `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
 * `layer_mlp_keras`: Estimates a layer using an MLP neural network model (`keras` package)

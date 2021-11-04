@@ -1,56 +1,56 @@
-#' ---
-#' title: "Combined Actuarial Neural Networks (CANN) as layer in `hirem`"
-#' author: "Christophe Nozaradan"
-#' output:
-#'    html_document:
-#'      toc: false
-#'      toc_depth: 2
-#'      toc_float:
-#'        collapsed: true
-#'        smooth_scroll: true
-#'      number_sections: false
-#'      fig_caption: true
-#'      df_print: paged
-#'    fontsize: 11pt
-#' bibliography: references.bib
-#' ---
+---
+title: "Combined Actuarial Neural Networks (CANN) as layer in `hirem`"
+author: "Christophe Nozaradan"
+date: "November 2021"
+output: html_document
+bibliography: references.bib  
+---
 
-#+ setup, include=FALSE
-rm(list=ls())
-defaultW <- getOption("warn")
-options(warn = -1)
+```{r include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+options(dplyr.summarise.inform = FALSE)
+```
 
-#' # Setup
-#' We illustrate the use of a CANN model as layer in a hierarchical model. The
-#' `keras` package is used to fit the CANN model. For more information on such
-#' models, see Schelldorfer, Jürg and Wuthrich, Mario V., Nesting Classical
-#' Actuarial Models into Neural Networks (January 22, 2019). Available at SSRN:
-#' https://ssrn.com/abstract=3320525 or http://dx.doi.org/10.2139/ssrn.3320525.
-#' We first load the required packages.
-#+ message=FALSE
+
+# Setup
+
+We illustrate the use of a CANN model as layer in a hierarchical model. The `keras` package is used to fit the CANN model. For more information on such models, see Schelldorfer, Jürg and Wuthrich, Mario V., Nesting Classical Actuarial Models into Neural Networks (January 22, 2019). Available at SSRN: https://ssrn.com/abstract=3320525 or http://dx.doi.org/10.2139/ssrn.3320525. 
+
+We first load the required packages.
+
+```{r}
 library(tidyverse)
 library(data.table)
 library(ggplot2)
 library(hirem)
 library(devtools)
-#devtools::install_github("harrysouthworth/gbm")
 library(keras)
 library(tensorflow)
 library(recipes)
+```
 
-#' We load and prepare the data. We use the data provided in the hirem package.
-#+ message=FALSE
+We load and prepare the data. We use the data provided in the hirem package.
+
+```{r, message=FALSE}
 data("reserving_data")
 reserving_data <- reserving_data %>%
   mutate(development_year_factor = factor(development_year))
+```
 
-#' We set the seed for reproducibility.
+We set the seed for reproducibility.
+```{r, message=FALSE}
 #+ message=FALSE
 set.seed(265)
 set_random_seed(265)
+```
 
-#' We here define a function that computes the simulated RBNS reserve based on the choice of a given model.
-#+ message=FALSE
+We here define a function that computes the simulated RBNS reserve based on the choice of a given model.
+
+```{r message=FALSE}
 simulate_rbns <- function(model, nsim = 5) {
 
   levels <- unique(reserving_data$development_year)
@@ -84,8 +84,11 @@ simulate_rbns <- function(model, nsim = 5) {
   print(rbns_actual)
 
 }
+```
 
-#' We will use the gamma deviance as custom loss function and metric in `keras`:
+We will use the gamma deviance as custom loss function and metric in `keras`:
+
+```{r, message=FALSE}
 gamma_deviance_keras <- function(yobs, yhat) {
   K <- backend()
   2*K$sum((yobs-yhat)/yhat - K$log(yobs/yhat))
@@ -94,9 +97,13 @@ gamma_deviance_keras <- function(yobs, yhat) {
 metric_gamma_deviance_keras <- keras::custom_metric("gamma_deviance_keras", function(yobs, yhat) {
   gamma_deviance_keras(yobs, yhat)
 })
+```
 
-#' # Benchmark model
-#' For what follows, we use the following model as benchmark.
+# Benchmark model
+
+For what follows, we use the following model specification as benchmark.
+
+```{r, message=FALSE}
 model1 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -104,21 +111,31 @@ model1 <- hirem(reserving_data) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_glm('size', Gamma(link = log),
             filter = function(data){data$payment == 1})
+```
 
+We calibrate the model.
+```{r}
 model1 <- hirem::fit(model1,
                      close = 'close ~ factor(development_year)',
                      payment = 'payment ~ close + factor(development_year)',
                      size = 'size ~ close + development_year_factor')
+```
 
-#' We obtain the shape parameter estimate and standard error.
+We obtain the shape parameter estimate and standard error of the Gamma distribution.
+```{r}
 print(model1$layers$size$shape)
 print(model1$layers$size$shape.se)
+```
 
-#' We then compute the simulated RBNS reserves and compare them with the true value.
+We then compute the simulated RBNS reserves and compare them with the true value.
+```{r}
 simulate_rbns(model1)
+```
 
-#' # CANN model
-#' As for the benchmark model, we consider `size` as response variable and `close`, `development_year_factor` as predictors. For the Neural Network, we opt for 2 hidden layers with 10 neurons each.
+# CANN model
+As for the benchmark model, we consider `size` as response variable and `close`, `development_year_factor` as predictors. For the Neural Network, we opt for 2 hidden layers with 10 neurons each.
+
+```{r}
 model.cann <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -145,16 +162,18 @@ model.cann <- hirem::fit(model.cann,
                      payment = 'payment ~ close + factor(development_year)',
                      size = 'size ~ close + development_year_factor')
 
-plot(model.cann$layers$size$history, metrics = 'gamma_deviance_keras', smooth = FALSE)
 
-#' The shape parameter estimate and standard error are close to the benchmark model.
+plot(model.cann$layers$size$history, metrics = 'gamma_deviance_keras', smooth = FALSE)
+```
+
+The shape parameter estimate and standard error are close to the benchmark model.
+```{r}
 print(model.cann$layers$size$shape)
 print(model.cann$layers$size$shape.se)
+```
 
-#' We then compute the simulated RBNS reserves and compare them with the true
-#' value. Note that a bias regularization on the fitted CANN is implemented in `layer_cann` to
-#' correct for the bias (when it makes sense). For more information, see Ferrario, Andrea and Noll,
-#' Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April
-#' 23, 2020), p.52.
+We then compute the simulated RBNS reserves and compare them with the true value. Note that a bias regularization on the fitted CANN is implemented in `layer_cann` to correct for the bias (when it makes sense). For more information, see Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020), p.52.
+
+```{r}
 simulate_rbns(model.cann)
-
+```

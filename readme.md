@@ -3,9 +3,9 @@
 This is the source code for the `hirem` package, forked from Jonas Crevecoeur's original version and merged with Jens Robben's  updates. This version further extends this package with additional supported layers, such as:
 
 * `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
-* `layer_mlp_h2o`: Estimates a layer using an MLP neural network model (`h2o` package)
 * `layer_mlp_keras`: Estimates a layer using an MLP neural network model (`keras` package)
 * `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
+* `layer_mlp_h2o`: Estimates a layer using an MLP neural network model (`h2o` package)
 * `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
 
 ## Installation
@@ -43,12 +43,18 @@ The package is still under development. Currently supported layers are:
 * `layer_glm`: Estimates a layer using a generalized linear model
 * `layer_gbm`: Estimates a layer using a gradient boosting model
 * `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
-* `layer_mlp_h2o`: Estimates a layer using an MLP neural network model (`h2o` package)
 * `layer_mlp_keras`: Estimates a layer using an MLP neural network model (`keras` package)
 * `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
+* `layer_mlp_h2o`: Estimates a layer using an MLP neural network model (`h2o` package)
 * `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
 
-Examples of tested models can be found in the file [testing.R](https://github.com/cnoza/hirem/blob/master/Examples/testing.R).
+Examples of tested models can be found in the following files:  
+
+* [Use of Extreme Gradient Boosting layers](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-Extreme-Gradient-Boosting-layers.html)
+* [Use of MultiLayer Perceptron layers](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-MultiLayer-Perceptron-layers-with-Keras.html)
+* [Use of CANN layers](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-CANN-model-as-layer-in-hirem.html)
+* [Other tested models](https://github.com/cnoza/hirem/blob/master/Examples/testing.R)
+
 
 Supported distributions are:
 

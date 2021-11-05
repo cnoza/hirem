@@ -88,6 +88,10 @@ simulate.layer_gbm <- function(obj, data, balance.correction, balance.var) {
     simulation <- rgamma(length(response), scale = response / obj$shape, shape = obj$shape)
   }
 
+  if(!is.null(obj$transformation)) {
+    simulation <- obj$transformation$inverse_transform(simulation)
+  }
+
   ret <- rep(0, nrow(data))
   ret[select] <- simulation
 
@@ -116,6 +120,10 @@ simulate.layer_xgb <- function(obj, data, balance.correction, balance.var) {
     simulation <- rgamma(length(response), scale = response / obj$shape, shape = obj$shape)
   }
 
+  if(!is.null(obj$transformation)) {
+    simulation <- obj$transformation$inverse_transform(simulation)
+  }
+
   ret <- rep(0, nrow(data))
   ret[select] <- simulation
 
@@ -134,6 +142,10 @@ simulate.layer_mlp_h2o <- function(obj, data, balance.correction, balance.var) {
     simulation <- rnorm(dim(response)[1], mean = as.vector(response), sd = obj$sigma)
   } else if(obj$method_options$distribution == 'gamma') {
     simulation <- rgamma(dim(response)[1], scale = as.vector(response) / obj$shape, shape = obj$shape)
+  }
+
+  if(!is.null(obj$transformation)) {
+    simulation <- obj$transformation$inverse_transform(simulation)
   }
 
   ret <- rep(0, nrow(data))
@@ -174,6 +186,12 @@ simulate.layer_mlp_keras <- function(obj, data, balance.correction, balance.var)
     simulation <- rgamma(dim(response)[1], scale = as.vector(response) / obj$shape, shape = obj$shape)
   }
 
+  if(!is.null(obj$transformation)) {
+    simulation <- obj$transformation$inverse_transform(simulation)
+  }
+
+  if(obj$method_options$step_log) simulation <- exp(simulation)
+
   ret <- rep(0, nrow(data))
   ret[select] <- simulation
 
@@ -212,6 +230,13 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
     simulation <- rgamma(dim(response)[1], scale = as.vector(response) / obj$shape, shape = obj$shape)
   }
 
+
+  if(!is.null(obj$transformation)) {
+    simulation <- obj$transformation$inverse_transform(simulation)
+  }
+
+  if(obj$method_options$step_log) simulation <- exp(simulation)
+
   ret <- rep(0, nrow(data))
   ret[select] <- simulation
 
@@ -230,6 +255,10 @@ simulate.layer_aml_h2o <- function(obj, data, balance.correction, balance.var) {
     simulation <- rnorm(dim(response)[1], mean = as.vector(response), sd = obj$sigma)
   } else if(obj$method_options$distribution == 'gamma') {
     simulation <- rgamma(dim(response)[1], scale = as.vector(response) / obj$shape, shape = obj$shape)
+  }
+
+  if(!is.null(obj$transformation)) {
+    simulation <- obj$transformation$inverse_transform(simulation)
   }
 
   ret <- rep(0, nrow(data))

@@ -242,7 +242,7 @@ model4b <- hirem(reserving_data) %>%
                   hidden = NULL,
                   activation.output = 'exponential',
                   batch_normalization = F,
-                  family_for_init = Gamma(link = log),
+                  family_for_init = Gamma(link=log),
                   epochs = 100,
                   batch_size = 1000,
                   monitor = 'gamma_deviance_keras',
@@ -262,6 +262,8 @@ print(model1$layers$size$shape)
 print(model1$layers$size$shape.se)
 
 simulate_rbns(model4b)
+
+
 
 #=========================================================================#
 #         Case 4c: GLM + MLP (gamma, 3 hidden layers)        #
@@ -306,6 +308,119 @@ print(model1$layers$size$shape.se)
 simulate_rbns(model4c)
 
 #=========================================================================#
+#         Case 4d: GLM + MLP shallow case (bernoulli, no hidden layer)    #
+#=========================================================================#
+
+# Goal:
+# -----
+# Show that model 1 (glm, bernoulli logit link) is equivalent to
+# shallow neural network (loss: binary_crossentropy, activation: sigmoid)
+#
+# For the neural network:
+# -----------------------
+# Initialization of the bias weight of the output layer with the coefficient estimate
+# of the homogeneous GLM (parameter 'family_for_init'):
+# See Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020).
+# Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852 p.29.
+
+init()
+model4d <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_mlp_keras('payment', distribution = 'bernoulli',
+                  step_log = F,
+                  step_normalize = F,
+                  loss = 'binary_crossentropy',
+                  metrics = 'binary_crossentropy',
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = 0,
+                  hidden = NULL,
+                  activation.output = 'sigmoid',
+                  batch_normalization = F,
+                  family_for_init = binomial,
+                  epochs = 100,
+                  batch_size = 1000,
+                  monitor = 'binary_crossentropy',
+                  patience = 20) %>%
+  layer_glm('size', Gamma(link = log),
+            filter = function(data){data$payment == 1})
+
+model4d <- hirem::fit(model4d,
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + development_year_factor',
+                      size = 'size ~ close + development_year_factor')
+
+# The shape parameter is (almost) identical to model 1 (glm, gamma log link for size):
+print(model4d$layers$size$shape)
+print(model4d$layers$size$shape.se)
+
+print(model1$layers$size$shape)
+print(model1$layers$size$shape.se)
+
+simulate_rbns(model4d)
+
+#=========================================================================#
+#         Case 4e: GLM + MLP shallow case (gaussian, no hidden layer)    #
+#=========================================================================#
+
+# Goal:
+# -----
+# Show that a GLM gaussian is equivalent to
+# shallow neural network (loss: mean_squared_error, activation: linear)
+
+init()
+model4e <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_mlp_keras('size', distribution = 'gaussian',
+                  step_normalize = F,
+                  loss = 'mean_squared_error',
+                  metrics = 'mean_squared_error',
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = 0,
+                  hidden = NULL,
+                  activation.output = 'linear',
+                  batch_normalization = F,
+                  family_for_init = gaussian,
+                  epochs = 100,
+                  batch_size = 1000,
+                  monitor = 'mean_squared_error',
+                  patience = 20,
+                  transformation = hirem_transformation_log,
+                  filter = function(data){data$payment == 1})
+
+model4e <- hirem::fit(model4e,
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + factor(development_year)',
+                      size = 'size ~ close + development_year_factor')
+
+print(model4e$layers$size$sigma)
+simulate_rbns(model4e)
+
+# Let's compare with the GLM, gaussian family:
+glm.gaussian <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_glm('size', gaussian(),
+            transformation = hirem_transformation_log,
+            filter = function(data){data$payment == 1})
+glm.gaussian <- hirem::fit(glm.gaussian,
+                           close = 'close ~ factor(development_year)',
+                           payment = 'payment ~ close + factor(development_year)',
+                           size = 'size ~ close + development_year_factor')
+
+# We obtain the same value for sigma:
+print(glm.gaussian$layers$size$sigma)
+
+simulate_rbns(glm.gaussian)
+# In both case, we see that this distribution choice leads to an RBNS overestimation.
+
+#=========================================================================#
 #             Case 5: GLM + CANN (gamma)                                  #
 #=========================================================================#
 
@@ -316,12 +431,12 @@ model5 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_cann('size', distribution = 'gamma',
-             family_for_glm = Gamma(link = log),
+             family_for_glm = Gamma(link=log),
              loss = gamma_deviance_keras,
              metrics = metric_gamma_deviance_keras,
              optimizer = optimizer_nadam(learning_rate = .01),
              validation_split = 0,
-             hidden = c(10,10),
+             hidden = c(20,15,10),
              activation.output = 'exponential',
              activation.output.cann = 'exponential',
              fixed.cann = TRUE,
@@ -341,6 +456,75 @@ print(model5$layers$size$shape.se)
 
 simulate_rbns(model5)
 
+#=========================================================================#
+#             Case 5b: GLM + CANN (bernoulli)                             #
+#=========================================================================#
+
+init()
+model5b <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_cann('close', distribution = 'bernoulli',
+             family_for_glm = binomial(),
+             loss = 'binary_crossentropy',
+             metrics = 'binary_crossentropy',
+             optimizer = optimizer_nadam(learning_rate = .01),
+             validation_split = 0,
+             hidden = c(10,10),
+             activation.output = 'linear',
+             activation.output.cann = 'sigmoid',
+             fixed.cann = TRUE,
+             monitor = 'binary_crossentropy',
+             patience = 20,
+             epochs = 100,
+             batch_size = 1000) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_glm('size', Gamma(link = log),
+            filter = function(data){data$payment == 1})
+
+model5b <- hirem::fit(model5b,
+                     close = 'close ~ development_year_factor',
+                     payment = 'payment ~ close + factor(development_year)',
+                     size = 'size ~ close + development_year_factor')
+
+print(model5b$layers$size$shape)
+print(model5b$layers$size$shape.se)
+
+simulate_rbns(model5b)
+
+#=========================================================================#
+#             Case 5c: GLM + CANN (gaussian)                               #
+#=========================================================================#
+
+init()
+model5c <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_cann('size', distribution = 'gaussian',
+             step_log = TRUE,
+             family_for_glm = gaussian,
+             loss = 'mean_squared_error',
+             metrics = 'mean_squared_error',
+             optimizer = optimizer_nadam(learning_rate = .01),
+             validation_split = 0,
+             hidden = c(20,15,10),
+             activation.output = 'linear',
+             activation.output.cann = 'linear',
+             fixed.cann = FALSE,
+             monitor = 'mean_squared_error',
+             patience = 20,
+             epochs = 100,
+             batch_size = 1000,
+             filter = function(data){data$payment == 1})
+
+model5c <- hirem::fit(model5c,
+                     close = 'close ~ factor(development_year)',
+                     payment = 'payment ~ close + factor(development_year)',
+                     size = 'size ~ close + development_year_factor')
+
+print(model5c$layers$size$sigma)
 
 #=========================================================================#
 #                                 Annex                                   #

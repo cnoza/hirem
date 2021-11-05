@@ -287,11 +287,23 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
     options$bias_regularization <- FALSE
   }
   else {
-    if(options$distribution == 'gamma') {
+    if(options$distribution == 'gamma') { # Link = log -> activation = exponential
       if(options$activation.output == 'exponential')
         options$bias_regularization <- TRUE
       else
         stop('For the bias regularization to work, the output layer activation function should be exponential.')
+    }
+    else if(options$distribution == 'bernoulli') { # Default link = logit -> activation = sigmoid
+      if(options$activation.output == 'sigmoid')
+        options$bias_regularization <- TRUE
+      else
+        stop('For the bias regularization to work, the output layer activation function should be sigmoid')
+    }
+    else if(options$distribution == 'poisson') { # Default link = log -> activation = exponential
+      if(options$activation.output == 'exponential')
+        options$bias_regularization <- TRUE
+      else
+        stop('For the bias regularization to work, the output layer activation function should be exponential')
     }
     else
       stop('Bias regularization is not supported (yet) for this choice of distribution.')
@@ -384,11 +396,29 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
     options$bias_regularization <- FALSE
   }
   else {
-    if(options$distribution == 'gamma') {
+    if(options$distribution == 'gamma') { # Link = log -> activation = exponential
       if(options$activation.output.cann == 'exponential')
         options$bias_regularization <- TRUE
       else
         stop('For the bias regularization to work, the CANN output layer activation function should be exponential.')
+    }
+    else if(options$distribution == 'bernoulli') { # Default link = logit -> activation = sigmoid
+      if(options$activation.output.cann == 'sigmoid')
+        options$bias_regularization <- TRUE
+      else
+        stop('For the bias regularization to work, the CANN output layer activation function should be sigmoid')
+    }
+    else if(options$distribution == 'poisson') { # Default link = log -> activation = exponential
+      if(options$activation.output.cann == 'exponential')
+        options$bias_regularization <- TRUE
+      else
+        stop('For the bias regularization to work, the CANN output layer activation function should be exponential')
+    }
+    else if(options$distribution == 'gaussian') { # Default link = identity -> activation = linear
+      if(options$activation.output.cann == 'linear')
+        options$bias_regularization <- TRUE
+      else
+        stop('For the bias regularization to work, the CANN output layer activation function should be linear')
     }
     else
       stop('Bias regularization is not supported (yet) for this choice of distribution.')

@@ -20,6 +20,11 @@ fit.layer_glm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   data.filter <- data[layer$filter(data), ]
 
+  if(!is.null(layer$transformation)) {
+    label <- as.character(terms(as.formula(formula))[[2]])
+    data.filter[,label] <- layer$transformation$transform(data.filter[,label])
+  }
+
   if(!is.null(obj$weights))
     weights.vec <- obj$weights[data.filter[[obj$weight.var]]] else
       weights.vec <- NULL
@@ -64,6 +69,12 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   data <- data[layer$filter(data), ]
+
+  if(!is.null(layer$transformation)) {
+    label <- as.character(terms(as.formula(formula))[[2]])
+    data[,label] <- layer$transformation$transform(data[,label])
+  }
+
   weights.vec <- if(is.null(obj$weights)) NULL else obj$weights[data[[obj$weight.var]]]
 
   layer$fit <- gbm(as.formula(formula),
@@ -124,6 +135,10 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   data <- data[layer$filter(data), ]
   f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
+
+  if(!is.null(layer$transformation)) {
+    data[,label] <- layer$transformation$transform(data[,label])
+  }
 
   data.xgb <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=data)[,-1]),
                           info = list(
@@ -255,6 +270,10 @@ fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
   f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
 
+  if(!is.null(layer$transformation)) {
+    data[,label] <- layer$transformation$transform(data[,label])
+  }
+
   h2o.init()
   h2o.no_progress()
 
@@ -312,6 +331,10 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
+
+  if(!is.null(layer$transformation)) {
+    data[,label] <- layer$transformation$transform(data[,label])
+  }
 
   data_recipe <- recipe(f, data=data)
 
@@ -438,22 +461,31 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     Zlearn$yy <- y
 
     if(layer$method_options$distribution == 'gamma')
-      fam <- Gamma(link = log)
+      fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
+    else if(layer$method_options$distribution == 'bernoulli')
+      fam <- binomial() # default link = logit <-> activation function = sigmoid
+    else if(layer$method_options$distribution == 'poisson')
+      fam <- poisson() # default link = log <-> activation function = exponential
+    else if(layer$method_options$distribution == 'gaussian')
+      fam <- gaussian() # default link = identity <-> activation function = identity
     else
       stop('Bias regularization is not supported for this distribution.')
 
-    layer$fit <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
+    layer$fit <- glm1
   }
 
+  if(layer$method_options$bias_regularization)
+    pred <- layer$fit$fitted.values
+  else
+    pred <- layer$fit %>% predict(x)
+
   if(layer$method_options$distribution == 'gaussian') {
-    layer$sigma <- sd(layer$fit %>% predict(x) - y)
+    layer$sigma <- sd(pred - y)
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    if(layer$method_options$bias_regularization)
-      shape <- hirem_gamma_shape(observed = layer$fit$y, fitted = layer$fit$fitted.values)
-    else
-      shape <- hirem_gamma_shape(y, layer$fit %>% predict(x))
+    shape <- hirem_gamma_shape(observed = y, fitted = pred)
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
   }
@@ -479,6 +511,10 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
+
+  if(!is.null(layer$transformation)) {
+    data[,label] <- layer$transformation$transform(data[,label])
+  }
 
   data_recipe <- recipe(f, data=data)
 
@@ -611,21 +647,31 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     Zlearn$yy <- y
     if(layer$method_options$distribution == 'gamma')
-      fam <- Gamma(link = log)
+      fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
+    else if(layer$method_options$distribution == 'bernoulli')
+      fam <- binomial() # default link = logit <-> activation function = sigmoid
+    else if(layer$method_options$distribution == 'poisson')
+      fam <- poisson() # default link = log <-> activation function = exponential
+    else if(layer$method_options$distribution == 'gaussian')
+      fam <- gaussian() # default link = identity <-> activation function = identity
     else
       stop('Bias regularization is not supported for this distribution.')
-    layer$fit <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
+
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
+    layer$fit <- glm1
   }
 
+  if(layer$method_options$bias_regularization)
+    pred <- layer$fit$fitted.values
+  else
+    pred <- layer$fit %>% predict(x)
+
   if(layer$method_options$distribution == 'gaussian') {
-    layer$sigma <- sd(layer$fit %>% predict(x) - y)
+    layer$sigma <- sd(pred - y)
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    if(layer$method_options$bias_regularization)
-      shape <- hirem_gamma_shape(observed = layer$fit$y, fitted = layer$fit$fitted.values)
-    else
-      shape <- hirem_gamma_shape(y, layer$fit %>% predict(x))
+    shape <- hirem_gamma_shape(observed = y, fitted = pred)
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
   }
@@ -651,6 +697,10 @@ fit.layer_aml_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
 
   f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
+
+  if(!is.null(layer$transformation)) {
+    data[,label] <- layer$transformation$transform(data[,label])
+  }
 
   h2o.init()
   h2o.no_progress()

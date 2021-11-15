@@ -110,9 +110,9 @@ reserving_data <- output.long
 
 We check that the total paid is the same for both datasets.
 ```{r}
-totPay.wide <- output.wide %>% select(., starts_with("Pay")) %>%
-  mutate(tot = rowSums(across(where(is.numeric)))) %>%
-  summarise(totPay = sum(tot))
+totPay.wide <- output.wide %>% dplyr::select(., starts_with("Pay")) %>%
+  dplyr::mutate(tot = rowSums(across(where(is.numeric)))) %>%
+  dplyr::summarise(totPay = sum(tot))
 totPay.long <- output.long %>% summarise(totPay = sum((-1)^rec * size))
 totPay.long == totPay.wide
 ```
@@ -139,8 +139,8 @@ dim(reserving_data)
 
 ```{r}
 reserving_data <- reserving_data %>% 
-  select(-ClNr,-open,-open.soy,-close.soy) %>%
-  mutate(development_year_factor = factor(development_year),
+  dplyr::select(-ClNr,-open,-open.soy,-close.soy) %>%
+  dplyr::mutate(development_year_factor = factor(development_year),
          AQ_factor = factor(AQ),
          age_factor = factor(age))
 ```
@@ -424,15 +424,17 @@ We first define the model specifications of each layer. We only train the reserv
 ```{r message=FALSE, warning=FALSE}
 # Model specifications
 model_mlp <-  hirem(reserving_data) %>%
-  split_data(observed = function(df) df %>% filter(calendar_year <= last_calendar_year_observed)) %>%
+  split_data(observed = function(df) df %>% dplyr::filter(calendar_year <= last_calendar_year_observed)) %>%
   layer_mlp_keras('close', distribution = 'bernoulli',
+                  sae = T,
                   step_log = F,
-                  step_normalize = F,
+                  step_normalize = T,
                   loss = 'binary_crossentropy',
                   metrics = 'accuracy',
                   optimizer = optimizer_nadam(learning_rate = .01),
                   validation_split = 0,
                   hidden = c(20,15,10),
+                  dropout.hidden = c(.1,.1,.1),
                   activation.output = 'sigmoid',
                   batch_normalization = F,
                   family_for_init = binomial(), # default link = logit
@@ -441,13 +443,15 @@ model_mlp <-  hirem(reserving_data) %>%
                   monitor = 'accuracy',
                   patience = 20) %>%
   layer_mlp_keras('payment', distribution = 'bernoulli',
+                  sae = T,
                   step_log = F,
-                  step_normalize = F,
+                  step_normalize = T,
                   loss = 'binary_crossentropy',
                   metrics = 'accuracy',
                   optimizer = optimizer_nadam(learning_rate = .01),
                   validation_split = 0,
                   hidden = c(20,15,10),
+                  dropout.hidden = c(.1,.1,.1),
                   activation.output = 'sigmoid',
                   batch_normalization = F,
                   family_for_init = binomial(), # default link = logit
@@ -456,13 +460,15 @@ model_mlp <-  hirem(reserving_data) %>%
                   monitor = 'accuracy',
                   patience = 20) %>%
   layer_mlp_keras('size', distribution = 'gamma',
+                  sae = T,
                   step_log = F,
-                  step_normalize = F,
+                  step_normalize = T,
                   loss = gamma_deviance_keras,
                   metrics = metric_gamma_deviance_keras,
                   optimizer = optimizer_nadam(learning_rate = .01),
                   validation_split = 0,
                   hidden = c(20,15,10),
+                  dropout.hidden = c(.1,.1,.1),
                   activation.output = 'exponential',
                   batch_normalization = F,
                   family_for_init = Gamma(link=log), # default link = inverse

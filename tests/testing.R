@@ -421,6 +421,49 @@ simulate_rbns(glm.gaussian)
 # In both case, we see that this distribution choice leads to an RBNS overestimation.
 
 #=========================================================================#
+#         Case 4f: GLM + MLP (gamma, 3 hidden layers, autoencoder)        #
+#=========================================================================#
+
+init()
+model4f <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_mlp_keras('size', distribution = 'gamma',
+                  sae = T,
+                  step_log = F,
+                  step_normalize = F,
+                  loss = gamma_deviance_keras,
+                  metrics = metric_gamma_deviance_keras,
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = 0,
+                  hidden = c(20,15,10),
+                  activation.output = 'exponential',
+                  batch_normalization = F,
+                  family_for_init = Gamma(link=log),
+                  epochs = 2,
+                  batch_size = 1000,
+                  monitor = 'gamma_deviance_keras',
+                  patience = 20,
+                  filter = function(data){data$payment == 1})
+
+model4f <- hirem::fit(model4f,
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + factor(development_year)',
+                      size = 'size ~ close + development_year_factor')
+
+# The shape parameter is (almost) identical to model 1 (glm, gamma log link for size):
+print(model4f$layers$size$shape)
+print(model4f$layers$size$shape.se)
+
+print(model1$layers$size$shape)
+print(model1$layers$size$shape.se)
+
+# Due to the bias regularization, we obtain RBNS simulations close to the true value:
+simulate_rbns(model4f)
+
+#=========================================================================#
 #             Case 5: GLM + CANN (gamma)                                  #
 #=========================================================================#
 

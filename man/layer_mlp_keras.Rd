@@ -9,6 +9,7 @@ layer_mlp_keras(
   name,
   distribution = "gaussian",
   use_bias = TRUE,
+  sae = FALSE,
   hidden = NULL,
   dropout.hidden = NULL,
   step_log = FALSE,

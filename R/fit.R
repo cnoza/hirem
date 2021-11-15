@@ -359,6 +359,38 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   inputs <- layer_input(shape = c(ncol(x)))
 
+  if(layer$method_options$sae) {
+
+    encoded_l1 <- layer_dense(inputs, units = ncol(x))
+    encoded_l2 <- layer_dense(encoded_l1, units = 40)
+    encoded_l3 <- layer_dense(encoded_l2, units = 30)
+    encoded_l4 <- layer_dense(encoded_l3, units = 20)
+    decoded_l1 <- layer_dense(encoded_l2, units = 20)
+    decoded_l2 <- layer_dense(decoded_l1, units = 30)
+    decoded_l3 <- layer_dense(decoded_l2, units = 40)
+    decoded <- layer_dense(decoded_l3, ncol(x))
+
+    autoencoder <- keras_model(inputs, decoded)
+    model_en <- keras_model(inputs, encoded_l4)
+
+    summary(autoencoder)
+    summary(model_en)
+
+    autoencoder %>% compile(loss = 'mae', optimizer='adam')
+
+    autoencoder %>% keras::fit(
+      x = x,
+      y = x,
+      epochs = layer$method_options$epochs,
+      batch_size = layer$method_options$batch_size
+    )
+
+    x <- model_en %>% predict(x)
+    inputs <- layer_input(shape = c(ncol(x)))
+    layer$model_en <- model_en
+
+  }
+
   if(layer$method_options$batch_normalization)
     output <- inputs %>% layer_batch_normalization()
 

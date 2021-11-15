@@ -169,6 +169,10 @@ simulate.layer_mlp_keras <- function(obj, data, balance.correction, balance.var)
 
   x <- select(data_baked,-as.name(label)) %>% as.matrix()
 
+  if(obj$method_options$sae) {
+    x <- data.frame(obj$model_en %>% predict(x)) %>% as.matrix()
+  }
+
   if(!obj$method_options$bias_regularization) {
     response <- predict(obj$fit, x)
   }

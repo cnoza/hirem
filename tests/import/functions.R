@@ -4,6 +4,8 @@ init <- function() {
   #options(warn=-1)
   library(tidyverse)
   library(data.table)
+  #install.packages('devtools')
+  #devtools::install_github('cnoza/hirem')
   library(hirem)
   library(devtools)
   #devtools::install_github("harrysouthworth/gbm")

@@ -29,6 +29,8 @@ require(ggplot2)
 require(keras)
 require(tensorflow)
 require(recipes)
+#install.packages('devtools')
+#devtools::install_github('cnoza/hirem')
 require(hirem)
 ```
 
@@ -81,7 +83,7 @@ The hierarchical GLM consists of the three layer structure: settlement, payment 
 We define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`).
 
 ```{r}
-# Model specificiations hierarchical GLM
+# Model specifications hierarchical GLM
 model_glm  <- hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_glm(name = 'settlement', 'family' = binomial(link = cloglog)) %>%
@@ -103,7 +105,7 @@ We fit the hierarchical GLM on the observed portfolio of simulated claims.
 
 ```{r}
 # Fitting the hierarchical GLM
-model_glm <- fit(model_glm,
+model_glm <- hirem::fit(model_glm,
                  weights = weight,
                  weight.var = 'dev.year',
                  balance.var = 'dev.year',
@@ -146,7 +148,7 @@ We now fit the hierarchical GBM on the observed portfolio of simulated claims.
 covariates_gbm <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'rep.delay', 'calendar.year')
 
 # Fitting the hierarchical GBM
-model_gbm <- fit(model_gbm,
+model_gbm <- hirem::fit(model_gbm,
                  weights = weight,
                  weight.var = 'dev.year',
                  balance.var = 'dev.year',
@@ -196,7 +198,7 @@ We now fit the hierarchical XGB on the observed portfolio of simulated claims.
 covariates_xgb <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'rep.delay', 'calendar.year')
 
 # Fitting the hierarchical XGB
-model_xgb <- fit(model_xgb,
+model_xgb <- hirem::fit(model_xgb,
                  settlement = paste0('settlement ~ 1 + ', paste0(covariates_xgb, collapse = ' + ')),
                  payment = paste0('payment ~ 1 + ', paste0(c(covariates_xgb, 'settlement'), collapse = ' + ')),
                  size = paste0('size ~ 1 + ', paste0(c(covariates_xgb,'settlement'), collapse = ' + ')))
@@ -238,7 +240,7 @@ model_mlp <-  hirem(reserving_data) %>%
                   batch_size = 1000,
                   monitor = 'accuracy',
                   patience = 20) %>%
-   layer_mlp_keras('payment', distribution = 'bernoulli',
+  layer_mlp_keras('payment', distribution = 'bernoulli',
                   step_log = F,
                   step_normalize = F,
                   loss = 'binary_crossentropy',
@@ -345,7 +347,7 @@ We now fit the hierarchical CANN on the observed portfolio of simulated claims. 
 covariates_cann2 <- c('type', 'rep.year.fact', 'rep.month', 'rep.delay', 'calendar.year')
 
 # Fitting the hierarchical CANN
-model_cann <- fit(model_cann,
+model_cann <- hirem::fit(model_cann,
                  settlement = paste0('settlement ~ ', paste0(covariates_cann2, collapse = ' + ')),
                  payment = paste0('payment ~ ', paste0(c(covariates_cann2, 'settlement'), collapse = ' + ')),
                  size = paste0('size ~ ', paste0(c(covariates_cann2,'settlement'), collapse = ' + ')))

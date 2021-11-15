@@ -6,3 +6,4 @@ inst/doc
 hirem.Rcheck/
 hirem*.tar.gz
 hirem*.tgz
+Examples/simulation/

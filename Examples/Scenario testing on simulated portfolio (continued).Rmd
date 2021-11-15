@@ -1,0 +1,765 @@
+---
+title: "Testing the hierarchical reserving models on a simulated portfolio (continued)"
+author: "Christophe Nozaradan"
+date: "November 2021"
+output: html_document
+bibliography: references.bib  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+options(dplyr.summarise.inform = FALSE)
+```
+
+## Introduction
+In this document, we test hierarchical reserving models on portfolios that are simulated using Gabrielli and Wuthrich simulation machine.
+
+```{r}
+#install.packages("parallel")
+library(parallel)
+#install.packages("foreach")
+library(foreach)
+#install.packages("doParallel")
+library(doParallel)
+#install.packages("data.table")
+library(data.table)
+#install.packages("plyr")
+library(plyr)
+library(MASS)
+#install.packages("ChainLadder")
+#library(ChainLadder)
+library(tidyverse)
+#install.packages('devtools')
+#devtools::install_github('cnoza/hirem')
+library(hirem)
+
+source(file='./simulation/Functions.V1.R', local = knitr::knit_global())
+```
+
+## Generate the features
+
+```{r}
+V <- 125000                           # totally expected number of claims (over 12 accounting years)
+LoB.dist <- c(0.25,0.30,0.20,0.25)    # categorical distribution for the allocation of the claims to the 4 lines of business
+inflation <- c(0,0,0,0)   # growth parameters (per LoB) for the numbers of claims in the 12 accident years
+seed1 <- 1                          # setting seed for simulation
+wd <- getwd()
+setwd('./simulation/')
+features <- Feature.Generation(V = V, LoB.dist = LoB.dist, inflation = inflation, seed1 = seed1)
+setwd(wd)
+str(features)
+```
+
+## Simulate (and store) cash flow patterns 
+
+Note that we have modified the `Simulation.Machine` to remove the possibility of reopenings.
+
+```{r}
+npb <- nrow(features)                # blocks for parallel computing
+seed1 <- 1                         # setting seed for simulation
+std1 <- 0.85                         # standard deviation parameter for total claim size simulation
+std2 <- 0.85                         # standard deviation parameter for recovery simulation
+setwd('./simulation/')
+output.wide <- Simulation.Machine(features = features, npb = npb, seed1 = seed1, std1 = std1, std2 = std2)
+setwd(wd)
+```
+
+We match the structure used in the 'reserving_data' dataset from hirem package, namely:
+* One record for each payment (long format)
+* 'Development year' column (calculated from the reporting year, not the accident year)
+* 'open' column (=1 if claim is open at the end of the calendar year; =0 otherwise)
+* 'close' column (=1-open)
+* 'payment' column
+* 'rec' column (recoveries)
+* 'size' column (always positive)
+
+```{r}
+output.long <- output.wide %>% 
+  pivot_longer(cols = starts_with("Pay"),
+               names_to = "development_year",
+               names_prefix = "Pay",
+               values_to = "size"
+  ) %>%
+  mutate(development_year = as.numeric(development_year)+1,
+         rec = ifelse(size<0,1,0),
+         size = abs(size)) %>%
+  pivot_longer(cols = starts_with("Open"),
+               names_to = "development_year_bis",
+               names_prefix = "Open",
+               values_to = "open"
+  ) %>%
+  mutate(development_year_bis = as.numeric(development_year_bis)+1) %>%
+  filter(development_year == development_year_bis) %>%
+  dplyr::select(-development_year_bis) %>%
+  mutate(reporting_year = AY + RepDel,
+         calendar_year = reporting_year + development_year - 1,
+         payment = ifelse(size>0,1,0),
+         close = 1-open) %>%
+  mutate(calendar_year = calendar_year - min(calendar_year) + 1, # 1994 = 1, 1995 = 2, etc.
+         reporting_year = reporting_year - min(reporting_year) + 1,
+         AY = AY - min(AY) + 1,
+         open.soy = ifelse(open == 1,1,ifelse(open == 0 & size != 0,1,0)),
+         close.soy = 1-open.soy) %>%
+  filter(!(size == 0 & open == 0 & development_year > 1))
+  
+reserving_data <- output.long
+#str(reserving_data)
+```
+
+## Some (quick) tests
+
+We check that the total paid is the same for both datasets.
+```{r}
+totPay.wide <- output.wide %>% select(., starts_with("Pay")) %>%
+  mutate(tot = rowSums(across(where(is.numeric)))) %>%
+  summarise(totPay = sum(tot))
+totPay.long <- output.long %>% summarise(totPay = sum((-1)^rec * size))
+totPay.long == totPay.wide
+```
+
+Here we check that the total amount is not negative for claims with recoveries:
+
+```{r}
+recoveries  <- reserving_data[reserving_data$rec == 1,]
+recoveries1 <- reserving_data[reserving_data$ClNr %in% recoveries$ClNr,]
+recov <- recoveries1 %>%
+  group_by(ClNr) %>% summarise(sumP = sum((-1)^rec * size)) %>%
+  filter(sumP < 0)
+recov
+```
+We discard recoveries for the moment
+```{r}
+reserving_data <- reserving_data %>% filter(rec == 0)
+```
+
+Dimension of the portfolio:
+```{r}
+dim(reserving_data)
+```
+
+```{r}
+reserving_data <- reserving_data %>% 
+  select(-ClNr,-open,-open.soy,-close.soy) %>%
+  mutate(development_year_factor = factor(development_year),
+         AQ_factor = factor(AQ),
+         age_factor = factor(age))
+```
+
+## Descriptive statisics
+
+```{r}
+KULbg <- "#116e8a"
+#+ include=FALSE
+plot.avg.freq <- function(df,x,xlab,show = FALSE) {
+  g1 <- df %>% group_by_(as.name(x)) %>% summarize(n = n()) %>% 
+    mutate(rel.freq = n / sum(n))
+  g2 <- g1 %>% 
+    ggplot(data=., aes(x=g1[[x]], y=rel.freq)) + theme_bw() +
+    geom_bar(position = 'dodge', stat='identity',fill=KULbg)
+  if(show)
+    g2 <- g2 + geom_text(aes(label=round(rel.freq, digits = 3)), position=position_dodge(width=0.9), vjust=-0.25)
+  g2 <- g2 + labs(x=xlab,y="Relative frequency")
+  (g2)
+}
+```
+
+### Policy covariates
+
+```{r fig.width=10}
+f1 <- plot.avg.freq(reserving_data,"age","Age")
+f2 <- plot.avg.freq(reserving_data,"inj_part","Injured part")
+f3 <- plot.avg.freq(reserving_data,"cc","Labor sectors")
+
+f1
+f2
+f3
+```
+
+```{r fig.width=10}
+plot.avg.size <- function(df,x,xlab,show = FALSE) {
+  g1 <- df %>%
+    group_by_(as.name(x)) %>%           
+    summarize(avg.size = sum(size)/n(), n=n(),tot.size=sum(size))
+  g2 <- g1 %>% 
+    ggplot(data=., aes(x=g1[[x]], y=avg.size)) + theme_bw() +
+    geom_bar(position = 'dodge', stat='identity',fill=KULbg)
+  if(show)
+    g2 <- g2 + geom_text(aes(label=round(avg.size, digits = 1)), position=position_dodge(width=0.9), vjust=-0.25)
+  g2 <- g2 + labs(x=xlab,y="Average payement size")
+  (g2)
+}
+j1 <- plot.avg.size(reserving_data,"age","Age", show = F)
+j2 <- plot.avg.size(reserving_data,"inj_part","Injured part", show = F)
+j3 <- plot.avg.size(reserving_data,"cc","Labor sector", show = F)
+j1
+j2
+j3
+```
+
+```{r fig.width=10}
+plot.avg.close <- function(df,x,xlab,show = FALSE) {
+  g1 <- df %>%
+    group_by_(as.name(x)) %>%           
+    summarize(avg.close = sum(close)/n(), n=n())
+  g2 <- g1 %>% 
+    ggplot(data=., aes(x=g1[[x]], y=avg.close)) + theme_bw() +
+    geom_bar(position = 'dodge', stat='identity',fill=KULbg)
+  if(show)
+    g2 <- g2 + geom_text(aes(label=round(avg.close, digits = 2)), position=position_dodge(width=0.9), vjust=-0.25)
+  g2 <- g2 + labs(x=xlab,y="Average closed claims")
+  (g2)
+}
+j1 <- plot.avg.close(reserving_data,"age","Age", show = F)
+j2 <- plot.avg.close(reserving_data,"inj_part","Injured part", show = F)
+j3 <- plot.avg.close(reserving_data,"cc","Labor sector", show = F)
+j1
+j2
+j3
+```
+
+
+### Claim covariates
+
+```{r fig.width=10}
+f1 <- plot.avg.freq(reserving_data,"LoB","Line of business", show = T)
+f2 <- plot.avg.freq(reserving_data,"RepDel","Reporting delay", show = T)
+f3 <- plot.avg.freq(reserving_data,"reporting_year","Reporting year", show = T)
+f4 <- plot.avg.freq(reserving_data,"AY","Accident year", show = T)
+f5 <- plot.avg.freq(reserving_data,"AQ","Accident quarter", show = T)
+
+f1
+f2
+f3
+f4
+f5
+```
+
+```{r}
+h1 <- ggplot(data = reserving_data %>% filter(size > 0 ), aes(size)) + 
+      geom_density(adjust = 3, col = KULbg, fill = KULbg) + 
+      xlim(0, 1e4) + ylab("Relative frequency") + xlab("Payment size") + theme_bw()
+h1
+```
+
+```{r fig.width=10}
+j1 <- plot.avg.size(reserving_data,"LoB","Line of business", show = T)
+j2 <- plot.avg.size(reserving_data,"RepDel","Reporting delay", show = T)
+j3 <- plot.avg.size(reserving_data,"reporting_year","Reporting year", show = T)
+j4 <- plot.avg.size(reserving_data,"AY","Accident year", show = T)
+j5 <- plot.avg.size(reserving_data,"AQ","Accident quarter", show = T)
+j6 <- plot.avg.size(reserving_data,"development_year","Development_year", show = T)
+j1
+j2
+j3
+j4
+j5
+j6
+```
+```{r fig.width=10}
+j1 <- plot.avg.close(reserving_data,"LoB","Line of business", show = T)
+j2 <- plot.avg.close(reserving_data,"RepDel","Reporting delay", show = T)
+j3 <- plot.avg.close(reserving_data,"reporting_year","Reporting year", show = T)
+j4 <- plot.avg.close(reserving_data,"AY","Accident year", show = T)
+j5 <- plot.avg.close(reserving_data,"AQ","Accident quarter", show = T)
+j6 <- plot.avg.close(reserving_data,"development_year","Development year", show = T)
+j1
+j2
+j3
+j4
+j5
+j6
+```
+
+
+## Artificial censoring 
+We artificially censor the data on calendar year 2005.
+
+```{r}
+last_calendar_year_observed <- 12
+min_reporting_year <- min(reserving_data$reporting_year)
+#max_development_year <- last_calendar_year_observed - min_reporting_year + 1
+max_development_year <- max((reserving_data %>% dplyr::filter(calendar_year == last_calendar_year_observed))$development_year)
+
+observed_data <- reserving_data %>% filter(calendar_year <= last_calendar_year_observed)
+prediction_data <- reserving_data %>% filter(calendar_year > last_calendar_year_observed)
+```
+
+## Quantities to predict
+Total number of open claims in the test set:
+```{r}
+obs_open_total <- prediction_data %>% filter(calendar_year > last_calendar_year_observed) %>% dplyr::summarise(Total = sum(close==0)) %>% pull(Total)
+obs_open_total
+```
+
+Total number of payments in the prediction data set:
+```{r}
+obs_pay_total <- prediction_data %>% filter(calendar_year != last_calendar_year_observed+1) %>% summarise(Total = sum(payment)) %>% pull(Total)
+obs_pay_total
+```
+
+Total number of payment sizes in the prediction set:
+```{r}
+obs_size_total <- prediction_data %>% filter(calendar_year != last_calendar_year_observed+1) %>% summarise(Total = sum(size)) %>% pull(Total)
+obs_size_total
+```
+
+## Calibration
+```{r}
+# Calculating the weights
+reported_claims <- observed_data %>%
+  dplyr::filter(development_year_factor == 1) %>%
+  group_by(reporting_year) %>% 
+  dplyr::summarise(count = n()) %>%
+  pull(count)
+
+denominator <- tail(rev(cumsum(reported_claims)), -1)
+numerator <- head(cumsum(rev(reported_claims)), -1)
+weight <- c(10^(-6), numerator / denominator)
+
+names(weight) <- paste0('dev.year',1:last_calendar_year_observed)
+weight
+```
+
+## Hiearchical GLM
+We define the model specification:
+```{r}
+model_glm <- hirem(reserving_data) %>%
+  split_data(observed = function(df) df %>% filter(calendar_year <= last_calendar_year_observed)) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_glm('size', Gamma(link = log),
+            filter = function(data){data$payment == 1})
+```
+
+We calibrate the model:
+```{r}
+# Covariates
+covariates_glm <- c('development_year','calendar_year','reporting_year','cc','LoB','age','inj_part','AQ_factor','RepDel')
+
+# Fitting the hierarchical GLM
+model_glm <- hirem::fit(model_glm,
+                        weights = weight,
+                        weight.var = 'development_year',
+                        balance.var = 'development_year',
+                        close = paste0('close ~ ', paste0(covariates_glm, collapse = ' + ')),
+                        payment = paste0('payment ~ close + ', paste0(covariates_glm, collapse = ' + ')),
+                        size = paste0('size ~ close + ', paste0(covariates_glm, collapse = ' + ')))
+```
+
+## Hiearchical XGB
+
+```{r}
+require(xgboost)
+require(Matrix)
+
+model_xgb <- hirem(reserving_data) %>%
+  split_data(observed = function(df) df %>% filter(calendar_year <= last_calendar_year_observed)) %>%
+  layer_xgb('close', objective = 'binary:logistic',
+            eval_metric = 'logloss',
+            eta = 0.05,
+            early_stopping_rounds = 10,
+            nrounds = 500,
+            max_depth = 5,
+            verbose = F) %>%
+  layer_xgb('payment', objective = 'binary:logistic',
+            eval_metric = 'logloss',
+            eta = 0.05,
+            early_stopping_rounds = 10,
+            nrounds = 500,
+            max_depth = 5,
+            verbose = F) %>%
+  layer_xgb('size', objective = 'reg:gamma',
+            eval_metric = 'gamma-deviance',
+            eta = 0.05,
+            nrounds = 500,
+            early_stopping_rounds = 10,
+            max_depth = 5,
+            verbose = F,
+            filter = function(data){data$payment == 1})
+
+```
+
+```{r}
+# Covariates
+covariates_xgb <- c('calendar_year','reporting_year','cc','LoB','age','inj_part','AQ_factor','RepDel')
+
+# Fitting the hierarchical MLP
+model_xgb <- hirem::fit(model_xgb,
+                        close = paste0('close ~ ', paste0(covariates_xgb, collapse = ' + ')),
+                        payment = paste0('payment ~ close + ', paste0(covariates_xgb, collapse = ' + ')),
+                        size = paste0('size ~ close + ', paste0(covariates_xgb, collapse = ' + ')))
+```
+
+
+## Hiearchical MLP
+
+We first start by loading the required packages:
+```{r}
+require(tidyverse)
+require(xgboost)
+require(Matrix)
+require(tidyverse)
+require(data.table)
+require(ggplot2)
+require(keras)
+require(tensorflow)
+require(recipes)
+```
+
+We will use the gamma deviance as custom loss function and metric in `keras`:
+
+```{r, message=FALSE}
+gamma_deviance_keras <- function(yobs, yhat) {
+  K <- backend()
+  2*K$sum((yobs-yhat)/yhat - K$log(yobs/yhat))
+}
+
+metric_gamma_deviance_keras <- keras::custom_metric("gamma_deviance_keras", function(yobs, yhat) {
+  gamma_deviance_keras(yobs, yhat)
+})
+```
+
+We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`). 
+
+```{r message=FALSE, warning=FALSE}
+# Model specifications
+model_mlp <-  hirem(reserving_data) %>%
+  split_data(observed = function(df) df %>% filter(calendar_year <= last_calendar_year_observed)) %>%
+  layer_mlp_keras('close', distribution = 'bernoulli',
+                  step_log = F,
+                  step_normalize = F,
+                  loss = 'binary_crossentropy',
+                  metrics = 'accuracy',
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = 0,
+                  hidden = c(20,15,10),
+                  activation.output = 'sigmoid',
+                  batch_normalization = F,
+                  family_for_init = binomial(), # default link = logit
+                  epochs = 100,
+                  batch_size = 1000,
+                  monitor = 'accuracy',
+                  patience = 20) %>%
+  layer_mlp_keras('payment', distribution = 'bernoulli',
+                  step_log = F,
+                  step_normalize = F,
+                  loss = 'binary_crossentropy',
+                  metrics = 'accuracy',
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = 0,
+                  hidden = c(20,15,10),
+                  activation.output = 'sigmoid',
+                  batch_normalization = F,
+                  family_for_init = binomial(), # default link = logit
+                  epochs = 100,
+                  batch_size = 1000,
+                  monitor = 'accuracy',
+                  patience = 20) %>%
+  layer_mlp_keras('size', distribution = 'gamma',
+                  step_log = F,
+                  step_normalize = F,
+                  loss = gamma_deviance_keras,
+                  metrics = metric_gamma_deviance_keras,
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = 0,
+                  hidden = c(20,15,10),
+                  activation.output = 'exponential',
+                  batch_normalization = F,
+                  family_for_init = Gamma(link=log), # default link = inverse
+                  epochs = 100,
+                  batch_size = 1000,
+                  monitor = 'gamma_deviance_keras',
+                  patience = 20,
+                  filter = function(data){data$payment == 1})
+```
+
+We now fit the hierarchical MLP on the observed portfolio of simulated claims.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Covariates
+covariates_mlp <- c('calendar_year','reporting_year','cc','LoB','age','inj_part','AQ_factor','RepDel')
+
+# Fitting the hierarchical MLP
+model_mlp <- hirem::fit(model_mlp,
+                        close = paste0('close ~ ', paste0(covariates_mlp, collapse = ' + ')),
+                        payment = paste0('payment ~ close + ', paste0(covariates_mlp, collapse = ' + ')),
+                        size = paste0('size ~ close + ', paste0(covariates_mlp, collapse = ' + ')))
+```
+
+## Hiearchical CANN
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Model specifications
+model_cann <-  hirem(reserving_data) %>%
+  split_data(observed = function(df) df %>% filter(calendar_year <= last_calendar_year_observed)) %>%
+  layer_cann('close', distribution = 'bernoulli',
+               family_for_glm = binomial(link=logit),
+               loss = 'binary_crossentropy',
+               metrics = 'binary_crossentropy',
+               optimizer = optimizer_nadam(learning_rate = .01),
+               validation_split = 0,
+               hidden = c(20,15,10),
+               activation.output = 'sigmoid',
+               activation.output.cann = 'sigmoid',
+               fixed.cann = TRUE,
+               monitor = 'binary_crossentropy',
+               patience = 20,
+               epochs = 100,
+               batch_size = 1000) %>%
+  layer_cann('payment', distribution = 'bernoulli',
+               family_for_glm = binomial(link=logit),
+               loss = 'binary_crossentropy',
+               metrics = 'binary_crossentropy',
+               optimizer = optimizer_nadam(learning_rate = .01),
+               validation_split = 0,
+               hidden = c(20,15,10),
+               activation.output = 'sigmoid',
+               activation.output.cann = 'sigmoid',
+               fixed.cann = TRUE,
+               monitor = 'binary_crossentropy',
+               patience = 20,
+               epochs = 100,
+               batch_size = 1000) %>%
+  layer_cann('size', distribution = 'gamma',
+               family_for_glm = Gamma(link=log),
+               loss = gamma_deviance_keras,
+               metrics = metric_gamma_deviance_keras,
+               optimizer = optimizer_nadam(learning_rate = .01),
+               validation_split = 0,
+               hidden = c(20,15,10),
+               activation.output = 'exponential',
+               activation.output.cann = 'exponential',
+               fixed.cann = TRUE,
+               monitor = 'gamma_deviance_keras',
+               patience = 20,
+               epochs = 100,
+               batch_size = 1000,
+               filter = function(data){data$payment == 1})
+
+
+# Covariates
+covariates_cann <- c('calendar_year','reporting_year','cc','LoB','age','inj_part','AQ_factor','RepDel')
+
+# Fitting the hierarchical MLP
+model_cann <- hirem::fit(model_cann,
+                        close = paste0('close ~ ', paste0(covariates_cann, collapse = ' + ')),
+                        payment = paste0('payment ~ close + ', paste0(covariates_cann, collapse = ' + ')),
+                        size = paste0('size ~ close + ', paste0(covariates_cann, collapse = ' + ')))
+
+
+```
+
+## Predicting the future development of claims in the hierarchical reserving models
+In the next step, we predict the future development of claims. We do this by simulating 100 different paths for each open claim in the year of the evaluation date and by averaging the results afterwards. In this prediction strategy, the hierarchical structure of the reserving model is preserved and the development of claims are simulated in chronological order.
+
+We define an update function applied to the data for the simulation of each subsequent development year. 
+```{r}
+levels <- unique(reserving_data$development_year)
+
+update <- function(data) {
+  data %>%
+    dplyr::mutate(development_year = development_year + 1,
+                  development_year_factor = factor(development_year, levels=levels),
+                  calendar_year = calendar_year + 1)
+}
+
+model_glm <- register_updater(model_glm, update)
+model_xgb <- register_updater(model_xgb, update)
+model_mlp <- register_updater(model_mlp, update)
+model_cann <- register_updater(model_cann, update)
+```
+
+```{r}
+nsim <- 50 
+
+simul_glm <- simulate(model_glm,
+                      nsim = nsim,
+                      filter = function(data){dplyr::filter(data, development_year <= max_development_year, 
+                                                            close == 0)},
+                      data = model_glm$data_observed %>% 
+                        dplyr::filter(calendar_year == last_calendar_year_observed),
+                      balance.correction = TRUE)
+
+simul_xgb <- simulate(model_xgb,
+                      nsim = nsim,
+                      filter = function(data){dplyr::filter(data, development_year <= max_development_year, 
+                                                            close == 0)},
+                      data = model_xgb$data_observed %>% 
+                        dplyr::filter(calendar_year == last_calendar_year_observed))
+
+simul_mlp <- simulate(model_mlp,
+                      nsim = nsim,
+                      filter = function(data){dplyr::filter(data, development_year <= max_development_year, 
+                                                            close == 0)},
+                      data = model_mlp$data_observed %>% 
+                        dplyr::filter(calendar_year == last_calendar_year_observed))
+
+simul_cann <- simulate(model_cann,
+                      nsim = nsim,
+                      filter = function(data){dplyr::filter(data, development_year <= max_development_year, 
+                                                            close == 0)},
+                      data = model_cann$data_observed %>% 
+                        dplyr::filter(calendar_year == last_calendar_year_observed))
+```
+
+## Evaluating the predictive performance of hierarchical GLM, MLP and CANN
+
+First, we compare the prediction for the total number of open claims in the test set.
+
+```{r}
+# Predictions
+obs_open_total <- prediction_data %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(close==0)) %>% pull(Total)
+
+glm_open_total <- simul_glm %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(close==0)/nsim) %>% pull(Total)
+
+xgb_open_total <- simul_xgb %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(close==0)/nsim) %>% pull(Total)
+
+mlp_open_total <- simul_mlp %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(close==0)/nsim) %>% pull(Total)
+
+cann_open_total <- simul_cann %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(close==0)/nsim) %>% pull(Total)
+
+# Print Results
+c('Actual' =  obs_open_total, 'Hierarchical GLM' = glm_open_total, 'Hierarchical XGB' = xgb_open_total, 'Hiearchical MLP' = mlp_open_total, 'Hiearchical CANN' = cann_open_total)
+
+```
+
+For each calendar year, we obtain:
+
+```{r}
+obs_open_total_by_calendar_year <- prediction_data %>% 
+  filter(calendar_year > last_calendar_year_observed & calendar_year <= 23) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(close==0)) %>% 
+  pull(Total)
+
+glm_open_total_by_calendar_year <- simul_glm %>% 
+  filter(calendar_year > last_calendar_year_observed) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(close==0)/nsim) %>% 
+  pull(Total)
+
+xgb_open_total_by_calendar_year <- simul_xgb %>% 
+  filter(calendar_year > last_calendar_year_observed) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(close==0)/nsim) %>% 
+  pull(Total)
+
+mlp_open_total_by_calendar_year <- simul_mlp %>% 
+  filter(calendar_year > last_calendar_year_observed) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(close==0)/nsim) %>% 
+  pull(Total)
+
+cann_open_total_by_calendar_year <- simul_cann %>% 
+  filter(calendar_year > last_calendar_year_observed) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(close==0)/nsim) %>% 
+  pull(Total)
+
+total_open_claims <- tibble('Year'= 13:23, 
+                            'Actual' = obs_open_total_by_calendar_year, 
+                            'Hierarchical GLM' = glm_open_total_by_calendar_year, 
+                            'Hierarchical XGB' = xgb_open_total_by_calendar_year, 
+                            'Hiearchical MLP' = mlp_open_total_by_calendar_year, 
+                            'Hiearchical CANN' = cann_open_total_by_calendar_year)
+
+total_open_claims
+```
+
+
+Second, we compare the prediction for the total number of payments in the prediction data set.
+
+```{r}
+# Predictions
+obs_pay_total <- prediction_data %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(payment)) %>% pull(Total)
+
+glm_pay_total <- simul_glm %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(payment)/nsim) %>% pull(Total)
+
+xgb_pay_total <- simul_xgb %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(payment)/nsim) %>% pull(Total)
+
+mlp_pay_total <- simul_mlp %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(payment)/nsim) %>% pull(Total)
+
+cann_pay_total <- simul_cann %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(payment)/nsim) %>% pull(Total)
+
+# Print Results
+c('Actual' = obs_pay_total, 'Hierarchical GLM' = glm_pay_total, 'Hierarchical XGB' = xgb_pay_total, 'Hiearchical MLP' = mlp_pay_total, 'Hiearchical CANN' = cann_pay_total)
+```
+
+Third, we compare the prediction for the total number of payment sizes in the prediction set.
+
+```{r}
+# Predictions
+obs_size_total <- prediction_data %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(size)) %>% pull(Total)
+
+glm_size_total <- simul_glm %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(size)/nsim) %>% pull(Total)
+
+xgb_size_total <- simul_xgb %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(size)/nsim) %>% pull(Total)
+
+mlp_size_total <- simul_mlp %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(size)/nsim) %>% pull(Total)
+
+cann_size_total <- simul_cann %>% filter(calendar_year > last_calendar_year_observed) %>% summarise(Total = sum(size)/nsim) %>% pull(Total)
+
+# Print Results
+c('Actual' = obs_size_total, 'Hierarchical GLM' = glm_size_total, 'Hierarchical XGB' = xgb_size_total, 'Hiearchical MLP' = mlp_size_total, 'Hiearchical CANN' = cann_size_total)
+```
+
+For each calendar year, we obtain:
+
+```{r}
+obs_size_total_by_calendar_year <- prediction_data %>% 
+  filter(calendar_year > last_calendar_year_observed & calendar_year <= 23) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(size)) %>% 
+  pull(Total)
+
+glm_size_total_by_calendar_year <- simul_glm %>% 
+  filter(calendar_year > last_calendar_year_observed) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(size)/nsim) %>% 
+  pull(Total)
+
+xgb_size_total_by_calendar_year <- simul_xgb %>% 
+  filter(calendar_year > last_calendar_year_observed) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(size)/nsim) %>% 
+  pull(Total)
+
+mlp_size_total_by_calendar_year <- simul_mlp %>% 
+  filter(calendar_year > last_calendar_year_observed) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(size)/nsim) %>% 
+  pull(Total)
+
+cann_size_total_by_calendar_year <- simul_cann %>% 
+  filter(calendar_year > last_calendar_year_observed) %>%
+  group_by(calendar_year) %>%
+  summarise(Total = sum(size)/nsim) %>% 
+  pull(Total)
+
+total_size_claims <- tibble('Year'= 13:23, 
+                            'Actual' = obs_size_total_by_calendar_year, 
+                            'Hierarchical GLM' = glm_size_total_by_calendar_year, 
+                            'Hierarchical XGB' = xgb_size_total_by_calendar_year, 
+                            'Hiearchical MLP' = mlp_size_total_by_calendar_year, 
+                            'Hiearchical CANN' = cann_size_total_by_calendar_year)
+
+total_size_claims
+```
+
+## Chainladder
+
+```{r}
+triangle <- observed_data %>%
+  dplyr::group_by(reporting_year, development_year) %>%
+  summarise(total_paid = sum((-1)^rec * size)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = development_year,
+              values_from = total_paid)
+
+triangle_numeric <- data.matrix(data.frame(triangle)[, 2:(max_development_year+1)])
+# to cumulative payments
+triangle_numeric_cumulatif <- t(apply(triangle_numeric, 1, cumsum))
+library(ChainLadder)
+cl <- MackChainLadder(triangle_numeric_cumulatif)
+cl
+```
+

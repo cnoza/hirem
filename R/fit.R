@@ -416,7 +416,6 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                                        name = 'output_layer')
   }
 
-  model <- keras_model_sequential()
   model <- keras_model(inputs = inputs, outputs = c(output))
   print(summary(model))
 

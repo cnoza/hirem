@@ -240,7 +240,7 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, sae = FALSE,
+layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.hidden = NULL, ae.activation.hidden = NULL,
                             hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE,
                             activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
@@ -265,7 +265,22 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
   options$monitor <- monitor
   options$patience <- patience
   options$batch_normalization <- batch_normalization
-  options$sae <- sae
+  options$ae.hidden <- ae.hidden
+  options$ae.activation.hidden <- ae.activation.hidden
+
+  if(is.null(options$ae.hidden)) {
+    if(!is.null(options$ae.activation.hidden)) stop('If ae.hidden is NULL, so should be ae.activation.hidden.')
+  }
+  else {
+    if(is.null(options$ae.activation.hidden)) {
+      print('ae.activation.hidden is NULL, initialized with \'linear\' by default.')
+      options$ae.activation.hidden <- rep('linear',length(options$ae.hidden))
+    }
+    else {
+      if(length(options$ae.hidden) != length(options$ae.activation.hidden))
+        stop('The length of ae.hidden and ae.activation.hidden should match.')
+    }
+  }
 
   if(is.null(options$hidden)) {
     if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')

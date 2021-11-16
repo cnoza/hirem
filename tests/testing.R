@@ -1,3 +1,13 @@
+### Test file ###
+###
+### This test file has been created to be able to easily test different cases
+### implemented in the package
+###
+### Instructions:
+###   1. Run the instruction on line 12 to import the needed functions.
+###   2. Go to the case you want to test and run the associated code
+###      The init() function reinitialize the dataset
+
 ### Imports ###
 source(file='./tests/import/functions.R')
 
@@ -431,7 +441,8 @@ model4f <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gamma',
-                  sae = T,
+                  ae.hidden = c(40,30,20),
+                  ae.activation.hidden = rep('tanh',3),
                   step_log = F,
                   step_normalize = F,
                   loss = gamma_deviance_keras,
@@ -442,7 +453,7 @@ model4f <- hirem(reserving_data) %>%
                   activation.output = 'exponential',
                   batch_normalization = F,
                   family_for_init = Gamma(link=log),
-                  epochs = 2,
+                  epochs = 5,
                   batch_size = 1000,
                   monitor = 'gamma_deviance_keras',
                   patience = 20,

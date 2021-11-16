@@ -357,23 +357,40 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   layer$x <- x
   layer$y <- y
 
-  inputs <- layer_input(shape = c(ncol(x)))
+  inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
 
-  if(layer$method_options$sae) {
+  if(!is.null(layer$method_options$ae.hidden)) {
 
-    encoded_l1 <- layer_dense(inputs, units = ncol(x))
-    encoded_l2 <- layer_dense(encoded_l1, units = 40)
-    encoded_l3 <- layer_dense(encoded_l2, units = 30)
-    encoded_l4 <- layer_dense(encoded_l3, units = 20)
-    decoded_l1 <- layer_dense(encoded_l2, units = 20)
-    decoded_l2 <- layer_dense(decoded_l1, units = 30)
-    decoded_l3 <- layer_dense(decoded_l2, units = 40)
-    decoded <- layer_dense(decoded_l3, ncol(x))
+    nn <- length(layer$method_options$ae.hidden)
 
-    autoencoder <- keras_model(inputs, decoded)
-    model_en <- keras_model(inputs, encoded_l4)
+    ae_hidden_l      <- list()
+    ae_hidden_l[[1]] <- layer_dense(inputs,
+                                  units = layer$method_options$ae.hidden[1],
+                                  activation = layer$method_options$ae.activation.hidden[1],
+                                  name='ae_encoding_layer_1')
+    if(nn>1) {
+      for(i in 2:nn) {
+        ae_hidden_l[[i]] <- layer_dense(ae_hidden_l[[i-1]],
+                                        units = layer$method_options$ae.hidden[i],
+                                        activation = layer$method_options$ae.activation.hidden[i],
+                                        name = ifelse(i==nn,'ae_bottleneck_layer',paste0('ae_encoding_layer_',i)))
+      }
+      for(i in 1:(nn-1)) {
+        ae_hidden_l[[nn+i]] <- layer_dense(ae_hidden_l[[nn+i-1]],
+                                          units = layer$method_options$ae.hidden[nn-i],
+                                          activation = layer$method_options$ae.activation.hidden[nn-i],
+                                          name = paste0('ae_decoding_layer_',i))
+      }
+    }
 
+    ae_output_l <- layer_dense(ae_hidden_l[[(2*nn-1)]], ncol(x), name='ae_output_layer')
+
+    autoencoder <- keras_model(inputs, ae_output_l)
+    model_en <- keras_model(inputs, ae_hidden_l[[nn]])
+
+    # Autoencoder model
     summary(autoencoder)
+    # Encoder model
     summary(model_en)
 
     autoencoder %>% compile(loss = 'mae', optimizer='adam')
@@ -387,6 +404,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
     x <- model_en %>% predict(x)
     inputs <- layer_input(shape = c(ncol(x)))
+    layer$x.encoded <- x
     layer$model_en <- model_en
 
   }

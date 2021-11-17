@@ -16,6 +16,8 @@ init <- function() {
   library(keras)
   library(tensorflow)
   library(recipes)
+  library(ParBayesianOptimization)
+  library(doParallel)
   set.seed(265)
   set_random_seed(265)
   source(file='./tests/import/functions.R')

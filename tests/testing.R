@@ -4,7 +4,7 @@
 ### implemented in the package
 ###
 ### Instructions:
-###   1. Run the instruction on line 12 to import the needed functions.
+###   1. Run line 12 to import the needed functions.
 ###   2. Go to the case you want to test and run the associated code
 ###      The init() function reinitialize the dataset
 
@@ -151,9 +151,16 @@ model3c <- hirem(reserving_data) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_xgb('size', objective = 'reg:gamma',
             eval_metric = 'gamma-deviance',
-            eta = 0.01,
-            nrounds = 1500,
-            max_depth = 20,
+            eta = 1,
+            nrounds = 12,
+            nthread=1,
+            alpha=.960234,
+            lambda=.06513692,
+            gamma=0,
+            max_depth = 6,
+            min_child_weight = 0,
+            subsample = .6944,
+            colsample_bynode = 1,
             verbose = F,
             filter = function(data){data$payment == 1})
 
@@ -166,6 +173,33 @@ print(model3c$layers$size$shape)
 print(model3c$layers$size$shape.se)
 
 simulate_rbns(model3c)
+
+#=========================================================================#
+#         Case 3d: GLM + XGB (reg:gamma + gamma-deviance + bayesian opt)  #
+#=========================================================================#
+
+init()
+model3d <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_xgb('size', objective = 'reg:gamma',
+            bayesOpt = T,
+            nfolds = 5,
+            eval_metric = 'gamma-deviance',
+            verbose = F,
+            filter = function(data){data$payment == 1})
+
+model3d <- hirem::fit(model3d,
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + factor(development_year)',
+                      size = 'size ~ close + development_year_factor')
+
+print(model3d$layers$size$shape)
+print(model3d$layers$size$shape.se)
+
+simulate_rbns(model3d)
 
 #=========================================================================#
 #   Case 4: GLM + MLP shallow case (homogeneous, gamma, no hidden layer)  #

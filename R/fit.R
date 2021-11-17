@@ -140,12 +140,12 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     data[,label] <- layer$transformation$transform(data[,label])
   }
 
-  data.xgb <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=data)[,-1]),
+  data.xgb <<- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=data)[,-1]),
                           info = list(
                             'label' = as.matrix(data[,label])
                           ))
 
-  if(!is.null(layer$method_options$nfolds)) {
+  if(layer$method_options$gridsearch_cv) {
     if(!is.null(layer$method_options$hyper_grid)) {
       hyper_grid <- layer$method_options$hyper_grid
     }
@@ -203,6 +203,112 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     nrounds <- best_eval_index
     params <- best_param
+
+  }
+  else if(layer$method_options$bayesOpt) {
+
+    Folds <<- list()
+    names <- c()
+    for(i in 1:layer$method_options$nfolds) {
+      Folds[[i]] <- as.integer(seq(i,nrow(data.xgb),by = layer$method_options$nfolds))
+      names[i] <- paste0('Fold',i)
+    }
+    names(Folds) <- names
+
+    scoringFunction <- function(max_depth, min_child_weight, subsample, lambda, alpha, colsample_bynode, eta) {
+
+      Pars <- list(
+        booster = "gbtree"
+        , max_depth = max_depth
+        , min_child_weight = min_child_weight
+        , subsample = subsample
+        , lambda = lambda
+        , alpha = alpha
+        , colsample_bynode = colsample_bynode
+        , eta = eta
+        , objective = layer$method_options$objective
+        , eval_metric = layer$method_options$eval_metric
+      )
+
+      xgbcv <- xgb.cv(
+        params = Pars
+        , data = data.xgb
+        , nround = 900
+        , folds = Folds
+        , early_stopping_rounds = 10
+        , stratified = T
+        , verbose = 0
+      )
+
+      return(list(Score = -1*min(xgbcv$evaluation_log[,4])
+                  , nrounds = xgbcv$best_iteration))
+    }
+
+    bounds <- list(
+      max_depth = c(1L,6L)
+      , min_child_weight = c(0,1000)
+      , subsample = c(0.25,1)
+      , lambda = c(0,1)
+      , alpha = c(0,1)
+      , colsample_bynode = c(0.5, 1)
+      , eta = c(0,1)
+    )
+
+    tNoPar <- system.time(
+      optObj <- bayesOpt(
+        FUN = scoringFunction
+        , bounds = bounds
+        , initPoints = 8
+        , iters.n = 8
+        , iters.k = 1
+      )
+    )
+
+    # library(doParallel)
+    # cl <- makeCluster(2)
+    # registerDoParallel(cl)
+    # clusterExport(cl,c('Folds','data.xgb'),envir=environment())
+    # clusterEvalQ(cl,expr= {
+    #   library(xgboost)
+    # })
+    #
+    # tWithPar <- system.time(
+    #   optObj <- bayesOpt(
+    #     FUN = scoringFunction
+    #     , bounds = bounds
+    #     , initPoints = 8
+    #     , iters.n = 8
+    #     , iters.k = 2
+    #     , parallel = TRUE
+    #   )
+    # )
+    # stopCluster(cl)
+    # registerDoSEQ()
+
+    layer$optObj <- optObj
+    best_index <- as.numeric(which.max(optObj$scoreSummary$Score))
+    nrounds = optObj$scoreSummary$nrounds[best_index]
+
+    params = list(
+      booster = layer$method_options$booster,
+      objective = layer$method_options$objective,
+      eval_metric = layer$method_options$eval_metric,
+      eta = optObj$scoreSummary$eta[best_index],
+      subsample = optObj$scoreSummary$subsample[best_index],
+      colsample_bynode = optObj$scoreSummary$colsample_bynode[best_index],
+      max_depth = optObj$scoreSummary$max_depth[best_index],
+      min_child_weight = optObj$scoreSummary$min_child_weight[best_index],
+      gamma = layer$method_options$gamma,
+      lambda = optObj$scoreSummary$lambda[best_index],
+      alpha = optObj$scoreSummary$alpha[best_index],
+      nthread = layer$method_options$nthread
+    )
+
+    print(as.numeric(which.min(optObj$scoreSummary$Score)))
+    print(getBestPars(optObj))
+    print(optObj$scoreSummary)
+    print(params)
+    print(nrounds)
 
   }
   else {
@@ -399,7 +505,8 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
       x = x,
       y = x,
       epochs = layer$method_options$epochs,
-      batch_size = layer$method_options$batch_size
+      batch_size = layer$method_options$batch_size,
+      verbose = layer$method_options$verbose
     )
 
     x <- model_en %>% predict(x)
@@ -483,7 +590,8 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     keras::fit(x, y, epochs = layer$method_options$epochs,
                batch_size = layer$method_options$batch_size,
                validation_split = layer$method_options$validation_split,
-               callbacks = list(earlystopping))
+               callbacks = list(earlystopping),
+               verbose = layer$method_options$verbose)
 
   if(!layer$method_options$bias_regularization) {
     layer$fit <- model

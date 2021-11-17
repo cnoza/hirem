@@ -23,7 +23,9 @@ layer_xgb(
   lambda = 0.01,
   alpha = 0.01,
   hyper_grid = NULL,
-  nfolds = NULL,
+  gridsearch_cv = FALSE,
+  nfolds = 5,
+  bayesOpt = FALSE,
   filter = NULL,
   transformation = NULL
 )
@@ -65,7 +67,11 @@ layer_xgb(
 
 \item{hyper_grid}{If \code{nfolds} is not null, the set of tuning parameters can be given in \code{hyper_grid}. If NULL, a default set of parameters is used.}
 
-\item{nfolds}{Number of folds to consider in the cross-validation. Default is NULL (no cross-validation).}
+\item{gridsearch_cv}{If TRUE, hyperparameters are tuned following a gridsearch and cross-validation strategy.}
+
+\item{nfolds}{If \code{gridsearch_cv} is TRUE, \code{nfolds} can be used to set the number of folds to consider in the cross-validation. Default is 5.}
+
+\item{bayesOpt}{If TRUE, hyperparameters are tuned following a Bayesian optimization strategy.}
 
 \item{filter}{Function with \itemize{
  \item input: Data set with same structure as the data passed to \code{hirem}

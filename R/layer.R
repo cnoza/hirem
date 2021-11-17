@@ -107,7 +107,9 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @param gamma Minimum loss reduction required to make a further partition on a leaf node of the tree, passed to \code{xgboost}. Default is 0.
 #' @param lambda L2 regularization term on weights, passed to \code{xgboost}. Default is 0.01.
 #' @param alpha L1 regularization term on weights, passed to \code{xgboost}. Default is 0.01.
-#' @param nfolds Number of folds to consider in the cross-validation. Default is NULL (no cross-validation).
+#' @param gridsearch_cv If TRUE, hyperparameters are tuned following a gridsearch and cross-validation strategy.
+#' @param bayesOpt If TRUE, hyperparameters are tuned following a Bayesian optimization strategy.
+#' @param nfolds If \code{gridsearch_cv} is TRUE, \code{nfolds} can be used to set the number of folds to consider in the cross-validation. Default is 5.
 #' @param hyper_grid If \code{nfolds} is not null, the set of tuning parameters can be given in \code{hyper_grid}. If NULL, a default set of parameters is used.
 #' @param filter Function with \itemize{
 #'   \item input: Data set with same structure as the data passed to \code{hirem}
@@ -119,7 +121,7 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @export
 layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verbose = F, booster = 'gbtree', objective,
                       eval_metric = 'rmse', eta = 0.01, nthread = 1, subsample = .8, colsample_bynode = .8, max_depth = 2,
-                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, hyper_grid = NULL, nfolds = NULL, filter = NULL, transformation = NULL) {
+                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, hyper_grid = NULL, gridsearch_cv = FALSE, nfolds = 5, bayesOpt = FALSE, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$nrounds <- nrounds
@@ -139,6 +141,11 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
   options$alpha <- alpha
   options$nfolds <- nfolds
   options$hyper_grid <- hyper_grid
+  options$gridsearch_cv <- gridsearch_cv
+  options$bayesOpt <- bayesOpt
+
+  if(options$gridsearch_cv & options$bayesOpt)
+    stop('Those options, if TRUE, are mutually exclusive.')
 
   hirem_layer(obj, name, 'xgb', 'layer_xgb', options, filter, transformation)
 }
@@ -216,8 +223,15 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @param obj The hierarchical reserving model
 #' @param name Character, name of the layer. This name should match the variable name in the data set
 #' @param distribution The distribution used for the simulation. Default is gaussian.
+#' @param use_bias Argument passed to \code{keras} in the definition of the MLP architecture.
+#' @param ae.hidden The hidden layer architecture of a (stacked) autoencoder to be fitted on the input data.
+#' If used, then the encoding part is used to compress the input data, before fitting the MLP model.
+#' @param ae.activation.hidden The activation functions to be used in the hidden layer architecture of the (stacked) autoencoder.
+#' If NULL, the linear activation function is used in all hidden layers.
 #' @param hidden The hidden layer architecture passed to \code{keras}.
 #' @param dropout.hidden The dropout ratios for each hidden layer passed to \code{keras}. Default is 0.
+#' @param step_log If TRUE, the logarithmic transformation is applied on the response variable through the use of a \code{recipe}.
+#' @param step_normalize If TRUE, the \code{step_normalize} function is used to preprocess the input data through the use of a \code{recipe}.
 #' @param activation.hidden The activation function for each hidden layer passed to \code{keras}. Default is Relu
 #' @param activation.output The activation function for the output layer passed to \code{keras}. Default is Linear
 #' @param batch_normalization If TRUE (default), apply the batch normalization between each hidden layer.
@@ -229,6 +243,7 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @param epochs The epochs argument passed to \code{keras}. Default is 20.
 #' @param batch_size The batch_size argument passed to \code{keras}. Default is 1000.
 #' @param validation_split The validation_split argument passed to \code{keras}. Default is .2
+#' @param verbose The verbose argument passed to the \code{fit} function of \code{keras}. Default is 1.
 #' @param metrics The metrics argument passed to \code{keras}.
 #' @param family_for_init If not NULL, an homogenous GLM is estimated and the resulting coefficient estimate is used to initialize the bias weight in the output layer, which may improve convergence.
 #' See Ferrario, Andrea and Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020). Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852
@@ -241,7 +256,7 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' applied before modelling this layer.
 #' @export
 layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.hidden = NULL, ae.activation.hidden = NULL,
-                            hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE,
+                            hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, verbose = 1,
                             activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             monitor = "loss", patience = 20, family_for_init = NULL, filter = NULL, transformation = NULL) {
@@ -267,6 +282,7 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
   options$batch_normalization <- batch_normalization
   options$ae.hidden <- ae.hidden
   options$ae.activation.hidden <- ae.activation.hidden
+  options$verbose <- verbose
 
   if(is.null(options$ae.hidden)) {
     if(!is.null(options$ae.activation.hidden)) stop('If ae.hidden is NULL, so should be ae.activation.hidden.')
@@ -341,6 +357,8 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
 #' Default is Gamma(link = log).
 #' @param hidden The hidden layer architecture of the Neural Network, passed to \code{keras}. Default is c(30,20,10).
 #' @param dropout.hidden The dropout ratios for each hidden layer of the Neural Network, passed to \code{keras}. Default is 0.
+#' @param step_log If TRUE, the logarithmic transformation is applied on the response variable through the use of a \code{recipe}.
+#' @param step_normalize If TRUE, the \code{step_normalize} function is used to preprocess the input data through the use of a \code{recipe}.
 #' @param activation.hidden The activation function for each hidden layer of the Neural Network, passed to \code{keras}. Default is tanh.
 #' @param activation.output The activation function for the output layer of the Neural Network, passed to \code{keras}. Default is linear.
 #' @param activation.output.cann The activation function for the output layer of the CANN, passed to \code{keras}. Default is linear.

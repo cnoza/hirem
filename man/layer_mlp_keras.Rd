@@ -9,11 +9,13 @@ layer_mlp_keras(
   name,
   distribution = "gaussian",
   use_bias = TRUE,
-  ae = FALSE,
+  ae.hidden = NULL,
+  ae.activation.hidden = NULL,
   hidden = NULL,
   dropout.hidden = NULL,
   step_log = FALSE,
   step_normalize = FALSE,
+  verbose = 1,
   activation.hidden = NULL,
   activation.output = "linear",
   batch_normalization = FALSE,
@@ -37,9 +39,23 @@ layer_mlp_keras(
 
 \item{distribution}{The distribution used for the simulation. Default is gaussian.}
 
+\item{use_bias}{Argument passed to \code{keras} in the definition of the MLP architecture.}
+
+\item{ae.hidden}{The hidden layer architecture of a (stacked) autoencoder to be fitted on the input data.
+If used, then the encoding part is used to compress the input data, before fitting the MLP model.}
+
+\item{ae.activation.hidden}{The activation functions to be used in the hidden layer architecture of the (stacked) autoencoder.
+If NULL, the linear activation function is used in all hidden layers.}
+
 \item{hidden}{The hidden layer architecture passed to \code{keras}.}
 
 \item{dropout.hidden}{The dropout ratios for each hidden layer passed to \code{keras}. Default is 0.}
+
+\item{step_log}{If TRUE, the logarithmic transformation is applied on the response variable through the use of a \code{recipe}.}
+
+\item{step_normalize}{If TRUE, the \code{step_normalize} function is used to preprocess the input data through the use of a \code{recipe}.}
+
+\item{verbose}{The verbose argument passed to the \code{fit} function of \code{keras}. Default is 1.}
 
 \item{activation.hidden}{The activation function for each hidden layer passed to \code{keras}. Default is Relu}
 

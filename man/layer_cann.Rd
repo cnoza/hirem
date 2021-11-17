@@ -45,6 +45,10 @@ Default is Gamma(link = log).}
 
 \item{dropout.hidden}{The dropout ratios for each hidden layer of the Neural Network, passed to \code{keras}. Default is 0.}
 
+\item{step_log}{If TRUE, the logarithmic transformation is applied on the response variable through the use of a \code{recipe}.}
+
+\item{step_normalize}{If TRUE, the \code{step_normalize} function is used to preprocess the input data through the use of a \code{recipe}.}
+
 \item{activation.hidden}{The activation function for each hidden layer of the Neural Network, passed to \code{keras}. Default is tanh.}
 
 \item{activation.output}{The activation function for the output layer of the Neural Network, passed to \code{keras}. Default is linear.}

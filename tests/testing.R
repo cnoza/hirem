@@ -186,6 +186,8 @@ model3d <- hirem(reserving_data) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_xgb('size', objective = 'reg:gamma',
             bayesOpt = T,
+            bayesOpt_min = T,
+            bayesOpt_iters_n = 1,
             nfolds = 5,
             eval_metric = 'gamma-deviance',
             verbose = F,

@@ -121,7 +121,8 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @export
 layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verbose = F, booster = 'gbtree', objective,
                       eval_metric = 'rmse', eta = 0.01, nthread = 1, subsample = .8, colsample_bynode = .8, max_depth = 2,
-                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, hyper_grid = NULL, gridsearch_cv = FALSE, nfolds = 5, bayesOpt = FALSE, filter = NULL, transformation = NULL) {
+                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, hyper_grid = NULL, gridsearch_cv = FALSE, nfolds = 5,
+                      bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$nrounds <- nrounds
@@ -143,6 +144,8 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
   options$hyper_grid <- hyper_grid
   options$gridsearch_cv <- gridsearch_cv
   options$bayesOpt <- bayesOpt
+  options$bayesOpt.min <- bayesOpt_min
+  options$bayesOpt_iters_n <- bayesOpt_iters_n
 
   if(options$gridsearch_cv & options$bayesOpt)
     stop('Those options, if TRUE, are mutually exclusive.')

@@ -140,7 +140,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     data[,label] <- layer$transformation$transform(data[,label])
   }
 
-  data.xgb <<- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=data)[,-1]),
+  data.xgb <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=data)[,-1]),
                           info = list(
                             'label' = as.matrix(data[,label])
                           ))
@@ -207,7 +207,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
   else if(layer$method_options$bayesOpt) {
 
-    Folds <<- list()
+    Folds <- list()
     names <- c()
     for(i in 1:layer$method_options$nfolds) {
       Folds[[i]] <- as.integer(seq(i,nrow(data.xgb),by = layer$method_options$nfolds))
@@ -215,7 +215,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     }
     names(Folds) <- names
 
-    scoringFunction <- function(max_depth, min_child_weight, subsample, lambda, alpha, colsample_bynode, eta) {
+    scoringFunction <- function(max_depth, min_child_weight, subsample, lambda, alpha, colsample_bynode, eta, max_delta_step) {
 
       Pars <- list(
         booster = "gbtree"
@@ -226,6 +226,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , alpha = alpha
         , colsample_bynode = colsample_bynode
         , eta = eta
+        , max_delta_step = max_delta_step
         , objective = layer$method_options$objective
         , eval_metric = layer$method_options$eval_metric
       )
@@ -233,33 +234,39 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       xgbcv <- xgb.cv(
         params = Pars
         , data = data.xgb
-        , nround = 900
+        , nround = 1000
         , folds = Folds
         , early_stopping_rounds = 10
         , stratified = T
         , verbose = 0
+        , maximize = !layer$method_options$bayesOpt.min
       )
 
-      return(list(Score = -1*min(xgbcv$evaluation_log[,4])
-                  , nrounds = xgbcv$best_iteration))
+      return(list(Score = ifelse(layer$method_options$bayesOpt.min,
+                                 -min(xgbcv$evaluation_log[,4]),
+                                 max(xgbcv$evaluation_log[,4])),
+                  nrounds = xgbcv$best_iteration))
+
     }
 
     bounds <- list(
       max_depth = c(1L,6L)
-      , min_child_weight = c(0,1000)
-      , subsample = c(0.25,1)
-      , lambda = c(0,1)
+      , min_child_weight = c(0L,1000L)
+      , subsample = c(0.75,1)
+      , lambda = c(0.8,1)
       , alpha = c(0,1)
       , colsample_bynode = c(0.5, 1)
-      , eta = c(0,1)
+      , eta = c(0.01,0.3)
+      , max_delta_step = c(1L, 10L)
     )
+
 
     tNoPar <- system.time(
       optObj <- bayesOpt(
         FUN = scoringFunction
         , bounds = bounds
-        , initPoints = 8
-        , iters.n = 8
+        , initPoints = 10
+        , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
       )
     )
@@ -287,28 +294,36 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     layer$optObj <- optObj
     best_index <- as.numeric(which.max(optObj$scoreSummary$Score))
-    nrounds = optObj$scoreSummary$nrounds[best_index]
+    nrounds <- optObj$scoreSummary$nrounds[best_index]
 
     params = list(
       booster = layer$method_options$booster,
       objective = layer$method_options$objective,
       eval_metric = layer$method_options$eval_metric,
-      eta = optObj$scoreSummary$eta[best_index],
-      subsample = optObj$scoreSummary$subsample[best_index],
-      colsample_bynode = optObj$scoreSummary$colsample_bynode[best_index],
-      max_depth = optObj$scoreSummary$max_depth[best_index],
-      min_child_weight = optObj$scoreSummary$min_child_weight[best_index],
+      eta = getBestPars(optObj)$eta,
+      subsample = getBestPars(optObj)$subsample,
+      colsample_bynode = getBestPars(optObj)$colsample_bynode,
+      max_depth = getBestPars(optObj)$max_depth,
+      max_delta_step = getBestPars(optObj)$max_delta_step,
+      min_child_weight = getBestPars(optObj)$min_child_weight,
       gamma = layer$method_options$gamma,
-      lambda = optObj$scoreSummary$lambda[best_index],
-      alpha = optObj$scoreSummary$alpha[best_index],
+      lambda = getBestPars(optObj)$lambda,
+      alpha = getBestPars(optObj)$alpha,
       nthread = layer$method_options$nthread
     )
 
-    print(as.numeric(which.min(optObj$scoreSummary$Score)))
+    cat('\n')
+    cat('Best parameters found:\n')
     print(getBestPars(optObj))
-    print(optObj$scoreSummary)
-    print(params)
+    cat('\n')
+    cat('Nrounds:\n')
     print(nrounds)
+    cat('\n')
+    cat('Score summary:\n')
+    print(optObj$scoreSummary)
+    cat('\n')
+    cat('Parameters used for final training:\n')
+    print(params)
 
   }
   else {

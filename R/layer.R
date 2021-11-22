@@ -97,8 +97,10 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @param verbose If 0, \code{xgboost} will stay silent. If 1, it will print information about performance. Default is 0.
 #' @param booster Passed to \code{xgboost}. Which booster to use, can be gbtree or gblinear. Default is gbtree.
 #' @param objective Specify the learning task and the corresponding learning objective, passed to \code{xgboost}.
+#' @param stratified If TRUE, use stratified sampling in cross-validation. Default is FALSE.
+#' @param grow_policy Passed to \code{xgboost}. Default is depthwise.
 #' @param eval_metric Evaluation metrics for validation data. Default is 'rmse'.
-#' @param eta The learning rate passed to \code{xgboost}. Default is 0.01
+#' @param eta The learning rate passed to \code{xgboost}. Default is 0.05.
 #' @param nthread Number of parallel threads used to run \code{xgboost}. Default is 1.
 #' @param subsample Subsample ratio of the training instance. Default is 0.8. Setting it to 0.8 means that \code{xgboost} randomly collected 80 percent of the data instances to grow trees and this will prevent overfitting.
 #' @param colsample_bynode Subsample ratio of columns for each node (split). Passed to \code{xgboost}
@@ -119,10 +121,10 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verbose = F, booster = 'gbtree', objective,
-                      eval_metric = 'rmse', eta = 0.01, nthread = 1, subsample = .8, colsample_bynode = .8, max_depth = 2,
-                      min_child_weight = 10, gamma = 0, lambda = .01, alpha = .01, hyper_grid = NULL, gridsearch_cv = FALSE, nfolds = 5,
-                      bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, filter = NULL, transformation = NULL) {
+layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, verbose = F, booster = 'gbtree', objective, stratified = F, grow_policy = 'depthwise',
+                      eval_metric = 'rmse', eta = 0.05, nthread = 1, subsample = 1, colsample_bynode = 1, max_depth = 6, max_delta_step = 0, scale_pos_weight = 1,
+                      min_child_weight = 100, gamma = 0, lambda = 1, alpha = 0, hyper_grid = NULL, gridsearch_cv = FALSE, nfolds = 5, tree_method = 'auto',
+                      bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$nrounds <- nrounds
@@ -136,16 +138,22 @@ layer_xgb <- function(obj, name, nrounds = 500, early_stopping_rounds = 50, verb
   options$subsample <- subsample
   options$colsample_bynode <- colsample_bynode
   options$max_depth <- max_depth
+  options$max_delta_step <- max_delta_step
   options$min_child_weight <- min_child_weight
   options$gamma <- gamma
   options$lambda <- lambda
   options$alpha <- alpha
   options$nfolds <- nfolds
+  options$stratified <- stratified
+  options$tree_method <- tree_method
+  options$grow_policy <- grow_policy
   options$hyper_grid <- hyper_grid
   options$gridsearch_cv <- gridsearch_cv
   options$bayesOpt <- bayesOpt
   options$bayesOpt.min <- bayesOpt_min
   options$bayesOpt_iters_n <- bayesOpt_iters_n
+  options$bayesOpt_bounds <- bayesOpt_bounds
+  options$scale_pos_weight <- scale_pos_weight
 
   if(options$gridsearch_cv & options$bayesOpt)
     stop('Those options, if TRUE, are mutually exclusive.')
@@ -262,7 +270,8 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
                             hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, verbose = 1,
                             activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
-                            monitor = "loss", patience = 20, family_for_init = NULL, filter = NULL, transformation = NULL) {
+                            monitor = "loss", patience = 20, family_for_init = NULL,
+                            bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
   options$step_log <- step_log
@@ -286,6 +295,10 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
   options$ae.hidden <- ae.hidden
   options$ae.activation.hidden <- ae.activation.hidden
   options$verbose <- verbose
+  options$bayesOpt <- bayesOpt
+  options$bayesOpt.min <- bayesOpt_min
+  options$bayesOpt_iters_n <- bayesOpt_iters_n
+  options$bayesOpt_bounds <- bayesOpt_bounds
 
   if(is.null(options$ae.hidden)) {
     if(!is.null(options$ae.activation.hidden)) stop('If ae.hidden is NULL, so should be ae.activation.hidden.')

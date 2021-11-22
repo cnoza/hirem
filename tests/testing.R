@@ -179,6 +179,13 @@ simulate_rbns(model3c)
 #=========================================================================#
 
 init()
+
+bounds <- list(
+  min_child_weight = c(0L,1000L),
+  subsample = c(0.75,1),
+  max_depth = c(1L,6L)
+)
+
 model3d <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -188,6 +195,9 @@ model3d <- hirem(reserving_data) %>%
             bayesOpt = T,
             bayesOpt_min = T,
             bayesOpt_iters_n = 1,
+            bayesOpt_bounds = bounds,
+            tree_method = 'hist',
+            eta = 1,
             nfolds = 5,
             eval_metric = 'gamma-deviance',
             verbose = F,

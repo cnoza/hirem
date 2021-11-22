@@ -186,7 +186,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         objective = layer$method_options$objective,
         early_stopping_rounds = layer$method_options$early_stopping_rounds,
         nfold = layer$method_options$nfolds,
-        stratified = T,
+        stratified = layer$method_options$stratified,
         verbose = layer$method_options$verbose,
         params = params)
 
@@ -215,10 +215,22 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     }
     names(Folds) <- names
 
-    scoringFunction <- function(max_depth, min_child_weight, subsample, lambda, alpha, colsample_bynode, eta, max_delta_step) {
+    scoringFunction <- function(max_depth = layer$method_options$max_depth,
+                                min_child_weight = layer$method_options$min_child_weight,
+                                subsample = layer$method_options$subsample,
+                                lambda = layer$method_options$lambda,
+                                alpha = layer$method_options$alpha,
+                                gamma = layer$method_options$gamma,
+                                eta = layer$method_options$eta,
+                                colsample_bynode = layer$method_options$colsample_bynode,
+                                max_delta_step = layer$method_options$max_delta_step,
+                                nthread = layer$method_options$nthread,
+                                scale_pos_weight = layer$method_options$scale_pos_weight) {
 
       Pars <- list(
-        booster = "gbtree"
+        booster = layer$method_options$booster
+        , tree_method = layer$method_options$tree_method
+        , grow_policy = layer$method_options$grow_policy
         , max_depth = max_depth
         , min_child_weight = min_child_weight
         , subsample = subsample
@@ -226,18 +238,21 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , alpha = alpha
         , colsample_bynode = colsample_bynode
         , eta = eta
+        , gamma = gamma
         , max_delta_step = max_delta_step
         , objective = layer$method_options$objective
         , eval_metric = layer$method_options$eval_metric
+        , nthread = layer$method_options$nthread
+        , scale_pos_weight = scale_pos_weight
       )
 
       xgbcv <- xgb.cv(
         params = Pars
         , data = data.xgb
-        , nround = 1000
+        , nround = layer$method_options$nrounds
         , folds = Folds
-        , early_stopping_rounds = 10
-        , stratified = T
+        , early_stopping_rounds = layer$method_options$early_stopping_rounds
+        , stratified = layer$method_options$stratified
         , verbose = 0
         , maximize = !layer$method_options$bayesOpt.min
       )
@@ -249,32 +264,31 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     }
 
-    bounds <- list(
-      max_depth = c(1L,6L)
-      , min_child_weight = c(0L,1000L)
-      , subsample = c(0.75,1)
-      , lambda = c(0.8,1)
-      , alpha = c(0,1)
-      , colsample_bynode = c(0.5, 1)
-      , eta = c(0.01,0.3)
-      , max_delta_step = c(1L, 10L)
-    )
+    if(is.null(layer$method_options$bayesOpt_bounds)) {
+      bounds <- list(
+        min_child_weight = c(0L,1000L)
+        , subsample = c(0.75,1)
+        , colsample_bynode = c(0.5, 1)
+      )
+    }
+    else
+      bounds <- layer$method_options$bayesOpt_bounds
 
+    bounds_names <- as.vector(names(bounds))
 
     tNoPar <- system.time(
       optObj <- bayesOpt(
         FUN = scoringFunction
         , bounds = bounds
-        , initPoints = 10
+        , initPoints = max(length(bounds)+1,3)
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
       )
     )
 
-    # library(doParallel)
     # cl <- makeCluster(2)
     # registerDoParallel(cl)
-    # clusterExport(cl,c('Folds','data.xgb'),envir=environment())
+    # clusterExport(cl=cl,varlist=c('Folds','data.xgb'),envir=environment())
     # clusterEvalQ(cl,expr= {
     #   library(xgboost)
     # })
@@ -283,8 +297,8 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     #   optObj <- bayesOpt(
     #     FUN = scoringFunction
     #     , bounds = bounds
-    #     , initPoints = 8
-    #     , iters.n = 8
+    #     , initPoints = 10
+    #     , iters.n = layer$method_options$bayesOpt_iters_n
     #     , iters.k = 2
     #     , parallel = TRUE
     #   )
@@ -300,16 +314,19 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       booster = layer$method_options$booster,
       objective = layer$method_options$objective,
       eval_metric = layer$method_options$eval_metric,
-      eta = getBestPars(optObj)$eta,
-      subsample = getBestPars(optObj)$subsample,
-      colsample_bynode = getBestPars(optObj)$colsample_bynode,
-      max_depth = getBestPars(optObj)$max_depth,
-      max_delta_step = getBestPars(optObj)$max_delta_step,
-      min_child_weight = getBestPars(optObj)$min_child_weight,
-      gamma = layer$method_options$gamma,
-      lambda = getBestPars(optObj)$lambda,
-      alpha = getBestPars(optObj)$alpha,
-      nthread = layer$method_options$nthread
+      tree_method = layer$method_options$tree_method,
+      grow_policy = layer$method_options$grow_policy,
+      eta = ifelse('eta' %in% bounds_names,getBestPars(optObj)$eta,layer$method_options$eta),
+      subsample = ifelse('subsample' %in% bounds_names,getBestPars(optObj)$subsample,layer$method_options$subsample),
+      colsample_bynode = ifelse('colsample_bynode' %in% bounds_names,getBestPars(optObj)$colsample_bynode,layer$method_options$colsample_bynode),
+      max_depth = ifelse('max_depth' %in% bounds_names,getBestPars(optObj)$max_depth,layer$method_options$max_depth),
+      max_delta_step = ifelse('max_delta_step' %in% bounds_names,getBestPars(optObj)$max_delta_step,layer$method_options$max_delta_step),
+      min_child_weight = ifelse('min_child_weight' %in% bounds_names,getBestPars(optObj)$min_child_weight,layer$method_options$min_child_weight),
+      gamma = ifelse('gamma' %in% bounds_names,getBestPars(optObj)$gamma,layer$method_options$gamma),
+      lambda = ifelse('lambda' %in% bounds_names,getBestPars(optObj)$lambda,layer$method_options$lambda),
+      alpha = ifelse('alpha' %in% bounds_names,getBestPars(optObj)$alpha,layer$method_options$alpha),
+      nthread = ifelse('nthread' %in% bounds_names,getBestPars(optObj)$nthread,layer$method_options$nthread),
+      scale_pos_weight = ifelse('scale_pos_weight' %in% bounds_names,getBestPars(optObj)$scale_pos_weight,layer$method_options$scale_pos_weight)
     )
 
     cat('\n')
@@ -333,11 +350,14 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       booster = layer$method_options$booster,
       objective = layer$method_options$objective,
       eval_metric = layer$method_options$eval_metric,
+      tree_method = layer$method_options$tree_method,
+      grow_policy = layer$method_options$grow_policy,
       eta = layer$method_options$eta,
       nthread = layer$method_options$nthread,
       subsample = layer$method_options$subsample,
       colsample_bynode = layer$method_options$colsample_bynode,
       max_depth = layer$method_options$max_depth,
+      max_delta_step = layer$method_options$max_delta_step,
       min_child_weight = layer$method_options$min_child_weight,
       gamma = layer$method_options$gamma,
       lambda = layer$method_options$lambda,
@@ -359,12 +379,21 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   layer$best_score <- layer$fit$best_score
   layer$niter <- layer$fit$niter
 
+  if(!is.null(obj$balance.var)){
+    layer$balance.correction <- sapply(data %>% split(data[[obj$balance.var]]),
+                                       function(x) sum(x[[layer$name]])/sum(predict(layer$fit,
+                                                                                    newdata = xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=x)[,-1]),
+                                                                                                          info = list('label' = as.matrix(x[,label]))),
+                                                                                    ntreelimit = layer$best_ntreelimit,
+                                                                                    type = 'response')))
+  }
+
   if(layer$method_options$objective == 'reg:squarederror') {
-    layer$sigma <- sd(predict(layer$fit, newdata = data.xgb, type = "response") - as.matrix(data[,label]))
+    layer$sigma <- sd(predict(layer$fit, ntreelimit = layer$best_ntreelimit, newdata = data.xgb, type = "response") - as.matrix(data[,label]))
   }
 
   if(layer$method_options$objective == 'reg:gamma') {
-    shape <- hirem_gamma_shape(as.matrix(data[,label]), predict(layer$fit, ntreelimit = obj$best_ntreelimit, newdata = data.xgb, type = "response"))
+    shape <- hirem_gamma_shape(as.matrix(data[,label]), predict(layer$fit, ntreelimit = layer$best_ntreelimit, newdata = data.xgb, type = "response"))
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
   }
@@ -646,6 +675,21 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
     layer$fit <- glm1
   }
+
+  # if(!is.null(obj$balance.var)){
+  #   if(layer$method_options$bias_regularization) {
+  #     layer$balance.correction <- sapply(data_baked_b %>% group_split(data_baked[[obj$balance.var]]),
+  #                                        function(x) {
+  #                                          Zlearn.tmp   <- data.frame(layer$zz %>% predict(x))
+  #                                          names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
+  #                                          sum(x[[layer$name]])/sum(predict(layer$fit, newdata = Zlearn.tmp, type = 'response'))
+  #                                          })
+  #   }
+  #   else {
+  #     layer$balance.correction <- sapply(data_baked %>% group_split(data_baked[[obj$balance.var]]),
+  #                                      function(x) sum(x[[layer$name]])/sum(layer$fit %>% predict(x %>% as.matrix())))
+  #   }
+  # }
 
   if(layer$method_options$bias_regularization)
     pred <- layer$fit$fitted.values

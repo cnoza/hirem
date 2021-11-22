@@ -110,7 +110,11 @@ simulate.layer_xgb <- function(obj, data, balance.correction, balance.var) {
                                'label' = as.matrix(data[select,label])
                              ))
 
-  response <- predict(obj$fit, newdata = newdata.xgb, type = 'response')
+  response <- predict(obj$fit, ntreelimit = obj$best_ntreelimit, newdata = newdata.xgb, type = 'response')
+
+  if(balance.correction) {
+    response <- response * obj$balance.correction[(data[select,])[[balance.var]]]
+  }
 
   if(obj$method_options$objective == 'binary:logistic') {
     simulation <- runif(length(response)) < response
@@ -181,6 +185,10 @@ simulate.layer_mlp_keras <- function(obj, data, balance.correction, balance.var)
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
     response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
   }
+
+  # if(balance.correction) {
+  #   response <- response * obj$balance.correction[(data[select,])[[balance.var]]]
+  # }
 
   if(obj$method_options$distribution == 'bernoulli') {
     simulation <- runif(dim(response)[1]) < response

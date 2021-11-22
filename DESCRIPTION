@@ -12,22 +12,23 @@ Encoding: UTF-8
 LazyData: true
 Imports:
     ggplot2,
+    tidyverse,
     tibble,
     rlang,
     gbm,
     mgcv,
-	magrittr,
-	dplyr,
-	tidyr,
-	purrr,
-	Matrix,
-	xgboost,
-	h2o,
-	keras,
-	tensorflow,
-	recipes,
-	data.table,
-	ParBayesianOptimization
+	  magrittr,
+	  dplyr,
+	  tidyr,
+	  purrr,
+	  Matrix,
+	  xgboost,
+	  h2o,
+	  keras,
+	  tensorflow,
+	  recipes,
+	  data.table,
+	  ParBayesianOptimization
 RoxygenNote: 7.1.2
 Suggests: 
     testthat (>= 3.0.0),

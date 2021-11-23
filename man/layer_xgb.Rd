@@ -7,25 +7,33 @@
 layer_xgb(
   obj,
   name,
-  nrounds = 500,
-  early_stopping_rounds = 50,
+  nrounds = 1000,
+  early_stopping_rounds = 20,
   verbose = F,
   booster = "gbtree",
   objective,
+  stratified = F,
+  grow_policy = "depthwise",
   eval_metric = "rmse",
-  eta = 0.01,
+  eta = 0.05,
   nthread = 1,
-  subsample = 0.8,
-  colsample_bynode = 0.8,
-  max_depth = 2,
-  min_child_weight = 10,
+  subsample = 1,
+  colsample_bynode = 1,
+  max_depth = 6,
+  max_delta_step = 0,
+  scale_pos_weight = 1,
+  min_child_weight = 100,
   gamma = 0,
-  lambda = 0.01,
-  alpha = 0.01,
+  lambda = 1,
+  alpha = 0,
   hyper_grid = NULL,
   gridsearch_cv = FALSE,
   nfolds = 5,
+  tree_method = "auto",
   bayesOpt = FALSE,
+  bayesOpt_min = FALSE,
+  bayesOpt_iters_n = 3,
+  bayesOpt_bounds = NULL,
   filter = NULL,
   transformation = NULL
 )
@@ -45,9 +53,13 @@ layer_xgb(
 
 \item{objective}{Specify the learning task and the corresponding learning objective, passed to \code{xgboost}.}
 
+\item{stratified}{If TRUE, use stratified sampling in cross-validation. Default is FALSE.}
+
+\item{grow_policy}{Passed to \code{xgboost}. Default is depthwise.}
+
 \item{eval_metric}{Evaluation metrics for validation data. Default is 'rmse'.}
 
-\item{eta}{The learning rate passed to \code{xgboost}. Default is 0.01}
+\item{eta}{The learning rate passed to \code{xgboost}. Default is 0.05.}
 
 \item{nthread}{Number of parallel threads used to run \code{xgboost}. Default is 1.}
 

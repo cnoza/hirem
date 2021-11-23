@@ -28,6 +28,10 @@ layer_mlp_keras(
   monitor = "loss",
   patience = 20,
   family_for_init = NULL,
+  bayesOpt = FALSE,
+  bayesOpt_min = FALSE,
+  bayesOpt_iters_n = 3,
+  bayesOpt_bounds = NULL,
   filter = NULL,
   transformation = NULL
 )

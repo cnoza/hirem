@@ -118,6 +118,9 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   return(layer)
 }
 
+#' @importFrom xgboost xgb.DMatrix xgb.cv
+#' @import Matrix
+#' @import ParBayesianOptimization
 #' @export
 fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   cat("Fitting layer_xgb ...\n")
@@ -133,17 +136,27 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   data <- data[layer$filter(data), ]
-  f <- as.formula(formula)
+  f <- as.formula(paste0(formula,'-1'))
   label <- as.character(terms(f)[[2]])
 
   if(!is.null(layer$transformation)) {
     data[,label] <- layer$transformation$transform(data[,label])
   }
 
-  data.xgb <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=data)[,-1]),
-                          info = list(
-                            'label' = as.matrix(data[,label])
-                          ))
+  contrasts.arg <- lapply(data.frame(data[, sapply(data, is.factor)]),contrasts,contrasts = FALSE)
+  names(contrasts.arg) <- colnames(data %>% select_if(is.factor))
+  layer$data.model.matrix <- sparse.model.matrix(f,data=data,contrasts.arg = contrasts.arg)
+
+  if(!is.null(obj$weights)) {
+    weights.vec <- obj$weights[data[[obj$weight.var]]]
+    data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
+                            info = list('label' = as.matrix(data[,label]),
+                                        'weight' = as.matrix(weights.vec)))
+  }
+  else {
+    data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
+                            info = list('label' = as.matrix(data[,label])))
+  }
 
   if(layer$method_options$gridsearch_cv) {
     if(!is.null(layer$method_options$hyper_grid)) {
@@ -381,11 +394,21 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   if(!is.null(obj$balance.var)){
     layer$balance.correction <- sapply(data %>% split(data[[obj$balance.var]]),
-                                       function(x) sum(x[[layer$name]])/sum(predict(layer$fit,
-                                                                                    newdata = xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=x)[,-1]),
-                                                                                                          info = list('label' = as.matrix(x[,label]))),
-                                                                                    ntreelimit = layer$best_ntreelimit,
-                                                                                    type = 'response')))
+                                       function(x) {
+                                         contrasts.arg <- lapply(data.frame(x[, sapply(x, is.factor)]),contrasts,contrasts = FALSE)
+                                         names(contrasts.arg) <- colnames(x %>% select_if(is.factor))
+                                         if(!is.null(obj$weights)) {
+                                           weights.vec <- obj$weights[x[[obj$weight.var]]]
+                                           newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
+                                                                  info = list('label' = as.matrix(x[,label]),'weight' = as.matrix(weights.vec)))
+                                         }
+                                         else {
+                                           newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
+                                                                  info = list('label' = as.matrix(x[,label])))
+                                         }
+                                         sum(x[[layer$name]])/sum(predict(layer$fit,newdata = newdata,ntreelimit = layer$best_ntreelimit,type = 'response'))
+                                         }
+                                       )
   }
 
   if(layer$method_options$objective == 'reg:squarederror') {
@@ -393,7 +416,9 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   if(layer$method_options$objective == 'reg:gamma') {
-    shape <- hirem_gamma_shape(as.matrix(data[,label]), predict(layer$fit, ntreelimit = layer$best_ntreelimit, newdata = data.xgb, type = "response"))
+    shape <- hirem_gamma_shape(observed = as.matrix(data[,label]),
+                               fitted = predict(layer$fit, ntreelimit = layer$best_ntreelimit, newdata = data.xgb, type = "response"),
+                               weight = ifelse(!is.null(obj$weights),weights.vec,NULL))
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
   }
@@ -401,6 +426,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   return(layer)
 }
 
+#' @importFrom h2o h2o.init h2o.no_progress as.h2o h2o.deeplearning h2o.predict
 #' @export
 fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   cat("Fitting layer_mlp_h2o ...\n")
@@ -463,6 +489,10 @@ fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
   return(layer)
 }
 
+#' @import tensorflow
+#' @import keras
+#' @importFrom recipes recipe step_log step_normalize step_dummy bake
+#' @import data.table
 #' @export
 fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   cat("Fitting layer_mlp_keras ...\n")

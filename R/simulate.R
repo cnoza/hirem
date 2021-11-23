@@ -102,14 +102,13 @@ simulate.layer_gbm <- function(obj, data, balance.correction, balance.var) {
 simulate.layer_xgb <- function(obj, data, balance.correction, balance.var) {
 
   select <- obj$filter(data)
-  f <- as.formula(obj$formula)
+  f <- as.formula(paste0(obj$formula,'-1'))
   label <- as.character(terms(f)[[2]])
 
-  newdata.xgb <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f, data=data[select, ])[,-1]),
-                             info = list(
-                               'label' = as.matrix(data[select,label])
-                             ))
-
+  contrasts.arg <- lapply(data.frame(data[, sapply(data, is.factor)]),contrasts,contrasts = FALSE)
+  names(contrasts.arg) <- colnames(data %>% select_if(is.factor))
+  dmm <- sparse.model.matrix(f,data=data[select, ],contrasts.arg = contrasts.arg)
+  newdata.xgb <- xgb.DMatrix(data = as.matrix(dmm), info = list('label' = as.matrix(data[select,label])))
   response <- predict(obj$fit, ntreelimit = obj$best_ntreelimit, newdata = newdata.xgb, type = 'response')
 
   if(balance.correction) {

@@ -4,7 +4,7 @@
 \alias{simulate.hirem}
 \title{Simulate the future development of claims}
 \usage{
-\method{simulate}{hirem}(obj, nsim, filter, data, balance.correction = FALSE)
+simulate.hirem(obj, nsim, filter, data, balance.correction = FALSE)
 }
 \arguments{
 \item{obj}{The hierarchical reserving model}

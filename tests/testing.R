@@ -64,10 +64,13 @@ model2b <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_gbm('size', distribution = 'gamma', cv.folds = 6,
+  layer_gbm('size', distribution = 'gamma', cv.folds = 5,
             filter = function(data){data$payment == 1})
 
 model2b <- hirem::fit(model2b,
+              weights = weight,
+              weight.var = 'development_year_factor',
+              balance.var = 'development_year_factor',
               close = 'close ~ factor(development_year)',
               payment = 'payment ~ close + factor(development_year)',
               size = 'size ~ close + development_year_factor')
@@ -89,14 +92,17 @@ model3 <- hirem(reserving_data) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_xgb('size', objective = 'reg:squarederror',
             eval_metric = 'rmse',
-            eta = 0.01,
-            nrounds = 1000,
+            eta = 0.05,
+            nrounds = 100,
             early_stopping_rounds = 20,
             max_depth = 6,
             verbose = F,
             filter = function(data){data$payment == 1})
 
 model3 <- hirem::fit(model3,
+                     weights = weight,
+                     weight.var = 'development_year_factor',
+                     balance.var = 'development_year_factor',
                      close = 'close ~ factor(development_year)',
                      payment = 'payment ~ close + factor(development_year)',
                      size = 'size ~ close + development_year_factor')
@@ -144,6 +150,7 @@ simulate_rbns(model3b)
 #=========================================================================#
 
 init()
+
 model3c <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
@@ -165,9 +172,12 @@ model3c <- hirem(reserving_data) %>%
             filter = function(data){data$payment == 1})
 
 model3c <- hirem::fit(model3c,
-                     close = 'close ~ factor(development_year)',
-                     payment = 'payment ~ close + factor(development_year)',
-                     size = 'size ~ close + development_year_factor')
+                      weights = weight,
+                      weight.var = 'development_year_factor',
+                      balance.var = 'development_year_factor',
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + factor(development_year)',
+                      size = 'size ~ close + development_year_factor')
 
 print(model3c$layers$size$shape)
 print(model3c$layers$size$shape.se)

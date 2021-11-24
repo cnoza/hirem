@@ -1,30 +1,31 @@
 ### Initialization
 init <- function() {
   rm(list = ls(envir = .GlobalEnv), envir = .GlobalEnv)
-  #options(warn=-1)
-  library(tidyverse)
-  library(data.table)
   #install.packages('devtools')
   #devtools::install_github('cnoza/hirem')
   library(hirem)
-  library(devtools)
-  #devtools::install_github("harrysouthworth/gbm")
-  library(gbm)
-  library(xgboost)
-  library(Matrix)
-  library(h2o)
-  library(keras)
-  library(tensorflow)
-  library(recipes)
-  library(ParBayesianOptimization)
-  library(doParallel)
-  set.seed(265)
-  set_random_seed(265)
   source(file='./tests/import/functions.R')
+  set.seed(265)
+  tensorflow::set_random_seed(265)
+
   ### Loading data ###
   data("reserving_data")
   reserving_data <<- reserving_data %>%
-    mutate(development_year_factor = factor(development_year))
+    dplyr::mutate(development_year_factor = factor(development_year))
+
+  reported_claims <- reserving_data %>%
+    dplyr::filter(calendar_year <= 6) %>%
+    dplyr::filter(development_year == 1) %>%
+    dplyr::group_by(reporting_year) %>%
+    dplyr::summarise(count = dplyr::n()) %>%
+    dplyr::pull(count)
+
+  denominator <- tail(rev(cumsum(reported_claims)), -1)
+  numerator <- head(cumsum(rev(reported_claims)), -1)
+  weight <<- c(10^(-6), numerator / denominator)
+
+  names(weight) <- paste0('development_year',1:6)
+
 }
 
 ### Functions used for testing purposes

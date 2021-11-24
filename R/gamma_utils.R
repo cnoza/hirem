@@ -1,6 +1,8 @@
 #' @export
-hirem_gamma_shape <- function(observed, fitted, weight = 1)
+hirem_gamma_shape <- function(observed, fitted, weight = NULL)
 {
+  if(is.null(weight)) weight <- 1
+
   likelihood <- function(k)
   {
     -sum(-lgamma(k*weight) + k*weight*log(k*weight) - k*weight*log(fitted) + (k*weight - 1)*log(observed) - (k*weight/fitted) * observed)

@@ -118,7 +118,7 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   return(layer)
 }
 
-#' @importFrom xgboost xgb.DMatrix xgb.cv
+#' @importFrom xgboost xgb.DMatrix xgb.cv xgb.train
 #' @import Matrix
 #' @import ParBayesianOptimization
 #' @export
@@ -349,11 +349,6 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     cat('Nrounds:\n')
     print(nrounds)
     cat('\n')
-    cat('Score summary:\n')
-    print(optObj$scoreSummary)
-    cat('\n')
-    cat('Parameters used for final training:\n')
-    print(params)
 
   }
   else {
@@ -416,9 +411,10 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   if(layer$method_options$objective == 'reg:gamma') {
+    if(is.null(obj$weights)) weights.vec <- NULL
     shape <- hirem_gamma_shape(observed = as.matrix(data[,label]),
                                fitted = predict(layer$fit, ntreelimit = layer$best_ntreelimit, newdata = data.xgb, type = "response"),
-                               weight = ifelse(!is.null(obj$weights),weights.vec,NULL))
+                               weight = weights.vec)
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
   }
@@ -491,8 +487,8 @@ fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
 
 #' @import tensorflow
 #' @import keras
+#' @importFrom data.table fsetdiff as.data.table
 #' @importFrom recipes recipe step_log step_normalize step_dummy bake
-#' @import data.table
 #' @export
 fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   cat("Fitting layer_mlp_keras ...\n")
@@ -989,6 +985,7 @@ fit.layer_aml_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
 #' @param ... Add for each layer an argument with the same name as the layer and as value a formula describing the regression model
 #'
 #' @importFrom dplyr filter %>%
+#' @importFrom purrr map_chr
 #' @import gbm
 #'
 #' @export

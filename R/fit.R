@@ -863,7 +863,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     keras::fit(x, y, epochs = layer$method_options$epochs,
                batch_size = layer$method_options$batch_size,
                validation_split = layer$method_options$validation_split,
-               callbacks = list(earlystopping))
+               callbacks = list(earlystopping),
+               verbose = layer$method_options$verbose)
 
   if(!layer$method_options$bias_regularization) {
     layer$fit <- CANN
@@ -900,6 +901,31 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
     layer$fit <- glm1
+  }
+
+  if(!is.null(obj$balance.var)){
+    layer$balance.correction <- sapply(data %>% group_split(data[[obj$balance.var]]),
+                                       function(x) {
+                                         data_recipe_bc <- recipe(f, data=data)
+                                         if(layer$method_options$step_log)
+                                           data_recipe_bc <- data_recipe_bc %>% step_log(as.name(label))
+                                         if(layer$method_options$step_normalize)
+                                           data_recipe_bc <- data_recipe_bc %>% step_normalize(all_numeric(), -all_outcomes())
+                                         data_recipe_bc <- data_recipe_bc %>% step_dummy(all_nominal(), one_hot = FALSE)
+                                         data_recipe_bc <- data_recipe_bc %>% prep()
+                                         data_baked_bc <- bake(data_recipe_bc, new_data = x)
+                                         if(ncol(data_baked_bc) == 1)
+                                           data_baked_bc <- data_baked_bc %>% mutate(intercept = 1)
+                                         x.tmp <- select(data_baked_bc,-as.name(label)) %>% as.matrix()
+                                         if(layer$method_options$bias_regularization) {
+                                           Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.tmp))
+                                           names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
+                                           sum(x[[layer$name]])/sum(predict(layer$fit, newdata = Zlearn.tmp, type = 'response'))
+                                         }
+                                         else {
+                                           sum(x[[layer$name]])/sum(layer$fit %>% predict(x.tmp))
+                                         }
+                                       })
   }
 
   if(layer$method_options$bias_regularization)

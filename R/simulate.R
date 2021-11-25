@@ -185,9 +185,9 @@ simulate.layer_mlp_keras <- function(obj, data, balance.correction, balance.var)
     response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
   }
 
-  # if(balance.correction) {
-  #   response <- response * obj$balance.correction[(data[select,])[[balance.var]]]
-  # }
+  if(balance.correction) {
+    response <- response * obj$balance.correction[(data[select,])[[balance.var]]]
+  }
 
   if(obj$method_options$distribution == 'bernoulli') {
     simulation <- runif(dim(response)[1]) < response

@@ -176,8 +176,6 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     }
     best_eval_metric = Inf
 
-    cat('... cross-validation started ... \n')
-
     for(i in seq_len(nrow(hyper_grid))) {
 
       params = list(
@@ -342,14 +340,6 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       scale_pos_weight = ifelse('scale_pos_weight' %in% bounds_names,getBestPars(optObj)$scale_pos_weight,layer$method_options$scale_pos_weight)
     )
 
-    cat('\n')
-    cat('Best parameters found:\n')
-    print(getBestPars(optObj))
-    cat('\n')
-    cat('Nrounds:\n')
-    print(nrounds)
-    cat('\n')
-
   }
   else {
 
@@ -488,7 +478,7 @@ fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
 #' @import tensorflow
 #' @import keras
 #' @importFrom data.table fsetdiff as.data.table
-#' @importFrom recipes recipe step_log step_normalize step_dummy bake
+#' @importFrom recipes recipe step_log step_normalize step_dummy bake prep all_nominal all_numeric all_outcomes
 #' @export
 fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   cat("Fitting layer_mlp_keras ...\n")
@@ -518,8 +508,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     data_recipe <- data_recipe %>% step_log(as.name(label))
   if(layer$method_options$step_normalize)
     data_recipe <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
-
-  data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = FALSE)
+  data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE)
   data_recipe <- data_recipe %>% prep()
   layer$data_recipe <- data_recipe
 
@@ -533,7 +522,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   layer$x <- x
   layer$y <- y
 
-  inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
+  inputs <- layer_input(shape = c(ncol(x)), name=ifelse(!is.null(layer$method_options$ae.hidden),'ae_input_layer','input_layer'))
 
   if(!is.null(layer$method_options$ae.hidden)) {
 
@@ -702,20 +691,30 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     layer$fit <- glm1
   }
 
-  # if(!is.null(obj$balance.var)){
-  #   if(layer$method_options$bias_regularization) {
-  #     layer$balance.correction <- sapply(data_baked_b %>% group_split(data_baked[[obj$balance.var]]),
-  #                                        function(x) {
-  #                                          Zlearn.tmp   <- data.frame(layer$zz %>% predict(x))
-  #                                          names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
-  #                                          sum(x[[layer$name]])/sum(predict(layer$fit, newdata = Zlearn.tmp, type = 'response'))
-  #                                          })
-  #   }
-  #   else {
-  #     layer$balance.correction <- sapply(data_baked %>% group_split(data_baked[[obj$balance.var]]),
-  #                                      function(x) sum(x[[layer$name]])/sum(layer$fit %>% predict(x %>% as.matrix())))
-  #   }
-  # }
+  if(!is.null(obj$balance.var)){
+      layer$balance.correction <- sapply(data %>% group_split(data[[obj$balance.var]]),
+                                         function(x) {
+                                           data_recipe_bc <- recipe(f, data=data)
+                                           if(layer$method_options$step_log)
+                                             data_recipe_bc <- data_recipe_bc %>% step_log(as.name(label))
+                                           if(layer$method_options$step_normalize)
+                                             data_recipe_bc <- data_recipe_bc %>% step_normalize(all_numeric(), -all_outcomes())
+                                           data_recipe_bc <- data_recipe_bc %>% step_dummy(all_nominal(), one_hot = TRUE)
+                                           data_recipe_bc <- data_recipe_bc %>% prep()
+                                           data_baked_bc <- bake(data_recipe_bc, new_data = x)
+                                           if(ncol(data_baked_bc) == 1)
+                                             data_baked_bc <- data_baked_bc %>% mutate(intercept = 1)
+                                           x.tmp <- select(data_baked_bc,-as.name(label)) %>% as.matrix()
+                                           if(layer$method_options$bias_regularization) {
+                                             Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.tmp))
+                                             names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
+                                             sum(x[[layer$name]])/sum(predict(layer$fit, newdata = Zlearn.tmp, type = 'response'))
+                                           }
+                                           else {
+                                             sum(x[[layer$name]])/sum(layer$fit %>% predict(x.tmp))
+                                           }
+                                        })
+  }
 
   if(layer$method_options$bias_regularization)
     pred <- layer$fit$fitted.values

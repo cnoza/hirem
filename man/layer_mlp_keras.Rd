@@ -15,7 +15,7 @@ layer_mlp_keras(
   dropout.hidden = NULL,
   step_log = FALSE,
   step_normalize = FALSE,
-  verbose = 1,
+  verbose = 0,
   activation.hidden = NULL,
   activation.output = "linear",
   batch_normalization = FALSE,

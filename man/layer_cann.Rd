@@ -21,6 +21,7 @@ layer_cann(
   batch_normalization = FALSE,
   monitor = "loss",
   patience = 20,
+  verbose = 0,
   loss = "mse",
   optimizer = "nadam",
   epochs = 20,

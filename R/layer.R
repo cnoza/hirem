@@ -270,7 +270,7 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
                             hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, verbose = 0,
                             activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
-                            monitor = "loss", patience = 20, family_for_init = NULL,
+                            monitor = "loss", patience = 20, family_for_init = NULL, nfolds = 5,
                             bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -299,6 +299,8 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
   options$bayesOpt.min <- bayesOpt_min
   options$bayesOpt_iters_n <- bayesOpt_iters_n
   options$bayesOpt_bounds <- bayesOpt_bounds
+  options$nfolds <- nfolds
+
 
   if(is.null(options$ae.hidden)) {
     if(!is.null(options$ae.activation.hidden)) stop('If ae.hidden is NULL, so should be ae.activation.hidden.')
@@ -329,6 +331,8 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
       stop('The length of hidden and activation.hidden should match.')
     }
   }
+
+
 
   if(is.null(options$hidden)) {
     # If no hidden layer, no need for bias regularization
@@ -401,6 +405,7 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
                        activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear',
                        fixed.cann = TRUE, batch_normalization = FALSE, monitor = 'loss', patience = 20, verbose = 0,
                        loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
+                       nfolds = 5, bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL,
                        filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -425,6 +430,11 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$fixed.cann <- fixed.cann
   options$family_for_glm <- family_for_glm
   options$verbose <- verbose
+  options$bayesOpt <- bayesOpt
+  options$bayesOpt.min <- bayesOpt_min
+  options$bayesOpt_iters_n <- bayesOpt_iters_n
+  options$bayesOpt_bounds <- bayesOpt_bounds
+  options$nfolds <- nfolds
 
   if(is.null(options$hidden)) {
     if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')

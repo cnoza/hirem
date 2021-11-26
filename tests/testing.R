@@ -359,6 +359,7 @@ model4c <- hirem(reserving_data) %>%
                   filter = function(data){data$payment == 1})
 
 model4c <- hirem::fit(model4c,
+                      balance.var = 'development_year',
                       close = 'close ~ factor(development_year)',
                       payment = 'payment ~ close + factor(development_year)',
                       size = 'size ~ close + development_year_factor')
@@ -531,22 +532,83 @@ print(model1$layers$size$shape.se)
 simulate_rbns(model4f)
 
 #=========================================================================#
-#             Case 5: GLM + CANN (gamma)                                  #
+#         Case 4g: GLM + MLP (gamma, 3 hidden layers, bayesian opt)       #
 #=========================================================================#
 
 init()
+
+bounds <- list(
+  mlp_hidden_1 = c(10L,30L),
+  mlp_dropout.hidden_1 = c(.1,.5)
+)
+
+model4g <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_mlp_keras('size', distribution = 'gamma',
+                  bayesOpt = T,
+                  bayesOpt_min = T,
+                  bayesOpt_iters_n = 1,
+                  bayesOpt_bounds = bounds,
+                  hidden = c(2,15,10),
+                  dropout.hidden = c(0,0,0),
+                  step_log = F,
+                  step_normalize = F,
+                  loss = gamma_deviance_keras,
+                  metrics = metric_gamma_deviance_keras,
+                  optimizer = optimizer_nadam(learning_rate = .01),
+                  validation_split = 0,
+                  activation.output = 'exponential',
+                  batch_normalization = F,
+                  family_for_init = Gamma(link=log),
+                  epochs = 100,
+                  batch_size = 1000,
+                  monitor = 'gamma_deviance_keras',
+                  patience = 20,
+                  filter = function(data){data$payment == 1})
+
+model4g <- hirem::fit(model4g,
+                      balance.var = 'development_year',
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + factor(development_year)',
+                      size = 'size ~ close + development_year_factor')
+
+# The shape parameter is (almost) identical to model 1 (glm, gamma log link for size):
+print(model4g$layers$size$shape)
+print(model4g$layers$size$shape.se)
+
+simulate_rbns(model4g)
+
+#=========================================================================#
+#             Case 5: GLM + CANN (gamma) + Bayesian opt                   #
+#=========================================================================#
+
+init()
+
+bounds <- list(
+  mlp_hidden_1 = c(20L,30L),
+  mlp_dropout.hidden_1 = c(.1,.5)
+)
+
 model5 <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_cann('size', distribution = 'gamma',
+             bayesOpt = T,
+             bayesOpt_min = T,
+             bayesOpt_iters_n = 1,
+             bayesOpt_bounds = bounds,
              family_for_glm = Gamma(link=log),
              loss = gamma_deviance_keras,
              metrics = metric_gamma_deviance_keras,
              optimizer = optimizer_nadam(learning_rate = .01),
              validation_split = 0,
              hidden = c(20,15,10),
+             dropout.hidden = c(0,0,0),
              activation.output = 'exponential',
              activation.output.cann = 'exponential',
              fixed.cann = TRUE,
@@ -557,6 +619,7 @@ model5 <- hirem(reserving_data) %>%
              filter = function(data){data$payment == 1})
 
 model5 <- hirem::fit(model5,
+                     balance.var = 'development_year_factor',
                      close = 'close ~ factor(development_year)',
                      payment = 'payment ~ close + factor(development_year)',
                      size = 'size ~ close + development_year_factor')

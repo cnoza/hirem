@@ -502,6 +502,8 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     data[,label] <- layer$transformation$transform(data[,label])
   }
 
+  weights.vec <- if(is.null(obj$weights) | !is.null(layer$method_options$ae.hidden)) NULL else obj$weights[data[[obj$weight.var]]]
+
   data_recipe <- recipe(f, data=data)
 
   if(layer$method_options$step_log)
@@ -524,112 +526,123 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   if(layer$method_options$bayesOpt) {
 
-    # Folds <- list()
-    # names <- c()
-    # for(i in 1:layer$method_options$nfolds) {
-    #   Folds[[i]] <- as.integer(seq(i,nrow(data.xgb),by = layer$method_options$nfolds))
-    #   names[i] <- paste0('Fold',i)
-    # }
-    # names(Folds) <- names
+    Folds <- list()
+    names <- c()
+    for(i in 1:layer$method_options$nfolds) {
+      Folds[[i]] <- as.integer(seq(i,nrow(x),by = layer$method_options$nfolds))
+      names[i] <- paste0('Fold',i)
+    }
+    names(Folds) <- names
 
     scoringFunction <- function(mlp_hidden_1, mlp_hidden_2, mlp_hidden_3,
                                 mlp_dropout.hidden_1, mlp_dropout.hidden_2, mlp_dropout.hidden_3) {
 
-      inputs <- layer_input(shape = c(ncol(x)), name=ifelse(!is.null(layer$method_options$ae.hidden),'ae_input_layer','input_layer'))
+      score <- c()
 
-      if(!is.null(layer$method_options$ae.hidden)) {
+      for(k in 1:layer$method_options$nfolds) {
 
-        ae_arch <- def_ae_arch(inputs=inputs,
-                               x=x,
-                               ae.hidden=layer$method_options$ae.hidden,
-                               ae.activation.hidden=layer$method_options$ae.activation.hidden)
+        x.val  <- layer$x[Folds[[k]],]
+        y.val  <- layer$y[Folds[[k]]]
+        x      <- layer$x[-Folds[[k]],]
+        y      <- layer$y[-Folds[[k]]]
 
-        autoencoder <- keras_model(inputs, ae_arch$ae_output_l)
+        inputs <- layer_input(shape = c(ncol(x)), name=ifelse(!is.null(layer$method_options$ae.hidden),'ae_input_layer','input_layer'))
 
-        model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(layer$method_options$ae.hidden)]])
+        if(!is.null(layer$method_options$ae.hidden)) {
 
-        # Autoencoder model
-        summary(autoencoder)
-        # Encoder model
-        summary(model_en)
+          ae_arch <- def_ae_arch(inputs=inputs,
+                                 x=x,
+                                 ae.hidden=layer$method_options$ae.hidden,
+                                 ae.activation.hidden=layer$method_options$ae.activation.hidden)
 
-        autoencoder %>% compile(loss = 'mae', optimizer='adam')
+          autoencoder <- keras_model(inputs, ae_arch$ae_output_l)
 
-        autoencoder %>% keras::fit(
-          x = x,
-          y = x,
-          epochs = layer$method_options$epochs,
-          batch_size = layer$method_options$batch_size,
-          verbose = layer$method_options$verbose
+          model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(layer$method_options$ae.hidden)]])
+
+          # Autoencoder model
+          summary(autoencoder)
+          # Encoder model
+          summary(model_en)
+
+          autoencoder %>% compile(loss = 'mae', optimizer='adam')
+
+          autoencoder %>% keras::fit(
+            x = x,
+            y = x,
+            epochs = layer$method_options$epochs,
+            batch_size = layer$method_options$batch_size,
+            verbose = layer$method_options$verbose
+          )
+
+          x <- model_en %>% predict(x)
+          inputs <- layer_input(shape = c(ncol(x)))
+
+        }
+
+        mlp_hidden <- c()
+
+        if(!is.null(layer$method_options$hidden))
+          mlp_hidden <- layer$method_options$hidden
+
+        if(!missing(mlp_hidden_1)) mlp_hidden[1] <- mlp_hidden_1
+        if(!missing(mlp_hidden_2)) mlp_hidden[2] <- mlp_hidden_2
+        if(!missing(mlp_hidden_3)) mlp_hidden[3] <- mlp_hidden_3
+
+        if(length(mlp_hidden)==0) mlp_hidden <- NULL
+
+        mlp_dropout.hidden <- c()
+
+        if(!is.null(layer$method_options$dropout.hidden))
+          mlp_dropout.hidden <- layer$method_options$dropout.hidden
+        else {
+          if(!is.null(mlp_hidden))
+            mlp_dropout.hidden <- rep(0,length(mlp_hidden))
+        }
+
+        if(!missing(mlp_dropout.hidden_1)) mlp_dropout.hidden[1] <- mlp_dropout.hidden_1
+        if(!missing(mlp_dropout.hidden_2)) mlp_dropout.hidden[2] <- mlp_dropout.hidden_2
+        if(!missing(mlp_dropout.hidden_3)) mlp_dropout.hidden[3] <- mlp_dropout.hidden_3
+
+        if(length(mlp_dropout.hidden)==0) mlp_dropout.hidden <- NULL
+
+        mlp_arch <- def_mlp_arch(inputs=inputs,
+                                 batch_normalization=layer$method_options$batch_normalization,
+                                 hidden=mlp_hidden,
+                                 activation.hidden=layer$method_options$activation.hidden,
+                                 dropout.hidden=mlp_dropout.hidden,
+                                 family_for_init=layer$method_options$family_for_init,
+                                 label=label,
+                                 data=data,
+                                 activation.output=layer$method_options$activation.output,
+                                 x=x,
+                                 use_bias=layer$method_options$use_bias,
+                                 weights.vec=weights.vec)
+
+        model <- keras_model(inputs = inputs, outputs = c(mlp_arch$output))
+
+        model %>% compile(
+          loss = layer$method_options$loss,
+          optimizer = layer$method_options$optimizer,
+          metrics = layer$method_options$metrics
         )
 
-        x <- model_en %>% predict(x)
-        inputs <- layer_input(shape = c(ncol(x)))
-        layer$x.encoded <- x
-        layer$model_en <- model_en
+        earlystopping <- callback_early_stopping(
+          monitor = layer$method_options$monitor,
+          patience = layer$method_options$patience)
+
+        history <- model %>%
+          keras::fit(x, y, epochs = layer$method_options$epochs,
+                     batch_size = layer$method_options$batch_size,
+                     #validation_split = layer$method_options$validation_split,
+                     validation_data = list(x.val,y.val),
+                     callbacks = list(earlystopping),
+                     verbose = layer$method_options$verbose)
+
+        score[k] <- ifelse(layer$method_options$bayesOpt.min, -min(history$metrics[[2]]), max(history$metrics[[2]]))
 
       }
 
-      mlp_hidden <- c()
-
-      if(!is.null(layer$method_options$hidden))
-        mlp_hidden <- layer$method_options$hidden
-
-      if(!missing(mlp_hidden_1)) mlp_hidden[1] <- mlp_hidden_1
-      if(!missing(mlp_hidden_2)) mlp_hidden[2] <- mlp_hidden_2
-      if(!missing(mlp_hidden_3)) mlp_hidden[3] <- mlp_hidden_3
-
-      if(length(mlp_hidden)==0) mlp_hidden <- NULL
-
-      mlp_dropout.hidden <- c()
-
-      if(!is.null(layer$method_options$dropout.hidden))
-        mlp_dropout.hidden <- layer$method_options$dropout.hidden
-      else {
-        if(!is.null(mlp_hidden))
-          mlp_dropout.hidden <- rep(0,length(mlp_hidden))
-      }
-
-      if(!missing(mlp_dropout.hidden_1)) mlp_dropout.hidden[1] <- mlp_dropout.hidden_1
-      if(!missing(mlp_dropout.hidden_2)) mlp_dropout.hidden[2] <- mlp_dropout.hidden_2
-      if(!missing(mlp_dropout.hidden_3)) mlp_dropout.hidden[3] <- mlp_dropout.hidden_3
-
-      if(length(mlp_dropout.hidden)==0) mlp_dropout.hidden <- NULL
-
-      mlp_arch <- def_mlp_arch(inputs=inputs,
-                               batch_normalization=layer$method_options$batch_normalization,
-                               hidden=mlp_hidden,
-                               activation.hidden=layer$method_options$activation.hidden,
-                               dropout.hidden=mlp_dropout.hidden,
-                               family_for_init=layer$method_options$family_for_init,
-                               label=label,
-                               data=data,
-                               activation.output=layer$method_options$activation.output,
-                               x=x,
-                               use_bias=layer$method_options$use_bias)
-
-      model <- keras_model(inputs = inputs, outputs = c(mlp_arch$output))
-
-      model %>% compile(
-        loss = layer$method_options$loss,
-        optimizer = layer$method_options$optimizer,
-        metrics = layer$method_options$metrics
-      )
-
-      earlystopping <- callback_early_stopping(
-        monitor = layer$method_options$monitor,
-        patience = layer$method_options$patience)
-
-      history <- model %>%
-        keras::fit(x, y, epochs = layer$method_options$epochs,
-                   batch_size = layer$method_options$batch_size,
-                   validation_split = layer$method_options$validation_split,
-                   callbacks = list(earlystopping),
-                   verbose = layer$method_options$verbose)
-
-      return(list(Score = ifelse(layer$method_options$bayesOpt.min,
-                                 -min(history$metrics[[2]]),
-                                 max(history$metrics[[2]])),
+      return(list(Score = mean(score),
                   Pred = 0))
 
     }
@@ -672,8 +685,10 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     layer$optObj <- optObj
 
     if(is.null(layer$method_options$hidden) &
-       (('mlp_hidden_1' %in% bounds_names) | ('mlp_hidden_2' %in% bounds_names) | ('mlp_hidden_3' %in% bounds_names)) )
+       (('mlp_hidden_1' %in% bounds_names) | ('mlp_hidden_2' %in% bounds_names) | ('mlp_hidden_3' %in% bounds_names)) ) {
       layer$method_options$hidden <- c()
+      layer$method_options$bias_regularization <- TRUE
+    }
 
     if('mlp_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$mlp_hidden_1
     if('mlp_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$mlp_hidden_2
@@ -688,6 +703,9 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     if('mlp_dropout.hidden_3' %in% bounds_names) layer$method_options$dropout.hidden[3] <- getBestPars(optObj)$mlp_dropout.hidden_3
 
   }
+
+  x <- layer$x
+  y <- layer$y
 
   inputs <- layer_input(shape = c(ncol(x)), name=ifelse(!is.null(layer$method_options$ae.hidden),'ae_input_layer','input_layer'))
 
@@ -734,7 +752,8 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                            data=data,
                            activation.output=layer$method_options$activation.output,
                            x=x,
-                           use_bias=layer$method_options$use_bias)
+                           use_bias=layer$method_options$use_bias,
+                           weights.vec=weights.vec)
 
   layer$glm.hom <- mlp_arch$glm.hom
 
@@ -857,6 +876,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     data[,label] <- layer$transformation$transform(data[,label])
   }
 
+  if(!is.null(obj$weights)) weights.vec <- obj$weights[data[[obj$weight.var]]] else weights.vec <- NULL
+
   data_recipe <- recipe(f, data=data)
 
   if(layer$method_options$step_log)
@@ -870,8 +891,6 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
-
-  if(!is.null(obj$weights)) weights.vec <- obj$weights[data.filter[[obj$weight.var]]] else weights.vec <- NULL
 
   model.glm <- glm(f,data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec)
   layer$model.glm <- model.glm
@@ -902,7 +921,6 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     scoringFunction <- function(mlp_hidden_1, mlp_hidden_2, mlp_hidden_3,
                                 mlp_dropout.hidden_1, mlp_dropout.hidden_2, mlp_dropout.hidden_3) {
-
 
       inputs <- layer_input(shape = c(length(model.glm$coefficients)-1), name = 'input_layer')
 
@@ -1023,8 +1041,10 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     layer$optObj <- optObj
 
     if(is.null(layer$method_options$hidden) &
-       (('mlp_hidden_1' %in% bounds_names) | ('mlp_hidden_2' %in% bounds_names) | ('mlp_hidden_3' %in% bounds_names)) )
+       (('mlp_hidden_1' %in% bounds_names) | ('mlp_hidden_2' %in% bounds_names) | ('mlp_hidden_3' %in% bounds_names)) ) {
       layer$method_options$hidden <- c()
+      layer$method_options$bias_regularization <- TRUE
+    }
 
     if('mlp_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$mlp_hidden_1
     if('mlp_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$mlp_hidden_2
@@ -1109,8 +1129,6 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
     # We keep track of the pre-processed data for analysis purposes
     layer$Zlearn <- Zlearn
-
-    print(str(Zlearn))
 
     Zlearn$yy <- y
     if(layer$method_options$distribution == 'gamma')

@@ -43,7 +43,8 @@ def_mlp_arch <- function(inputs,
                          data,
                          activation.output,
                          x,
-                         use_bias) {
+                         use_bias,
+                         weights.vec) {
 
   if(batch_normalization)
     output <- inputs %>% layer_batch_normalization()
@@ -78,7 +79,7 @@ def_mlp_arch <- function(inputs,
   if(!is.null(family_for_init)) {
 
     f.hom <- paste0(label, '~ 1')
-    glm.hom <- glm(as.formula(f.hom),data = data, family = family_for_init)
+    glm.hom <- glm(as.formula(f.hom),data = data, family = family_for_init, weights = weights.vec)
 
     if(!batch_normalization & is.null(hidden))
       output <- inputs %>% layer_dense(units = 1, activation = activation.output,

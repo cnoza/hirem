@@ -588,7 +588,7 @@ simulate_rbns(model4g)
 init()
 
 bounds <- list(
-  mlp_hidden_1 = c(20L,30L),
+  mlp_hidden_1 = c(10L,30L),
   mlp_dropout.hidden_1 = c(.1,.5)
 )
 
@@ -605,13 +605,13 @@ model5 <- hirem(reserving_data) %>%
              family_for_glm = Gamma(link=log),
              loss = gamma_deviance_keras,
              metrics = metric_gamma_deviance_keras,
-             optimizer = optimizer_nadam(learning_rate = .01),
+             optimizer = optimizer_nadam(),
              validation_split = 0,
              hidden = c(20,15,10),
              dropout.hidden = c(0,0,0),
              activation.output = 'exponential',
              activation.output.cann = 'exponential',
-             fixed.cann = TRUE,
+             fixed.cann = F,
              monitor = 'gamma_deviance_keras',
              patience = 20,
              epochs = 100,
@@ -619,7 +619,9 @@ model5 <- hirem(reserving_data) %>%
              filter = function(data){data$payment == 1})
 
 model5 <- hirem::fit(model5,
-                     balance.var = 'development_year_factor',
+                     weights = weight,
+                     weight.var = 'development_year',
+                     balance.var = 'development_year',
                      close = 'close ~ factor(development_year)',
                      payment = 'payment ~ close + factor(development_year)',
                      size = 'size ~ close + development_year_factor')

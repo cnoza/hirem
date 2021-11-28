@@ -42,12 +42,15 @@ simulate_rbns <- function(model, nsim = 5) {
 
   model <- register_updater(model, update)
 
+  if(!is.null(model$balance.var)) balance.correction = T
+
   simul <- simulate(model,
                     nsim = nsim,
                     filter = function(data){dplyr::filter(data,
                                                           development_year <= 6,
                                                           close == 0)},
-                    data = reserving_data %>% dplyr::filter(calendar_year == 6))
+                    data = reserving_data %>% dplyr::filter(calendar_year == 6),
+                    balance.correction = balance.correction)
 
   rbns_estimate <- simul %>%
     dplyr::group_by(simulation) %>%

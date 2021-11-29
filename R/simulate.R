@@ -222,13 +222,18 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   if(ncol(data_baked) == 1)
     data_baked <- data_baked %>% mutate(intercept = 1)
 
-  x <- select(data_baked,-as.name(label)) %>% as.matrix()
+  data_baked.glm <- bake(obj$data_recipe.glm, new_data = data[select,])
+  if(ncol(data_baked.glm) == 1)
+    data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
+
+  x     <- select(data_baked,-as.name(label)) %>% as.matrix()
+  x.glm <- select(data_baked.glm,-as.name(label)) %>% as.matrix()
 
   if(!obj$method_options$bias_regularization) {
-    response <- predict(obj$fit, x)
+    response <- predict(obj$fit, list(x,x.glm))
   }
   else {
-    Zlearn   <- data.frame(obj$zz %>% predict(x))
+    Zlearn   <- data.frame(obj$zz %>% predict(list(x,x.glm)))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
     response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
   }

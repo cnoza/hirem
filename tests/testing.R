@@ -538,8 +538,7 @@ simulate_rbns(model4f)
 init()
 
 bounds <- list(
-  mlp_hidden_1 = c(10L,30L),
-  mlp_dropout.hidden_1 = c(.1,.5)
+  mlp_hidden_1 = c(10L,30L)
 )
 
 model4g <- hirem(reserving_data) %>%
@@ -548,18 +547,20 @@ model4g <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gamma',
-                  bayesOpt = T,
+                  bayesOpt = F,
                   bayesOpt_min = T,
                   bayesOpt_iters_n = 1,
                   bayesOpt_bounds = bounds,
-                  hidden = c(2,15,10),
-                  dropout.hidden = c(0,0,0),
+                  hidden = c(20,15,10),
+                  nfolds=1,
                   step_log = F,
                   step_normalize = F,
+                  verbose = 1,
                   loss = gamma_deviance_keras,
                   metrics = metric_gamma_deviance_keras,
-                  optimizer = optimizer_nadam(learning_rate = .01),
+                  optimizer = optimizer_nadam(),
                   validation_split = 0,
+                  activation.hidden = rep('exponential',3),
                   activation.output = 'exponential',
                   batch_normalization = F,
                   family_for_init = Gamma(link=log),
@@ -570,6 +571,8 @@ model4g <- hirem(reserving_data) %>%
                   filter = function(data){data$payment == 1})
 
 model4g <- hirem::fit(model4g,
+                      weights = weight,
+                      weight.var = 'development_year',
                       balance.var = 'development_year',
                       close = 'close ~ factor(development_year)',
                       payment = 'payment ~ close + factor(development_year)',
@@ -588,8 +591,7 @@ simulate_rbns(model4g)
 init()
 
 bounds <- list(
-  mlp_hidden_1 = c(10L,30L),
-  mlp_dropout.hidden_1 = c(.1,.5)
+  mlp_hidden_1 = c(10L,30L)
 )
 
 model5 <- hirem(reserving_data) %>%
@@ -607,8 +609,6 @@ model5 <- hirem(reserving_data) %>%
              metrics = metric_gamma_deviance_keras,
              optimizer = optimizer_nadam(),
              validation_split = 0,
-             hidden = c(20,15,10),
-             dropout.hidden = c(0,0,0),
              activation.output = 'exponential',
              activation.output.cann = 'exponential',
              fixed.cann = F,
@@ -643,16 +643,17 @@ model5b <- hirem(reserving_data) %>%
              family_for_glm = binomial(),
              loss = 'binary_crossentropy',
              metrics = 'binary_crossentropy',
-             optimizer = optimizer_nadam(learning_rate = .01),
+             optimizer = optimizer_nadam(),
              validation_split = 0,
-             hidden = c(10,10),
+             hidden = c(10,10,10),
              activation.output = 'linear',
              activation.output.cann = 'sigmoid',
              fixed.cann = TRUE,
              monitor = 'binary_crossentropy',
              patience = 20,
              epochs = 100,
-             batch_size = 1000) %>%
+             batch_size = 1000,
+             verbose = 1) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_glm('size', Gamma(link = log),
             filter = function(data){data$payment == 1})

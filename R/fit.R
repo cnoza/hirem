@@ -541,10 +541,20 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
       for(k in 1:layer$method_options$nfolds) {
 
-        x.val  <- layer$x[Folds[[k]],]
-        y.val  <- layer$y[Folds[[k]]]
-        x      <- layer$x[-Folds[[k]],]
-        y      <- layer$y[-Folds[[k]]]
+        x.val    <- layer$x[Folds[[k]],]
+        y.val    <- layer$y[Folds[[k]]]
+        sample.w.val <- weights.vec[Folds[[k]]]
+
+        if(layer$method_options$nfolds==1) {
+          x    <- x.val
+          y    <- y.val
+          sample.w <- sample.w.val
+        }
+        else {
+          x      <- layer$x[-Folds[[k]],]
+          y      <- layer$y[-Folds[[k]]]
+          sample.w <- weights.vec[-Folds[[k]]]
+        }
 
         inputs <- layer_input(shape = c(ncol(x)), name=ifelse(!is.null(layer$method_options$ae.hidden),'ae_input_layer','input_layer'))
 
@@ -631,10 +641,10 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
           patience = layer$method_options$patience)
 
         history <- model %>%
-          keras::fit(x, y, epochs = layer$method_options$epochs,
+          keras::fit(x=x, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
                      batch_size = layer$method_options$batch_size,
                      #validation_split = layer$method_options$validation_split,
-                     validation_data = list(x.val,y.val),
+                     validation_data = list(x.val,y.val,sample.w.val),
                      callbacks = list(earlystopping),
                      verbose = layer$method_options$verbose)
 
@@ -706,6 +716,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   x <- layer$x
   y <- layer$y
+  sample.w <- weights.vec
 
   inputs <- layer_input(shape = c(ncol(x)), name=ifelse(!is.null(layer$method_options$ae.hidden),'ae_input_layer','input_layer'))
 
@@ -755,7 +766,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                            use_bias=layer$method_options$use_bias,
                            weights.vec=weights.vec)
 
-  layer$glm.hom <- mlp_arch$glm.hom
+  if(!is.null(layer$method_options$family_for_init)) layer$glm.hom <- mlp_arch$glm.hom
 
   model <- keras_model(inputs = inputs, outputs = c(mlp_arch$output))
 
@@ -771,12 +782,19 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     monitor = layer$method_options$monitor,
     patience = layer$method_options$patience)
 
+  now <- Sys.time()
+  fn <- paste0("mlp_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
+
+  CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
+
   layer$history <- model %>%
-    keras::fit(x, y, epochs = layer$method_options$epochs,
+    keras::fit(x=x, y=y, sample_weight=sample.w, epochs = layer$method_options$epochs,
                batch_size = layer$method_options$batch_size,
                validation_split = layer$method_options$validation_split,
-               callbacks = list(earlystopping),
+               callbacks = list(earlystopping, CBs),
                verbose = layer$method_options$verbose)
+
+  load_model_weights_hdf5(model, fn)
 
   if(!layer$method_options$bias_regularization) {
     layer$fit <- model
@@ -797,10 +815,10 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     Zlearn    <- data.frame(zz %>% predict(x))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
 
+    Zlearn$yy <- y
+
     # We keep track of the pre-processed data for analysis purposes
     layer$Zlearn <- Zlearn
-
-    Zlearn$yy <- y
 
     if(layer$method_options$distribution == 'gamma')
       fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
@@ -869,8 +887,13 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   data <- data[layer$filter(data), ]
 
-  f <- as.formula(formula)
+  f     <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
+
+  if(!is.null(layer$method_options$formula.glm))
+    f.glm <- as.formula(layer$method_options$formula.glm)
+  else
+    f.glm <- f
 
   if(!is.null(layer$transformation)) {
     data[,label] <- layer$transformation$transform(data[,label])
@@ -878,127 +901,228 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   if(!is.null(obj$weights)) weights.vec <- obj$weights[data[[obj$weight.var]]] else weights.vec <- NULL
 
-  data_recipe <- recipe(f, data=data)
+  data_recipe     <- recipe(f, data=data)
+  data_recipe.glm <- recipe(f.glm, data=data)
 
-  if(layer$method_options$step_log)
-    data_recipe <- data_recipe %>% step_log(as.name(label))
-  if(layer$method_options$step_normalize)
-    data_recipe <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
+  if(layer$method_options$step_log) {
+    data_recipe     <- data_recipe %>% step_log(as.name(label))
+    data_recipe.glm <- data_recipe.glm %>% step_log(as.name(label))
+  }
+  if(layer$method_options$step_normalize) {
+    data_recipe     <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
+    data_recipe.glm <- data_recipe.glm %>% step_normalize(all_numeric(), -all_outcomes())
+  }
 
-  data_recipe <- data_recipe %>% prep()
+  data_recipe     <- data_recipe %>% prep()
+  data_recipe.glm <- data_recipe.glm %>% prep()
 
-  data_baked.glm <- bake(data_recipe, new_data = data)
+  data_baked.glm <- bake(data_recipe.glm, new_data = data)
 
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
-  model.glm <- glm(f,data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec)
+  model.glm       <- glm(f.glm, data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec)
   layer$model.glm <- model.glm
 
-  data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = FALSE) %>% prep()
+  #data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE) %>% prep()
 
+  data_recipe.glm <- data_recipe.glm %>% step_dummy(all_nominal(), one_hot = FALSE) %>% prep()
+  data_recipe     <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE) %>% prep()
+
+  data_baked.glm <- bake(data_recipe.glm, new_data = data)
   data_baked <- bake(data_recipe, new_data = data)
-  layer$data_recipe <- data_recipe
+
+  layer$data_recipe.glm <- data_recipe.glm
+  layer$data_recipe     <- data_recipe
 
   if(ncol(data_baked) == 1)
     data_baked <- data_baked %>% mutate(intercept = 1)
 
-  x <- select(data_baked,-as.name(label)) %>% as.matrix()
-  y <- data_baked %>% pull(as.name(label))
+  if(ncol(data_baked.glm) == 1)
+    data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
-  layer$x <- x
+  if(layer$method_options$emb) {
+
+    fact_var        <- attr(terms(f),'term.labels')[sapply(data_baked, is.factor)]
+    fact_var        <- fact_var[!is.na(fact_var)]
+    x_fact          <- select(data_baked,-as.name(label),all_of(fact_var)) %>% as.matrix()
+    x_no_fact       <- select(data_baked,-as.name(label),-all_of(fact_var)) %>% as.matrix()
+    layer$x_fact    <- x_fact
+    layer$x_no_fact <- x_no_fact
+
+    no_fact_var <- attr(terms(f),'term.labels')[!sapply(data_baked, is.factor)]
+    no_fact_var <- no_fact_var[!is.na(no_fact_var)]
+
+  }
+  else {
+    x           <- select(data_baked,-as.name(label)) %>% as.matrix()
+    layer$x     <- x
+    x.glm       <- select(data_baked.glm,-as.name(label)) %>% as.matrix()
+    layer$x.glm <- x.glm
+  }
+
+  y       <- data_baked %>% pull(as.name(label))
   layer$y <- y
 
   if(layer$method_options$bayesOpt) {
 
-    # Folds <- list()
-    # names <- c()
-    # for(i in 1:layer$method_options$nfolds) {
-    #   Folds[[i]] <- as.integer(seq(i,nrow(data.xgb),by = layer$method_options$nfolds))
-    #   names[i] <- paste0('Fold',i)
-    # }
-    # names(Folds) <- names
+    Folds <- list()
+    names <- c()
+    for(i in 1:layer$method_options$nfolds) {
+      Folds[[i]] <- as.integer(seq(i,nrow(x),by = layer$method_options$nfolds))
+      names[i]   <- paste0('Fold',i)
+    }
+    names(Folds) <- names
 
     scoringFunction <- function(mlp_hidden_1, mlp_hidden_2, mlp_hidden_3,
                                 mlp_dropout.hidden_1, mlp_dropout.hidden_2, mlp_dropout.hidden_3) {
 
-      inputs <- layer_input(shape = c(length(model.glm$coefficients)-1), name = 'input_layer')
+      score <- c()
 
-      # GLM Neural network
+      for(k in 1:layer$method_options$nfolds) {
 
-      GLMNetwork.tmp <- inputs %>%
-        layer_dense(units=1, activation='linear', name='output_layer_GLM', trainable=FALSE,
-                    weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
-                                 array(model.glm$coefficients[1],dim=c(1))))
+        if(!layer$method_options$emb) {
+          x.val         <- layer$x[Folds[[k]],]
+          x.glm.val     <- layer$x.glm[Folds[[k]],]
+        }
+        else {
+          x_fact.val    <- layer$x_fact[Folds[[k]],]
+          x_no_fact.val <- layer$x_no_fact[Folds[[k]],]
+        }
 
-      # Hyperparameters
+        y.val        <- layer$y[Folds[[k]]]
+        sample.w.val <- weights.vec[Folds[[k]]]
 
-      mlp_hidden <- c()
+        if(layer$method_options$nfolds==1) {
 
-      if(!is.null(layer$method_options$hidden))
-        mlp_hidden <- layer$method_options$hidden
+          if(!layer$method_options$emb) {
+            x     <- x.val
+            x.glm <- x.glm.val
+          }
+          else {
+            x_fact    <- x_fact.val
+            x_no_fact <- x_no_fact.val
+          }
 
-      if(!missing(mlp_hidden_1)) mlp_hidden[1] <- mlp_hidden_1
-      if(!missing(mlp_hidden_2)) mlp_hidden[2] <- mlp_hidden_2
-      if(!missing(mlp_hidden_3)) mlp_hidden[3] <- mlp_hidden_3
+          y <- y.val
+          sample.w <- sample.w.val
 
-      if(length(mlp_hidden)==0) mlp_hidden <- NULL
+        }
+        else {
 
-      mlp_dropout.hidden <- c()
+          if(!layer$method_options$emb) {
+            x      <- layer$x[-Folds[[k]],]
+            x.glm  <- layer$x.glm[-Folds[[k]],]
+          }
+          else {
+            x_fact <- layer$x_fact[-Folds[[k]],]
+            x_no_fact <- layer$x_no_fact[-Folds[[k]],]
+          }
 
-      if(!is.null(layer$method_options$dropout.hidden))
-        mlp_dropout.hidden <- layer$method_options$dropout.hidden
-      else {
-        if(!is.null(mlp_hidden))
-          mlp_dropout.hidden <- rep(0,length(mlp_hidden))
+          y <- layer$y[-Folds[[k]]]
+          sample.w <- weights.vec[-Folds[[k]]]
+
+        }
+
+        if(!layer$method_options$emb) {
+          inputs     <- layer_input(shape = c(ncol(x)), name = 'input_layer_nn')
+          inputs.glm <- layer_input(shape = c(length(model.glm$coefficients)-1), name = 'input_layer_glm')
+        }
+        else {
+
+          inputs_no_fact <- layer_input(shape = c(ncol(x_no_fact)), name = 'input_layer_no_fact')
+
+          embedded_layer <- list()
+
+          for(i in 1:length(fact_var)) {
+            beta.fact_var[i] <- model.gml$coefficients
+            embedded_layer[[i]] <- layer_input(shape=c(1), dtype = 'int32', name = paste0('input_layer_',i,'_',fact_var[i])) %>%
+              layer_embedding(input_dim = length(model.glm$xlevels[i])-1, output_dim = 1, trainable = FALSE,
+                              input_length = 1, name = paste0('embedding_layer_',i,'_',fact_var[i]),
+                              weights = list(array(beta.fact_var[i], dim=c(length(model.glm$xlevels[i])-1,1)))) %>%
+              layer_flatten(name = paste0('embedding_layer_',i,'_',fact_var[i],'_flat'))
+          }
+
+        }
+
+        # GLM Neural network
+
+        GLMNetwork.tmp <- inputs.glm %>%
+          layer_dense(units=1, activation='linear', name='output_layer_GLM', trainable=FALSE,
+                      weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
+                                   array(model.glm$coefficients[1],dim=c(1))))
+
+        # Hyperparameters
+
+        mlp_hidden <- c()
+
+        if(!is.null(layer$method_options$hidden))
+          mlp_hidden <- layer$method_options$hidden
+
+        if(!missing(mlp_hidden_1)) mlp_hidden[1] <- mlp_hidden_1
+        if(!missing(mlp_hidden_2)) mlp_hidden[2] <- mlp_hidden_2
+        if(!missing(mlp_hidden_3)) mlp_hidden[3] <- mlp_hidden_3
+
+        if(length(mlp_hidden)==0) mlp_hidden <- NULL
+
+        mlp_dropout.hidden <- c()
+
+        if(!is.null(layer$method_options$dropout.hidden))
+          mlp_dropout.hidden <- layer$method_options$dropout.hidden
+        else {
+          if(!is.null(mlp_hidden))
+            mlp_dropout.hidden <- rep(0,length(mlp_hidden))
+        }
+
+        if(!missing(mlp_dropout.hidden_1)) mlp_dropout.hidden[1] <- mlp_dropout.hidden_1
+        if(!missing(mlp_dropout.hidden_2)) mlp_dropout.hidden[2] <- mlp_dropout.hidden_2
+        if(!missing(mlp_dropout.hidden_3)) mlp_dropout.hidden[3] <- mlp_dropout.hidden_3
+
+        if(length(mlp_dropout.hidden)==0) mlp_dropout.hidden <- NULL
+
+        # Neural network
+
+        NNetwork.tmp <- def_NN_arch(inputs,
+                                layer$method_options$batch_normalization,
+                                mlp_hidden,
+                                layer$method_options$activation.hidden,
+                                mlp_dropout.hidden,
+                                layer$method_options$activation.output,
+                                layer$method_options$use_bias)
+
+        # CANN
+
+        CANNoutput.tmp <- list(GLMNetwork.tmp, NNetwork.tmp) %>% layer_add() %>%
+          layer_dense(units = 1, activation = layer$method_options$activation.output.cann, trainable = !layer$method_options$fixed.cann,
+                      weights = switch(layer$method_options$fixed.cann + 1,NULL,list(array(c(1), dim=c(1,1)),
+                                                                                     array(0, dim=c(1)))),
+                      name = 'output_layer_CANN')
+
+        CANN.tmp <- keras_model(inputs = c(inputs,inputs.glm), outputs = c(CANNoutput.tmp), name = 'CANN.tmp')
+
+        CANN.tmp %>% compile(
+          loss = layer$method_options$loss,
+          optimizer = layer$method_options$optimizer,
+          metrics = layer$method_options$metrics
+        )
+
+        earlystopping <- callback_early_stopping(
+          monitor = layer$method_options$monitor,
+          patience = layer$method_options$patience)
+
+        history.tmp <- CANN.tmp %>%
+          keras::fit(x=list(x,x.glm), y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+                     batch_size = layer$method_options$batch_size,
+                     #validation_split = layer$method_options$validation_split,
+                     validation_data = list(list(x.val,x.glm.val),y.val,sample.w.val),
+                     callbacks = list(earlystopping),
+                     verbose = layer$method_options$verbose)
+
+        score[k] <- ifelse(layer$method_options$bayesOpt.min, -min(history.tmp$metrics[[2]]), max(history.tmp$metrics[[2]]))
+
       }
 
-      if(!missing(mlp_dropout.hidden_1)) mlp_dropout.hidden[1] <- mlp_dropout.hidden_1
-      if(!missing(mlp_dropout.hidden_2)) mlp_dropout.hidden[2] <- mlp_dropout.hidden_2
-      if(!missing(mlp_dropout.hidden_3)) mlp_dropout.hidden[3] <- mlp_dropout.hidden_3
-
-      if(length(mlp_dropout.hidden)==0) mlp_dropout.hidden <- NULL
-
-      # Neural network
-
-      NNetwork.tmp <- def_NN_arch(inputs,
-                              layer$method_options$batch_normalization,
-                              mlp_hidden,
-                              layer$method_options$activation.hidden,
-                              mlp_dropout.hidden,
-                              layer$method_options$activation.output,
-                              layer$method_options$use_bias)
-
-      # CANN
-
-      CANNoutput.tmp <- list(GLMNetwork.tmp, NNetwork.tmp) %>% layer_add() %>%
-        layer_dense(units = 1, activation = layer$method_options$activation.output.cann, trainable = !layer$method_options$fixed.cann,
-                    weights = switch(layer$method_options$fixed.cann + 1,NULL,list(array(c(1), dim=c(1,1)),
-                                                                                   array(0, dim=c(1)))),
-                    name = 'output_layer_CANN')
-
-      CANN.tmp <- keras_model(inputs = inputs, outputs = c(CANNoutput.tmp), name = 'CANN.tmp')
-
-      CANN.tmp %>% compile(
-        loss = layer$method_options$loss,
-        optimizer = layer$method_options$optimizer,
-        metrics = layer$method_options$metrics
-      )
-
-      earlystopping <- callback_early_stopping(
-        monitor = layer$method_options$monitor,
-        patience = layer$method_options$patience)
-
-      history.tmp <- CANN.tmp %>%
-        keras::fit(x, y, epochs = layer$method_options$epochs,
-                   batch_size = layer$method_options$batch_size,
-                   validation_split = layer$method_options$validation_split,
-                   callbacks = list(earlystopping),
-                   verbose = layer$method_options$verbose)
-
-      return(list(Score = ifelse(layer$method_options$bayesOpt.min,
-                                 -min(history.tmp$metrics[[2]]),
-                                 max(history.tmp$metrics[[2]])),
+      return(list(Score = mean(score),
                   Pred = 0))
 
     }
@@ -1060,12 +1184,17 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   }
 
+  x        <- layer$x
+  x.glm    <- layer$x.glm
+  y        <- layer$y
+  sample.w <- weights.vec
 
-  inputs <- layer_input(shape = c(length(model.glm$coefficients)-1), name = 'input_layer')
+  inputs     <- layer_input(shape = c(ncol(x)), name = 'input_layer_nn')
+  inputs.glm <- layer_input(shape = c(length(model.glm$coefficients)-1), name = 'input_layer_glm')
 
   # GLM Neural network
 
-  GLMNetwork <- inputs %>%
+  GLMNetwork <- inputs.glm %>%
     layer_dense(units=1, activation='linear', name='output_layer_GLM', trainable=FALSE,
                 weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
                              array(model.glm$coefficients[1],dim=c(1))))
@@ -1088,7 +1217,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                array(0, dim=c(1)))),
                 name = 'output_layer_CANN')
 
-  CANN <- keras_model(inputs = inputs, outputs = c(CANNoutput), name = 'CANN')
+  CANN <- keras_model(inputs = c(inputs,inputs.glm), outputs = c(CANNoutput), name = 'CANN')
 
   print(summary(CANN))
 
@@ -1102,12 +1231,19 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     monitor = layer$method_options$monitor,
     patience = layer$method_options$patience)
 
+  now <- Sys.time()
+  fn <- paste0("cann_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
+
+  CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
+
   layer$history <- CANN %>%
-    keras::fit(x, y, epochs = layer$method_options$epochs,
+    keras::fit(x=list(x,x.glm), y=y, sample_weight=sample.w, epochs = layer$method_options$epochs,
                batch_size = layer$method_options$batch_size,
                validation_split = layer$method_options$validation_split,
-               callbacks = list(earlystopping),
+               callbacks = list(earlystopping,CBs),
                verbose = layer$method_options$verbose)
+
+  load_model_weights_hdf5(CANN, fn)
 
   if(!layer$method_options$bias_regularization) {
     layer$fit <- CANN
@@ -1125,7 +1261,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'last_hidden_layer')$output)
     layer$zz  <- zz
 
-    Zlearn    <- data.frame(zz %>% predict(x))
+    Zlearn    <- data.frame(zz %>% predict(list(x,x.glm)))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
     # We keep track of the pre-processed data for analysis purposes
     layer$Zlearn <- Zlearn
@@ -1149,18 +1285,26 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(!is.null(obj$balance.var)){
     layer$balance.correction <- sapply(data %>% group_split(data[[obj$balance.var]]),
                                        function(x) {
-                                         data_baked_bc <- bake(layer$data_recipe, new_data = x)
+
+                                         data_baked_bc     <- bake(layer$data_recipe, new_data = x)
                                          if(ncol(data_baked_bc) == 1)
                                            data_baked_bc <- data_baked_bc %>% mutate(intercept = 1)
                                          x.tmp <- select(data_baked_bc,-as.name(label)) %>% as.matrix()
+
+                                         data_baked_bc.glm <- bake(layer$data_recipe.glm, new_data = x)
+                                         if(ncol(data_baked_bc.glm) == 1)
+                                           data_baked_bc.glm <- data_baked_bc.glm %>% mutate(intercept = 1)
+                                         x.tmp.glm <- select(data_baked_bc.glm,-as.name(label)) %>% as.matrix()
+
                                          if(layer$method_options$bias_regularization) {
-                                           Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.tmp))
+                                           Zlearn.tmp   <- data.frame(layer$zz %>% predict(list(x.tmp,x.tmp.glm)))
                                            names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
                                            sum(x[[layer$name]])/sum(predict(layer$fit, newdata = Zlearn.tmp, type = 'response'))
                                          }
                                          else {
-                                           sum(x[[layer$name]])/sum(layer$fit %>% predict(x.tmp))
+                                           sum(x[[layer$name]])/sum(layer$fit %>% predict(list(x.tmp,x.tmp.glm)))
                                          }
+
                                        })
   }
 

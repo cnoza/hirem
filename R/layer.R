@@ -252,6 +252,7 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @param scale If TRUE (default), the data used for training is scaled.
 #' @param optimizer The optimizer argument passed to \code{keras}. Default is 'nadam'.
 #' @param epochs The epochs argument passed to \code{keras}. Default is 20.
+#' @param nfolds The number of folds for cross-validation. Default is 5. Set it to 1 to deactivate cross-validation.
 #' @param batch_size The batch_size argument passed to \code{keras}. Default is 1000.
 #' @param validation_split The validation_split argument passed to \code{keras}. Default is .2
 #' @param verbose The verbose argument passed to the \code{fit} function of \code{keras}. Default is 1.
@@ -400,8 +401,8 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
 #' applied before modelling this layer.
 #' @export
 #'
-layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Gamma(link = log), use_bias = TRUE,
-                       hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE,
+layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Gamma(link = log), use_bias = TRUE, formula.glm = NULL,
+                       hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, emb = FALSE,
                        activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear',
                        fixed.cann = TRUE, batch_normalization = FALSE, monitor = 'loss', patience = 20, verbose = 0,
                        loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
@@ -435,6 +436,8 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$bayesOpt_iters_n <- bayesOpt_iters_n
   options$bayesOpt_bounds <- bayesOpt_bounds
   options$nfolds <- nfolds
+  options$emb <- emb
+  options$formula.glm <- formula.glm
 
   if(is.null(options$hidden)) {
     if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')

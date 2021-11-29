@@ -38,7 +38,7 @@ def_mlp_arch <- function(inputs,
                          hidden,
                          activation.hidden,
                          dropout.hidden,
-                         family_for_init,
+                         family_for_init=NULL,
                          label,
                          data,
                          activation.output,
@@ -103,6 +103,8 @@ def_mlp_arch <- function(inputs,
       output <- output %>% layer_dense(units = 1, activation = activation.output,
                                        name = 'output_layer')
   }
+
+  if(is.null(family_for_init)) glm.hom <- NULL
 
   return(list(output=output,glm.hom=glm.hom))
 

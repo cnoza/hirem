@@ -124,7 +124,7 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, verbose = F, booster = 'gbtree', objective, stratified = F, grow_policy = 'depthwise',
                       eval_metric = 'rmse', eta = 0.05, nthread = 1, subsample = 1, colsample_bynode = 1, max_depth = 6, max_delta_step = 0, scale_pos_weight = 1,
                       min_child_weight = 100, gamma = 0, lambda = 1, alpha = 0, hyper_grid = NULL, gridsearch_cv = FALSE, nfolds = 5, tree_method = 'auto',
-                      bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_plotProgress = FALSE,
+                      bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL,
                       filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -154,7 +154,6 @@ layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, ver
   options$bayesOpt.min <- bayesOpt_min
   options$bayesOpt_iters_n <- bayesOpt_iters_n
   options$bayesOpt_bounds <- bayesOpt_bounds
-  options$bayesOpt_plotProgress <- bayesOpt_plotProgress
   options$scale_pos_weight <- scale_pos_weight
 
   if(options$gridsearch_cv & options$bayesOpt)
@@ -274,7 +273,7 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
                             activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             monitor = "loss", patience = 20, family_for_init = NULL, nfolds = 5, bias_regularization = FALSE,
-                            bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_plotProgress = FALSE,
+                            bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL,
                             filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -303,7 +302,6 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
   options$bayesOpt.min <- bayesOpt_min
   options$bayesOpt_iters_n <- bayesOpt_iters_n
   options$bayesOpt_bounds <- bayesOpt_bounds
-  options$bayesOpt_plotProgress <- bayesOpt_plotProgress
   options$nfolds <- nfolds
   options$bias_regularization <- bias_regularization
 
@@ -411,7 +409,7 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
                        activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear',
                        fixed.cann = TRUE, batch_normalization = FALSE, monitor = 'loss', patience = 20, verbose = 0,
                        loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
-                       nfolds = 5, bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_plotProgress = FALSE,
+                       nfolds = 5, bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL,
                        filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -440,7 +438,6 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$bayesOpt.min <- bayesOpt_min
   options$bayesOpt_iters_n <- bayesOpt_iters_n
   options$bayesOpt_bounds <- bayesOpt_bounds
-  options$bayesOpt_plotProgress <- bayesOpt_plotProgress
   options$nfolds <- nfolds
   options$emb <- emb
   options$formula.glm <- formula.glm

@@ -294,7 +294,6 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , initPoints = max(length(bounds)+1,3)
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
-        , plotProgress = layer$method_options$bayesOpt_plotProgress
       )
     )
 
@@ -539,11 +538,57 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                                 mlp_hidden_1, mlp_hidden_2, mlp_hidden_3,
                                 mlp_dropout.hidden_1, mlp_dropout.hidden_2, mlp_dropout.hidden_3) {
 
+      ae.hidden <- c()
+
+      if(!is.null(layer$method_options$ae.hidden))
+        ae.hidden <- layer$method_options$ae.hidden
+
+      if(!missing(ae_hidden_1)) ae.hidden[1] <- ae_hidden_1
+      if(!missing(ae_hidden_2)) ae.hidden[2] <- ae_hidden_2
+      if(!missing(ae_hidden_3)) ae.hidden[3] <- ae_hidden_3
+
+      if(length(ae.hidden)==0) ae.hidden <- NULL
+
+      inputs <- layer_input(shape = c(ncol(x)), name='input_layer')
+
+      if(!is.null(ae.hidden)) {
+
+        ae_arch <- def_ae_arch(inputs=inputs,
+                               x=x,
+                               ae.hidden=ae.hidden,
+                               ae.activation.hidden=layer$method_options$ae.activation.hidden)
+
+        autoencoder <- keras_model(inputs, ae_arch$ae_output_l)
+
+        model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(ae.hidden)]])
+
+        autoencoder %>% compile(loss = 'mae', optimizer='adam')
+
+        autoencoder %>% keras::fit(
+          x = x,
+          y = x,
+          epochs = layer$method_options$epochs,
+          batch_size = layer$method_options$batch_size,
+          verbose = layer$method_options$verbose
+        )
+
+        x <- model_en %>% predict(x)
+
+        inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
+
+        x.sav <- x
+
+      }
+
       score <- c()
 
       for(k in 1:layer$method_options$nfolds) {
 
-        x.val    <- layer$x[Folds[[k]],]
+        if(!is.null(ae.hidden))
+          x.val    <- x.sav[Folds[[k]],]
+        else
+          x.val    <- layer$x[Folds[[k]],]
+
         y.val    <- layer$y[Folds[[k]]]
         sample.w.val <- weights.vec[Folds[[k]]]
 
@@ -553,51 +598,14 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
           sample.w <- sample.w.val
         }
         else {
-          x      <- layer$x[-Folds[[k]],]
-          y      <- layer$y[-Folds[[k]]]
+
+          if(!is.null(ae.hidden))
+            x <- x.sav[-Folds[[k]],]
+          else
+            x <- layer$x[-Folds[[k]],]
+
+          y <- layer$y[-Folds[[k]]]
           sample.w <- weights.vec[-Folds[[k]]]
-        }
-
-        ae.hidden <- c()
-
-        if(!is.null(layer$method_options$ae.hidden))
-          ae.hidden <- layer$method_options$ae.hidden
-
-        if(!missing(ae_hidden_1)) ae.hidden[1] <- ae_hidden_1
-        if(!missing(ae_hidden_2)) ae.hidden[2] <- ae_hidden_2
-        if(!missing(ae_hidden_3)) ae.hidden[3] <- ae_hidden_3
-
-        if(length(ae.hidden)==0) ae.hidden <- NULL
-
-        inputs <- layer_input(shape = c(ncol(x)), name='input_layer')
-
-        if(!is.null(ae.hidden)) {
-
-          ae_arch <- def_ae_arch(inputs=inputs,
-                                 x=x,
-                                 ae.hidden=ae.hidden,
-                                 ae.activation.hidden=layer$method_options$ae.activation.hidden)
-
-          autoencoder <- keras_model(inputs, ae_arch$ae_output_l)
-
-          model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(ae.hidden)]])
-
-          autoencoder %>% compile(loss = 'mae', optimizer='adam')
-
-          autoencoder %>% keras::fit(
-            x = x,
-            y = x,
-            epochs = layer$method_options$epochs,
-            batch_size = layer$method_options$batch_size,
-            verbose = layer$method_options$verbose
-          )
-
-          x.new <- model_en %>% predict(x)
-          x.val <- x.new[Folds[[k]],]
-          x     <- x.new[-Folds[[k]],]
-          if(layer$method_options$nfolds==1) x <- x.val
-
-          inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
 
         }
 
@@ -681,7 +689,6 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
         , initPoints = max(length(bounds)+1,3)
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
-        , plotProgress = layer$method_options$bayesOpt_plotProgress
       )
     )
 
@@ -864,6 +871,8 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                                            if(ncol(data_baked_bc) == 1)
                                              data_baked_bc <- data_baked_bc %>% mutate(intercept = 1)
                                            x.tmp <- select(data_baked_bc,-as.name(label)) %>% as.matrix()
+                                           if(!is.null(layer$method_options$ae.hidden))
+                                             x.tmp <- model_en %>% predict(x.tmp)
                                            if(layer$method_options$bias_regularization) {
                                              Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.tmp))
                                              names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
@@ -1161,7 +1170,6 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , initPoints = max(length(bounds)+1,3)
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
-        , plotProgress = layer$method_options$bayesOpt_plotProgress
       )
     )
 

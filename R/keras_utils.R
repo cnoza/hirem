@@ -48,6 +48,9 @@ def_mlp_arch <- function(inputs,
 
   if(batch_normalization)
     output <- inputs %>% layer_batch_normalization()
+  else
+    output <- inputs
+
 
 
   if(!is.null(hidden)) {
@@ -55,20 +58,14 @@ def_mlp_arch <- function(inputs,
     n <- length(hidden)
 
     for(i in seq(from = 1, to=n)) {
-      if(i==1 & !batch_normalization) {
-        output <- inputs %>% layer_dense(units = hidden[i],
-                                         name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
-          layer_activation(activation = activation.hidden[i])
+
+        output <- output %>%
+          layer_dense(units = hidden[i], name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
+          layer_activation(activation = activation.hidden[i], name = ifelse(i==n,'last_hidden_layer_activation',paste0('hidden_layer_activation_',i)))
+
         if(!is.null(dropout.hidden))
           output <- output %>% layer_dropout(rate = dropout.hidden[i])
-      }
-      else {
-        output <- output %>% layer_dense(units = hidden[i],
-                                         name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
-          layer_activation(activation = activation.hidden[i])
-        if(!is.null(dropout.hidden))
-          output <- output %>% layer_dropout(rate = dropout.hidden[i])
-      }
+
     }
 
   }
@@ -81,26 +78,16 @@ def_mlp_arch <- function(inputs,
     f.hom <- paste0(label, '~ 1')
     glm.hom <- glm(as.formula(f.hom),data = data, family = family_for_init, weights = weights.vec)
 
-    if(!batch_normalization & is.null(hidden))
-      output <- inputs %>% layer_dense(units = 1, activation = activation.output,
-                                       weights = list(array(0,dim=c(ifelse(!is.null(hidden),hidden[n],c(ncol(x))),1)),
-                                                      array(glm.hom$coefficients[1], dim=c(1))),
-                                       use_bias = use_bias,
-                                       name = 'output_layer')
-    else
-      output <- output %>% layer_dense(units = 1, activation = activation.output,
-                                       weights = list(array(0,dim=c(ifelse(!is.null(hidden),hidden[n],c(ncol(x))),1)),
-                                                      array(glm.hom$coefficients[1], dim=c(1))),
-                                       use_bias = use_bias,
-                                       name = 'output_layer')
+    output <- output %>%
+      layer_dense(units = 1, activation = activation.output,
+                  weights = list(array(0,dim=c(ifelse(!is.null(hidden),hidden[n],c(ncol(x))),1)),
+                                 array(glm.hom$coefficients[1], dim=c(1))),
+                  use_bias = use_bias,
+                  name = 'output_layer')
   }
   else {
-    if(!batch_normalization & is.null(hidden))
-      output <- inputs %>% layer_dense(units = 1, activation = activation.output,
-                                       use_bias = use_bias,
-                                       name = 'output_layer')
-    else
       output <- output %>% layer_dense(units = 1, activation = activation.output,
+                                       use_bias = use_bias,
                                        name = 'output_layer')
   }
 
@@ -121,39 +108,27 @@ def_NN_arch <- function(inputs,
 
   if(batch_normalization)
     NNetwork <- inputs %>% layer_batch_normalization()
+  else
+    NNetwork <- inputs
 
   if(!is.null(hidden)) {
 
     n <- length(hidden)
 
     for(i in seq(from = 1, to=n)) {
-      if(i==1 & !batch_normalization) {
-        NNetwork <- inputs %>%
-          layer_dense(units = hidden[i],
-                      name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
-          layer_activation(activation = activation.hidden[i])
+
+        NNetwork <- NNetwork %>%
+          layer_dense(units = hidden[i],name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
+          layer_activation(activation = activation.hidden[i], name=ifelse(i==n,'last_hidden_layer_activation',paste0('hidden_layer_activation_',i)))
+
         if(!is.null(dropout.hidden))
           NNetwork <- NNetwork %>% layer_dropout(rate = dropout.hidden[i])
-      }
-      else {
-        NNetwork <- NNetwork %>% layer_dense(units = hidden[i],
-                                             name = ifelse(i==n,'last_hidden_layer',paste0('hidden_layer_',i))) %>%
-          layer_activation(activation = activation.hidden[i])
-        if(!is.null(dropout.hidden))
-          NNetwork <- NNetwork %>% layer_dropout(rate = dropout.hidden[i])
-      }
+
     }
 
   }
 
-  if(!batch_normalization & is.null(hidden))
-    NNetwork <- inputs %>% layer_dense(units = 1, activation = activation.output,
-                                       use_bias = use_bias,
-                                       name = 'output_layer')
-  else
-    NNetwork <- NNetwork %>% layer_dense(units = 1, activation = activation.output,
-                                         use_bias = use_bias,
-                                         name = 'output_layer')
+  NNetwork <- NNetwork %>% layer_dense(units = 1, activation = activation.output, use_bias = use_bias, name = 'output_layer_NN')
 
   return(NNetwork)
 

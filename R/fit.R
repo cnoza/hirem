@@ -294,6 +294,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , initPoints = max(length(bounds)+1,3)
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
+        , plotProgress = layer$method_options$bayesOpt_plotProgress
       )
     )
 
@@ -534,7 +535,8 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     }
     names(Folds) <- names
 
-    scoringFunction <- function(mlp_hidden_1, mlp_hidden_2, mlp_hidden_3,
+    scoringFunction <- function(ae_hidden_1, ae_hidden_2, ae_hidden_3,
+                                mlp_hidden_1, mlp_hidden_2, mlp_hidden_3,
                                 mlp_dropout.hidden_1, mlp_dropout.hidden_2, mlp_dropout.hidden_3) {
 
       score <- c()
@@ -556,23 +558,29 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
           sample.w <- weights.vec[-Folds[[k]]]
         }
 
-        inputs <- layer_input(shape = c(ncol(x)), name=ifelse(!is.null(layer$method_options$ae.hidden),'ae_input_layer','input_layer'))
+        ae.hidden <- c()
 
-        if(!is.null(layer$method_options$ae.hidden)) {
+        if(!is.null(layer$method_options$ae.hidden))
+          ae.hidden <- layer$method_options$ae.hidden
+
+        if(!missing(ae_hidden_1)) ae.hidden[1] <- ae_hidden_1
+        if(!missing(ae_hidden_2)) ae.hidden[2] <- ae_hidden_2
+        if(!missing(ae_hidden_3)) ae.hidden[3] <- ae_hidden_3
+
+        if(length(ae.hidden)==0) ae.hidden <- NULL
+
+        inputs <- layer_input(shape = c(ncol(x)), name='input_layer')
+
+        if(!is.null(ae.hidden)) {
 
           ae_arch <- def_ae_arch(inputs=inputs,
                                  x=x,
-                                 ae.hidden=layer$method_options$ae.hidden,
+                                 ae.hidden=ae.hidden,
                                  ae.activation.hidden=layer$method_options$ae.activation.hidden)
 
           autoencoder <- keras_model(inputs, ae_arch$ae_output_l)
 
-          model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(layer$method_options$ae.hidden)]])
-
-          # Autoencoder model
-          summary(autoencoder)
-          # Encoder model
-          summary(model_en)
+          model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(ae.hidden)]])
 
           autoencoder %>% compile(loss = 'mae', optimizer='adam')
 
@@ -584,8 +592,12 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
             verbose = layer$method_options$verbose
           )
 
-          x <- model_en %>% predict(x)
-          inputs <- layer_input(shape = c(ncol(x)))
+          x.new <- model_en %>% predict(x)
+          x.val <- x.new[Folds[[k]],]
+          x     <- x.new[-Folds[[k]],]
+          if(layer$method_options$nfolds==1) x <- x.val
+
+          inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
 
         }
 
@@ -669,6 +681,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
         , initPoints = max(length(bounds)+1,3)
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
+        , plotProgress = layer$method_options$bayesOpt_plotProgress
       )
     )
 
@@ -694,6 +707,15 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
     layer$optObj <- optObj
 
+    if(is.null(layer$method_options$ae.hidden) &
+       (('ae_hidden_1' %in% bounds_names) | ('ae_hidden_2' %in% bounds_names) | ('ae_hidden_3' %in% bounds_names)) ) {
+      layer$method_options$ae.hidden <- c()
+    }
+
+    if('ae_hidden_1' %in% bounds_names) layer$method_options$ae.hidden[1] <- getBestPars(optObj)$ae_hidden_1
+    if('ae_hidden_2' %in% bounds_names) layer$method_options$ae.hidden[2] <- getBestPars(optObj)$ae_hidden_2
+    if('ae_hidden_3' %in% bounds_names) layer$method_options$ae.hidden[3] <- getBestPars(optObj)$ae_hidden_3
+
     if(is.null(layer$method_options$hidden) &
        (('mlp_hidden_1' %in% bounds_names) | ('mlp_hidden_2' %in% bounds_names) | ('mlp_hidden_3' %in% bounds_names)) ) {
       layer$method_options$hidden <- c()
@@ -718,7 +740,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   y <- layer$y
   sample.w <- weights.vec
 
-  inputs <- layer_input(shape = c(ncol(x)), name=ifelse(!is.null(layer$method_options$ae.hidden),'ae_input_layer','input_layer'))
+  inputs <- layer_input(shape = c(ncol(x)), name='input_layer')
 
   if(!is.null(layer$method_options$ae.hidden)) {
 
@@ -747,7 +769,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     )
 
     x <- model_en %>% predict(x)
-    inputs <- layer_input(shape = c(ncol(x)))
+    inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
     layer$x.encoded <- x
     layer$model_en <- model_en
 
@@ -809,7 +831,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
       string
     }
 
-    zz        <- keras_model(inputs = model$input, outputs=get_layer(model,'last_hidden_layer')$output)
+    zz        <- keras_model(inputs = model$input, outputs=get_layer(model,'last_hidden_layer_activation')$output)
     layer$zz  <- zz
 
     Zlearn    <- data.frame(zz %>% predict(x))
@@ -831,7 +853,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     else
       stop('Bias regularization is not supported for this distribution.')
 
-    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
     layer$fit <- glm1
   }
 
@@ -863,7 +885,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- hirem_gamma_shape(observed = y, fitted = pred)
+    shape <- hirem_gamma_shape(observed = y, fitted = pred, weight = weights.vec)
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
   }
@@ -1139,6 +1161,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , initPoints = max(length(bounds)+1,3)
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
+        , plotProgress = layer$method_options$bayesOpt_plotProgress
       )
     )
 
@@ -1167,7 +1190,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     if(is.null(layer$method_options$hidden) &
        (('mlp_hidden_1' %in% bounds_names) | ('mlp_hidden_2' %in% bounds_names) | ('mlp_hidden_3' %in% bounds_names)) ) {
       layer$method_options$hidden <- c()
-      layer$method_options$bias_regularization <- TRUE
+      #layer$method_options$bias_regularization <- TRUE
     }
 
     if('mlp_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$mlp_hidden_1
@@ -1245,42 +1268,42 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   load_model_weights_hdf5(CANN, fn)
 
-  if(!layer$method_options$bias_regularization) {
+  #if(!layer$method_options$bias_regularization) {
     layer$fit <- CANN
-  }
-  else {
-    # We keep track of the neural network (biased) model
-    layer$fit.biased <- CANN
-    # Source: Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020), p.52
-    glm.formula <- function(nb) {
-      string <- "yy ~ X1 "
-      if(nb>1) {for (i in 2:nb) {string <- paste(string,"+ X",i, sep="")}}
-      string
-    }
-
-    zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'last_hidden_layer')$output)
-    layer$zz  <- zz
-
-    Zlearn    <- data.frame(zz %>% predict(list(x,x.glm)))
-    names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
-    # We keep track of the pre-processed data for analysis purposes
-    layer$Zlearn <- Zlearn
-
-    Zlearn$yy <- y
-    if(layer$method_options$distribution == 'gamma')
-      fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
-    else if(layer$method_options$distribution == 'bernoulli')
-      fam <- binomial() # default link = logit <-> activation function = sigmoid
-    else if(layer$method_options$distribution == 'poisson')
-      fam <- poisson() # default link = log <-> activation function = exponential
-    else if(layer$method_options$distribution == 'gaussian')
-      fam <- gaussian() # default link = identity <-> activation function = identity
-    else
-      stop('Bias regularization is not supported for this distribution.')
-
-    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
-    layer$fit <- glm1
-  }
+  # }
+  # else {
+  #   # We keep track of the neural network (biased) model
+  #   layer$fit.biased <- CANN
+  #   # Source: Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020), p.52
+  #   glm.formula <- function(nb) {
+  #     string <- "yy ~ X1 "
+  #     if(nb>1) {for (i in 2:nb) {string <- paste(string,"+ X",i, sep="")}}
+  #     string
+  #   }
+  #
+  #   zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'output_layer_NN')$output)
+  #   layer$zz  <- zz
+  #
+  #   Zlearn    <- data.frame(zz %>% predict(list(x,x.glm)))
+  #   names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
+  #   # We keep track of the pre-processed data for analysis purposes
+  #   layer$Zlearn <- Zlearn
+  #
+  #   Zlearn$yy <- y
+  #   if(layer$method_options$distribution == 'gamma')
+  #     fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
+  #   else if(layer$method_options$distribution == 'bernoulli')
+  #     fam <- binomial() # default link = logit <-> activation function = sigmoid
+  #   else if(layer$method_options$distribution == 'poisson')
+  #     fam <- poisson() # default link = log <-> activation function = exponential
+  #   else if(layer$method_options$distribution == 'gaussian')
+  #     fam <- gaussian() # default link = identity <-> activation function = identity
+  #   else
+  #     stop('Bias regularization is not supported for this distribution.')
+  #
+  #   glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
+  #   layer$fit <- glm1
+  # }
 
   if(!is.null(obj$balance.var)){
     layer$balance.correction <- sapply(data %>% group_split(data[[obj$balance.var]]),
@@ -1311,14 +1334,14 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(layer$method_options$bias_regularization)
     pred <- layer$fit$fitted.values
   else
-    pred <- layer$fit %>% predict(x)
+    pred <- layer$fit %>% predict(list(x,x.glm))
 
   if(layer$method_options$distribution == 'gaussian') {
     layer$sigma <- sd(pred - y)
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- hirem_gamma_shape(observed = y, fitted = pred)
+    shape <- hirem_gamma_shape(observed = y, fitted = pred, weight = weights.vec)
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
   }

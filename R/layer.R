@@ -272,7 +272,7 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
                             hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, verbose = 0,
                             activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
-                            monitor = "loss", patience = 20, family_for_init = NULL, nfolds = 5, bias_regularization = FALSE,
+                            monitor = "loss", patience = 20, family_for_init = NULL, nfolds = 5, bias_regularization = TRUE,
                             bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL,
                             filter = NULL, transformation = NULL) {
 
@@ -405,7 +405,7 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
 #' @export
 #'
 layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Gamma(link = log), use_bias = TRUE, formula.glm = NULL,
-                       hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, emb = FALSE, bias_regularization = NULL,
+                       hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, use_embedding = FALSE, bias_regularization = NULL,
                        activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear',
                        fixed.cann = TRUE, batch_normalization = FALSE, monitor = 'loss', patience = 20, verbose = 0,
                        loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
@@ -439,7 +439,7 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$bayesOpt_iters_n <- bayesOpt_iters_n
   options$bayesOpt_bounds <- bayesOpt_bounds
   options$nfolds <- nfolds
-  options$emb <- emb
+  options$use_embedding <- use_embedding
   options$formula.glm <- formula.glm
   options$bias_regularization <- bias_regularization
 

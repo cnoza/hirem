@@ -955,13 +955,14 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   model.glm       <- glm(f.glm, data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec)
   layer$model.glm <- model.glm
 
-  #data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE) %>% prep()
-
-  data_recipe.glm <- data_recipe.glm %>% step_dummy(all_nominal(), one_hot = FALSE) %>% prep()
-  data_recipe     <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE) %>% prep()
+  if(!layer$method_options$use_embedding) {
+    data_recipe.glm <- data_recipe.glm %>% step_dummy(all_nominal(), one_hot = FALSE) %>% prep()
+    data_recipe     <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE) %>% prep()
+  }
 
   data_baked.glm <- bake(data_recipe.glm, new_data = data)
   data_baked <- bake(data_recipe, new_data = data)
+  nrows <- nrow(data_baked)
 
   layer$data_recipe.glm <- data_recipe.glm
   layer$data_recipe     <- data_recipe
@@ -972,17 +973,34 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
-  if(layer$method_options$emb) {
+  if(layer$method_options$use_embedding) {
 
-    fact_var        <- attr(terms(f),'term.labels')[sapply(data_baked, is.factor)]
-    fact_var        <- fact_var[!is.na(fact_var)]
-    x_fact          <- select(data_baked,-as.name(label),all_of(fact_var)) %>% as.matrix()
-    x_no_fact       <- select(data_baked,-as.name(label),-all_of(fact_var)) %>% as.matrix()
-    layer$x_fact    <- x_fact
-    layer$x_no_fact <- x_no_fact
+    covariates      <- attr(terms(f),'term.labels')
+    covariates.glm  <- attr(terms(f.glm),'term.labels')
 
-    no_fact_var <- attr(terms(f),'term.labels')[!sapply(data_baked, is.factor)]
-    no_fact_var <- no_fact_var[!is.na(no_fact_var)]
+    fact_var        <- covariates[covariates %in% names(data)[sapply(data, is.factor)]]
+    no_fact_var     <- covariates[!(covariates %in% names(data)[sapply(data, is.factor)])]
+    fact_var.glm    <- covariates.glm[covariates.glm %in% names(data)[sapply(data, is.factor)]]
+    no_fact_var.glm <- covariates.glm[!(covariates.glm %in% names(data)[sapply(data, is.factor)])]
+
+    x_fact <- list()
+    for(i in 1:length(fact_var)) {
+      x_fact[[i]] <- select(data_baked,fact_var[i]) %>% as.matrix()
+      x_fact[[i]] <- as.numeric(x_fact[[i]])
+    }
+    x_no_fact  <- select(data_baked,-as.name(label),-starts_with(fact_var)) %>% as.matrix()
+
+    x_fact.glm <- list()
+    for(i in 1:length(fact_var.glm)) {
+      x_fact.glm[[i]] <- select(data_baked.glm,fact_var.glm[i]) %>% as.matrix()
+      x_fact.glm[[i]] <- as.numeric(x_fact.glm[[i]])
+    }
+    x_no_fact.glm <- select(data_baked.glm,-as.name(label),-starts_with(fact_var.glm)) %>% as.matrix()
+
+    layer$x_fact         <- x_fact
+    layer$x_no_fact      <- x_no_fact
+    layer$x_fact.glm     <- x_fact.glm
+    layer$x_no_fact.glm  <- x_no_fact.glm
 
   }
   else {
@@ -1000,7 +1018,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     Folds <- list()
     names <- c()
     for(i in 1:layer$method_options$nfolds) {
-      Folds[[i]] <- as.integer(seq(i,nrow(x),by = layer$method_options$nfolds))
+      Folds[[i]] <- as.integer(seq(i,nrows,by = layer$method_options$nfolds))
       names[i]   <- paste0('Fold',i)
     }
     names(Folds) <- names
@@ -1012,13 +1030,24 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
       for(k in 1:layer$method_options$nfolds) {
 
-        if(!layer$method_options$emb) {
-          x.val         <- layer$x[Folds[[k]],]
-          x.glm.val     <- layer$x.glm[Folds[[k]],]
+        if(!layer$method_options$use_embedding) {
+          x.val         <- layer$x[Folds[[k]],] %>% as.matrix()
+          x.glm.val     <- layer$x.glm[Folds[[k]],] %>% as.matrix()
         }
         else {
-          x_fact.val    <- layer$x_fact[Folds[[k]],]
-          x_no_fact.val <- layer$x_no_fact[Folds[[k]],]
+
+          x_fact.val <- list()
+          for(i in 1:length(fact_var)) {
+            x_fact.val[[i]]        <- layer$x_fact[[i]][Folds[[k]]] %>% as.matrix()
+          }
+          x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
+
+          x_fact.glm.val <- list()
+          for(i in 1:length(fact_var.glm)) {
+            x_fact.glm.val[[i]]    <- layer$x_fact.glm[[i]][Folds[[k]]] %>% as.matrix()
+          }
+          x_no_fact.glm.val <- layer$x_no_fact.glm[Folds[[k]],] %>% as.matrix()
+
         }
 
         y.val        <- layer$y[Folds[[k]]]
@@ -1026,13 +1055,15 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
         if(layer$method_options$nfolds==1) {
 
-          if(!layer$method_options$emb) {
+          if(!layer$method_options$use_embedding) {
             x     <- x.val
             x.glm <- x.glm.val
           }
           else {
-            x_fact    <- x_fact.val
-            x_no_fact <- x_no_fact.val
+            x_fact        <- x_fact.val
+            x_no_fact     <- x_no_fact.val
+            x_fact.glm    <- x_fact.glm.val
+            x_no_fact.glm <- x_no_fact.glm.val
           }
 
           y <- y.val
@@ -1041,13 +1072,22 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
         else {
 
-          if(!layer$method_options$emb) {
+          if(!layer$method_options$use_embedding) {
             x      <- layer$x[-Folds[[k]],]
             x.glm  <- layer$x.glm[-Folds[[k]],]
           }
           else {
-            x_fact <- layer$x_fact[-Folds[[k]],]
-            x_no_fact <- layer$x_no_fact[-Folds[[k]],]
+            x_fact <- list()
+            for(i in 1:length(fact_var)) {
+              x_fact[[i]]        <- layer$x_fact[[i]][-Folds[[k]]] %>% as.matrix()
+            }
+            x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
+
+            x_fact.glm <- list()
+            for(i in 1:length(fact_var.glm)) {
+              x_fact.glm[[i]]   <- layer$x_fact.glm[[i]][-Folds[[k]]] %>% as.matrix()
+            }
+            x_no_fact.glm <- layer$x_no_fact.glm[-Folds[[k]],] %>% as.matrix()
           }
 
           y <- layer$y[-Folds[[k]]]
@@ -1055,33 +1095,81 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
         }
 
-        if(!layer$method_options$emb) {
+        if(!layer$method_options$use_embedding) {
           inputs     <- layer_input(shape = c(ncol(x)), name = 'input_layer_nn')
           inputs.glm <- layer_input(shape = c(length(model.glm$coefficients)-1), name = 'input_layer_glm')
         }
         else {
 
-          inputs_no_fact <- layer_input(shape = c(ncol(x_no_fact)), name = 'input_layer_no_fact')
+          inputs_no_fact      <- layer_input(shape = c(length(no_fact_var)), name = 'input_layer_no_fact')
+          inputs_no_fact.glm  <- layer_input(shape = c(length(no_fact_var.glm)), name = 'input_layer_no_fact_glm')
 
-          embedded_layer <- list()
+          model_coefficients <- model.glm$coefficients %>% as_tibble() %>% transpose()
+          names(model_coefficients) <- attr(model.glm$coefficients,'names')
 
-          for(i in 1:length(fact_var)) {
-            beta.fact_var[i] <- model.gml$coefficients
-            embedded_layer[[i]] <- layer_input(shape=c(1), dtype = 'int32', name = paste0('input_layer_',i,'_',fact_var[i])) %>%
-              layer_embedding(input_dim = length(model.glm$xlevels[i])-1, output_dim = 1, trainable = FALSE,
-                              input_length = 1, name = paste0('embedding_layer_',i,'_',fact_var[i]),
-                              weights = list(array(beta.fact_var[i], dim=c(length(model.glm$xlevels[i])-1,1)))) %>%
-              layer_flatten(name = paste0('embedding_layer_',i,'_',fact_var[i],'_flat'))
+          embedded_layer.glm   <- list()
+          input_layer_emb.glm  <- list()
+          beta.no_fact_var.glm <- model_coefficients %>% select(!starts_with(fact_var.glm)) %>% as.numeric()
+          beta.fact_var.glm    <- list()
+          for(i in 1:length(fact_var.glm)) {
+            beta.fact_var.glm[[i]]   <- model_coefficients %>% select(starts_with(fact_var.glm[i])) %>% as.numeric()
+            input_layer_emb.glm[[i]] <- layer_input(shape=c(1), name = paste0('input_layer_',fact_var[i],'_glm'))
+            embedded_layer.glm[[i]]  <- input_layer_emb.glm[[i]] %>%
+              layer_embedding(input_dim = length(beta.fact_var.glm[[i]])+2, output_dim = 1, trainable = FALSE,
+                              input_length = 1, name = paste0('embedding_layer_',fact_var[i],'_glm')
+                              #,weights = list(array(c(beta.fact_var.glm[[i]],0), dim=c(length(beta.fact_var.glm[[i]])+1,1)))
+                              ) %>%
+              layer_flatten(name = paste0('embedding_layer_',i,'_',fact_var[i],'_flat_glm'))
           }
+
+          inputs.glm <- c(inputs_no_fact.glm,embedded_layer.glm) %>% layer_concatenate()
+
+          embedded_layer   <- list()
+          input_layer_emb  <- list()
+          beta.no_fact_var <- model_coefficients %>% select(!starts_with(fact_var)) %>% as.numeric()
+          beta.fact_var    <- list()
+          for(i in 1:length(fact_var)) {
+
+            #beta.fact_var[[i]]   <- model_coefficients %>% select(starts_with(fact_var[i])) %>% as.numeric()
+            input_layer_emb[[i]] <- layer_input(shape=c(1), name = paste0('input_layer_',fact_var[i]))
+
+            # if(length(beta.fact_var[[i]])>0) {
+            #   embedded_layer[[i]]  <- input_layer_emb[[i]] %>%
+            #     layer_embedding(input_dim = max(x_fact[[i]])+1, output_dim = 1, trainable = FALSE,
+            #                     input_length = 1, name = paste0('embedding_layer_a_',fact_var[i])
+            #                     #,weights = list(array(c(beta.fact_var[[i]],0), dim=c(length(beta.fact_var[[i]])+1,1)))
+            #                     )
+            # }
+            # else {
+              embedded_layer[[i]]  <- input_layer_emb[[i]] %>%
+                layer_embedding(input_dim = max(x_fact[[i]])+1, output_dim = 1,
+                                input_length = 1, name = paste0('embedding_layer_',fact_var[i]))
+            #}
+
+            embedded_layer[[i]] <- embedded_layer[[i]] %>%
+              layer_flatten(name = paste0('embedding_layer_',i,'_',fact_var[i],'_flat'))
+
+          }
+
+          inputs <- c(inputs_no_fact,embedded_layer) %>% layer_concatenate()
 
         }
 
         # GLM Neural network
 
-        GLMNetwork.tmp <- inputs.glm %>%
-          layer_dense(units=1, activation='linear', name='output_layer_GLM', trainable=FALSE,
+        if(!layer$method_options$use_embedding) {
+          GLMNetwork.tmp <- inputs.glm %>%
+            layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
                       weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
                                    array(model.glm$coefficients[1],dim=c(1))))
+        }
+        else {
+          GLMNetwork.tmp <- inputs.glm %>%
+            layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
+                        weights=list(array(c(beta.no_fact_var.glm[2:length(beta.no_fact_var.glm)],rep(1,length(fact_var.glm))),
+                                           dim=c(length(fact_var.glm)+length(beta.no_fact_var.glm)-1,1)),
+                                     array(beta.no_fact_var.glm[1],dim=c(1))))
+        }
 
         # Hyperparameters
 
@@ -1129,7 +1217,11 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                                                                      array(0, dim=c(1)))),
                       name = 'output_layer_CANN')
 
-        CANN.tmp <- keras_model(inputs = c(inputs,inputs.glm), outputs = c(CANNoutput.tmp), name = 'CANN.tmp')
+        if(!layer$method_options$use_embedding)
+          CANN.tmp <- keras_model(inputs = c(inputs,inputs.glm), outputs = c(CANNoutput.tmp), name = 'CANN.tmp')
+        else
+          CANN.tmp <- keras_model(inputs = c(inputs_no_fact.glm,input_layer_emb.glm,inputs_no_fact,input_layer_emb),
+                                  outputs = c(CANNoutput.tmp), name = 'CANN.tmp')
 
         CANN.tmp %>% compile(
           loss = layer$method_options$loss,
@@ -1141,11 +1233,20 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           monitor = layer$method_options$monitor,
           patience = layer$method_options$patience)
 
+        if(!layer$method_options$use_embedding) {
+          x.inputs <- list(x,x.glm)
+          x.inputs.val <- list(x.val,x.glm.val)
+        }
+        else {
+          x.inputs <- list(x_no_fact.glm,x_fact.glm,x_no_fact,x_fact)
+          x.inputs.val <- list(x_no_fact.glm.val,x_fact.glm.val,x_no_fact.val,x_fact.val)
+        }
+
         history.tmp <- CANN.tmp %>%
-          keras::fit(x=list(x,x.glm), y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+          keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
                      batch_size = layer$method_options$batch_size,
                      #validation_split = layer$method_options$validation_split,
-                     validation_data = list(list(x.val,x.glm.val),y.val,sample.w.val),
+                     validation_data = list(x.inputs.val,y.val,sample.w.val),
                      callbacks = list(earlystopping),
                      verbose = layer$method_options$verbose)
 

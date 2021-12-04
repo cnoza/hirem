@@ -538,8 +538,10 @@ simulate_rbns(model4f)
 init()
 
 bounds <- list(
-  mlp_hidden_1 = c(10L,30L)
+  ae_hidden_1 = c(10L,15L)
+  #mlp_hidden_1 = c(10L,30L)
 )
+
 
 model4g <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
@@ -547,27 +549,27 @@ model4g <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_mlp_keras('size', distribution = 'gamma',
-                  bayesOpt = F,
+                  bayesOpt = T,
                   bayesOpt_min = T,
                   bayesOpt_iters_n = 1,
                   bayesOpt_bounds = bounds,
                   hidden = c(20,15,10),
-                  nfolds=1,
+                  nfolds=2,
                   step_log = F,
                   step_normalize = F,
                   verbose = 1,
+                  bias_regularization = TRUE,
                   loss = gamma_deviance_keras,
                   metrics = metric_gamma_deviance_keras,
                   optimizer = optimizer_nadam(),
-                  validation_split = 0,
-                  activation.hidden = rep('exponential',3),
+                  validation_split = .3,
                   activation.output = 'exponential',
                   batch_normalization = F,
                   family_for_init = Gamma(link=log),
-                  epochs = 100,
+                  epochs = 10,
                   batch_size = 1000,
                   monitor = 'gamma_deviance_keras',
-                  patience = 20,
+                  patience = 2,
                   filter = function(data){data$payment == 1})
 
 model4g <- hirem::fit(model4g,
@@ -599,8 +601,8 @@ model5 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_cann('size', distribution = 'gamma',
-             bayesOpt = T,
+  layer_cann('size', distribution = 'gamma', bias_regularization = FALSE,
+             bayesOpt = F,
              bayesOpt_min = T,
              bayesOpt_iters_n = 1,
              bayesOpt_bounds = bounds,
@@ -608,8 +610,9 @@ model5 <- hirem(reserving_data) %>%
              loss = gamma_deviance_keras,
              metrics = metric_gamma_deviance_keras,
              optimizer = optimizer_nadam(),
+             hidden = c(20,15,10),
              validation_split = 0,
-             activation.output = 'exponential',
+             activation.output = 'linear',
              activation.output.cann = 'exponential',
              fixed.cann = F,
              monitor = 'gamma_deviance_keras',
@@ -701,6 +704,47 @@ model5c <- hirem::fit(model5c,
                      size = 'size ~ close + development_year_factor')
 
 print(model5c$layers$size$sigma)
+
+#=========================================================================#
+#             Case 5d: GLM + CANN (embedding layers)                      #
+#=========================================================================#
+
+init()
+reserving_data <- reserving_data %>% mutate(X1_factor = factor(X1))
+model5d <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_cann('size', distribution = 'gamma', bias_regularization = FALSE,
+             use_embedding = TRUE,
+             formula.glm = 'size ~ close + development_year_factor',
+             family_for_glm = Gamma(link=log),
+             loss = gamma_deviance_keras,
+             metrics = metric_gamma_deviance_keras,
+             optimizer = optimizer_nadam(),
+             validation_split = 0,
+             hidden = c(20,15,10),
+             activation.output = 'linear',
+             activation.output.cann = 'exponential',
+             fixed.cann = FALSE,
+             monitor = 'gamma_deviance_keras',
+             patience = 20,
+             epochs = 100,
+             batch_size = 1000,
+             filter = function(data){data$payment == 1})
+
+model5d <- hirem::fit(model5d,
+                      weights = weight,
+                      weight.var = 'development_year',
+                      balance.var = 'development_year',
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + factor(development_year)',
+                      size = 'size ~ close + development_year_factor + X1_factor')
+
+print(model5d$layers$size$shape)
+
+simulate_rbns(model5d)
 
 #=========================================================================#
 #                                 Annex                                   #

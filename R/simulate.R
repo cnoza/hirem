@@ -217,6 +217,11 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   f <- as.formula(obj$formula)
   label <- as.character(terms(f)[[2]])
 
+  if(!is.null(obj$method_options$formula.glm))
+    f.glm <- as.formula(obj$method_options$formula.glm)
+  else
+    f.glm <- f
+
   #x <- as.matrix(sparse.model.matrix(f, data=data[select,])[,-1])
   data_baked <- bake(obj$data_recipe, new_data = data[select,])
   if(ncol(data_baked) == 1)
@@ -229,11 +234,26 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   x     <- select(data_baked,-as.name(label)) %>% as.matrix()
   x.glm <- select(data_baked.glm,-as.name(label)) %>% as.matrix()
 
-  if(!obj$method_options$bias_regularization) {
-    response <- predict(obj$fit, list(x,x.glm))
+  def_x <- def_x(obj$method_options$use_embedding,
+                 f,
+                 f.glm,
+                 data[select,],
+                 data_baked,
+                 data_baked.glm,
+                 label)
+
+  if(!obj$method_options$use_embedding) {
+    x.inputs <- list(def_x$x,def_x$x.glm)
   }
   else {
-    Zlearn   <- data.frame(obj$zz %>% predict(list(x,x.glm)))
+    x.inputs <- list(def_x$x_no_fact.glm,def_x$x_fact.glm,def_x$x_no_fact,def_x$x_fact)
+  }
+
+  if(!obj$method_options$bias_regularization) {
+    response <- predict(obj$fit, x.inputs)
+  }
+  else {
+    Zlearn   <- data.frame(obj$zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
     response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
   }

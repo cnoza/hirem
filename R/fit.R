@@ -503,6 +503,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   }
 
   weights.vec <- if(is.null(obj$weights) | !is.null(layer$method_options$ae.hidden)) NULL else obj$weights[data[[obj$weight.var]]]
+  layer$weights.vec <- weights.vec
 
   data_recipe <- recipe(f, data=data)
 
@@ -510,7 +511,9 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     data_recipe <- data_recipe %>% step_log(as.name(label))
   if(layer$method_options$step_normalize)
     data_recipe <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
-  data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE)
+  if(!layer$method_options$use_embedding)
+    data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE)
+
   data_recipe <- data_recipe %>% prep()
   layer$data_recipe <- data_recipe
 
@@ -518,10 +521,24 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   if(ncol(data_baked) == 1)
     data_baked <- data_baked %>% mutate(intercept = 1)
 
-  x <- select(data_baked,-as.name(label)) %>% as.matrix()
+  def_x <- def_x_mlp(layer$method_options$use_embedding,
+                 f,
+                 data,
+                 data_baked,
+                 label)
+
+  x       <- def_x$x
+  layer$x <- x
+
+  if(layer$method_options$use_embedding) {
+    layer$x_fact         <- def_x$x_fact
+    layer$x_no_fact      <- def_x$x_no_fact
+    layer$fact_var       <- def_x$fact_var
+    layer$no_fact_var    <- def_x$no_fact_var
+  }
+
   y <- data_baked %>% pull(as.name(label))
 
-  layer$x <- x
   layer$y <- y
 
   if(layer$method_options$bayesOpt) {
@@ -538,45 +555,49 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                                 mlp_hidden_1, mlp_hidden_2, mlp_hidden_3,
                                 mlp_dropout.hidden_1, mlp_dropout.hidden_2, mlp_dropout.hidden_3) {
 
-      ae.hidden <- c()
+      if(!layer$method_options$use_embedding) {
 
-      if(!is.null(layer$method_options$ae.hidden))
-        ae.hidden <- layer$method_options$ae.hidden
+        ae.hidden <- c()
 
-      if(!missing(ae_hidden_1)) ae.hidden[1] <- ae_hidden_1
-      if(!missing(ae_hidden_2)) ae.hidden[2] <- ae_hidden_2
-      if(!missing(ae_hidden_3)) ae.hidden[3] <- ae_hidden_3
+        if(!is.null(layer$method_options$ae.hidden))
+          ae.hidden <- layer$method_options$ae.hidden
 
-      if(length(ae.hidden)==0) ae.hidden <- NULL
+        if(!missing(ae_hidden_1)) ae.hidden[1] <- ae_hidden_1
+        if(!missing(ae_hidden_2)) ae.hidden[2] <- ae_hidden_2
+        if(!missing(ae_hidden_3)) ae.hidden[3] <- ae_hidden_3
 
-      inputs <- layer_input(shape = c(ncol(x)), name='input_layer')
+        if(length(ae.hidden)==0) ae.hidden <- NULL
 
-      if(!is.null(ae.hidden)) {
+        inputs <- layer_input(shape = c(ncol(x)), name='input_layer')
 
-        ae_arch <- def_ae_arch(inputs=inputs,
-                               x=x,
-                               ae.hidden=ae.hidden,
-                               ae.activation.hidden=layer$method_options$ae.activation.hidden)
+        if(!is.null(ae.hidden)) {
 
-        autoencoder <- keras_model(inputs, ae_arch$ae_output_l)
+          ae_arch <- def_ae_arch(inputs=inputs,
+                                 x=x,
+                                 ae.hidden=ae.hidden,
+                                 ae.activation.hidden=layer$method_options$ae.activation.hidden)
 
-        model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(ae.hidden)]])
+          autoencoder <- keras_model(inputs, ae_arch$ae_output_l)
 
-        autoencoder %>% compile(loss = 'mae', optimizer='adam')
+          model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(ae.hidden)]])
 
-        autoencoder %>% keras::fit(
-          x = x,
-          y = x,
-          epochs = layer$method_options$epochs,
-          batch_size = layer$method_options$batch_size,
-          verbose = layer$method_options$verbose
-        )
+          autoencoder %>% compile(loss = 'mae', optimizer='adam')
 
-        x <- model_en %>% predict(x)
+          autoencoder %>% keras::fit(
+            x = x,
+            y = x,
+            epochs = layer$method_options$epochs,
+            batch_size = layer$method_options$batch_size,
+            verbose = layer$method_options$verbose
+          )
 
-        inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
+          x <- model_en %>% predict(x)
 
-        x.sav <- x
+          inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
+
+          x.sav <- x
+
+        }
 
       }
 
@@ -584,25 +605,49 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
       for(k in 1:layer$method_options$nfolds) {
 
-        if(!is.null(ae.hidden))
-          x.val    <- x.sav[Folds[[k]],]
-        else
-          x.val    <- layer$x[Folds[[k]],]
+        if(!layer$method_options$use_embedding) {
+          if(!is.null(ae.hidden))
+            x.val    <- x.sav[Folds[[k]],]
+          else
+            x.val    <- layer$x[Folds[[k]],]
+        }
+        else {
+          x_fact.val <- list()
+          for(i in 1:length(layer$fact_var)) {
+            x_fact.val[[i]]        <- layer$x_fact[[i]][Folds[[k]]] %>% as.numeric()
+          }
+          x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
+        }
 
         y.val    <- layer$y[Folds[[k]]]
         sample.w.val <- weights.vec[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
-          x    <- x.val
+          if(!layer$method_options$use_embedding) {
+            x    <- x.val
+          }
+          else {
+            x_fact        <- x_fact.val
+            x_no_fact     <- x_no_fact.val
+          }
           y    <- y.val
           sample.w <- sample.w.val
         }
         else {
 
-          if(!is.null(ae.hidden))
-            x <- x.sav[-Folds[[k]],]
-          else
-            x <- layer$x[-Folds[[k]],]
+          if(!layer$method_options$use_embedding) {
+            if(!is.null(ae.hidden))
+              x <- x.sav[-Folds[[k]],]
+            else
+              x <- layer$x[-Folds[[k]],]
+          }
+          else {
+            x_fact <- list()
+            for(i in 1:length(layer$fact_var)) {
+              x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.numeric()
+            }
+            x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
+          }
 
           y <- layer$y[-Folds[[k]]]
           sample.w <- weights.vec[-Folds[[k]]]
@@ -635,7 +680,14 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
         if(length(mlp_dropout.hidden)==0) mlp_dropout.hidden <- NULL
 
-        mlp_arch <- def_mlp_arch(inputs=inputs,
+        def_inputs <- def_inputs_mlp(use_embedding=layer$method_options$use_embedding,
+                                     x=x,
+                                     no_fact_var=layer$no_fact_var,
+                                     fact_var=layer$fact_var,
+                                     x_fact=x_fact,
+                                     output_dim = layer$method_options$output_dim)
+
+        mlp_arch <- def_mlp_arch(inputs=def_inputs$inputs,
                                  batch_normalization=layer$method_options$batch_normalization,
                                  hidden=mlp_hidden,
                                  activation.hidden=layer$method_options$activation.hidden,
@@ -648,7 +700,14 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                                  use_bias=layer$method_options$use_bias,
                                  weights.vec=weights.vec)
 
-        model <- keras_model(inputs = inputs, outputs = c(mlp_arch$output))
+        if(!layer$method_options$use_embedding) {
+          model <- keras_model(inputs = def_inputs$inputs, outputs = c(mlp_arch$output))
+        }
+        else {
+          model <- keras_model(inputs = c(def_inputs$inputs_no_fact,
+                                          def_inputs$input_layer_emb),
+                               outputs = c(mlp_arch$output))
+        }
 
         model %>% compile(
           loss = layer$method_options$loss,
@@ -660,11 +719,20 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
           monitor = layer$method_options$monitor,
           patience = layer$method_options$patience)
 
+        if(!layer$method_options$use_embedding) {
+          x.inputs <- list(x)
+          x.inputs.val <- list(x.val)
+        }
+        else {
+          x.inputs <- list(x_no_fact,x_fact)
+          x.inputs.val <- list(x_no_fact.val,x_fact.val)
+        }
+
         history <- model %>%
-          keras::fit(x=x, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+          keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
                      batch_size = layer$method_options$batch_size,
                      #validation_split = layer$method_options$validation_split,
-                     validation_data = list(x.val,y.val,sample.w.val),
+                     validation_data = list(x.inputs.val,y.val,sample.w.val),
                      callbacks = list(earlystopping),
                      verbose = layer$method_options$verbose)
 
@@ -743,11 +811,18 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   }
 
-  x <- layer$x
+  if(layer$method_options$use_embedding) {
+    x_fact        <-layer$x_fact
+    x_no_fact     <-layer$x_no_fact
+    no_fact_var   <-layer$no_fact_var
+    fact_var      <- layer$fact_var
+  }
+  else {
+    x <- layer$x
+  }
+
   y <- layer$y
   sample.w <- weights.vec
-
-  inputs <- layer_input(shape = c(ncol(x)), name='input_layer')
 
   if(!is.null(layer$method_options$ae.hidden)) {
 
@@ -782,7 +857,14 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   }
 
-  mlp_arch <- def_mlp_arch(inputs=inputs,
+  def_inputs <- def_inputs_mlp(use_embedding=layer$method_options$use_embedding,
+                               x=x,
+                               no_fact_var=no_fact_var,
+                               fact_var=fact_var,
+                               x_fact=x_fact,
+                               output_dim = layer$method_options$output_dim)
+
+  mlp_arch <- def_mlp_arch(inputs=def_inputs$inputs,
                            batch_normalization=layer$method_options$batch_normalization,
                            hidden=layer$method_options$hidden,
                            activation.hidden=layer$method_options$activation.hidden,
@@ -797,7 +879,14 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   if(!is.null(layer$method_options$family_for_init)) layer$glm.hom <- mlp_arch$glm.hom
 
-  model <- keras_model(inputs = inputs, outputs = c(mlp_arch$output))
+  if(!layer$method_options$use_embedding) {
+    model <- keras_model(inputs = def_inputs$inputs, outputs = c(mlp_arch$output))
+  }
+  else {
+    model <- keras_model(inputs = c(def_inputs$inputs_no_fact,
+                                    def_inputs$input_layer_emb),
+                         outputs = c(mlp_arch$output))
+  }
 
   print(summary(model))
 
@@ -811,13 +900,20 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     monitor = layer$method_options$monitor,
     patience = layer$method_options$patience)
 
+  if(!layer$method_options$use_embedding) {
+    x.inputs <- list(x)
+  }
+  else {
+    x.inputs <- list(x_no_fact,x_fact)
+  }
+
   now <- Sys.time()
   fn <- paste0("mlp_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
 
   CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
 
   layer$history <- model %>%
-    keras::fit(x=x, y=y, sample_weight=sample.w, epochs = layer$method_options$epochs,
+    keras::fit(x=x.inputs, y=y, sample_weight=sample.w, epochs = layer$method_options$epochs,
                batch_size = layer$method_options$batch_size,
                validation_split = layer$method_options$validation_split,
                callbacks = list(earlystopping, CBs),
@@ -841,7 +937,17 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
     zz        <- keras_model(inputs = model$input, outputs=get_layer(model,'last_hidden_layer_activation')$output)
     layer$zz  <- zz
 
-    Zlearn    <- data.frame(zz %>% predict(x))
+    if(!layer$method_options$use_embedding) {
+      x <- def_x$x
+      x.inputs <- list(x)
+    }
+    else {
+      x_fact        <- def_x$x_fact
+      x_no_fact     <- def_x$x_no_fact
+      x.inputs      <- list(x_no_fact,x_fact)
+    }
+
+    Zlearn    <- data.frame(zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
 
     Zlearn$yy <- y
@@ -870,16 +976,33 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                                            data_baked_bc <- bake(layer$data_recipe, new_data = x)
                                            if(ncol(data_baked_bc) == 1)
                                              data_baked_bc <- data_baked_bc %>% mutate(intercept = 1)
-                                           x.tmp <- select(data_baked_bc,-as.name(label)) %>% as.matrix()
+
+                                           def_x <- def_x_mlp(layer$method_options$use_embedding,
+                                                              f,
+                                                              x,
+                                                              data_baked_bc,
+                                                              label)
+
+                                           if(!layer$method_options$use_embedding) {
+                                             x.tmp <- def_x$x
+                                             x.inputs.tmp <- list(x.tmp)
+                                           }
+                                           else {
+                                             x_fact.tmp         <- def_x$x_fact
+                                             x_no_fact.tmp      <- def_x$x_no_fact
+                                             x.inputs.tmp <- list(x_no_fact.tmp,x_fact.tmp)
+                                           }
+
                                            if(!is.null(layer$method_options$ae.hidden))
                                              x.tmp <- model_en %>% predict(x.tmp)
+
                                            if(layer$method_options$bias_regularization) {
-                                             Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.tmp))
+                                             Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.inputs.tmp))
                                              names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
                                              sum(x[[layer$name]])/sum(predict(layer$fit, newdata = Zlearn.tmp, type = 'response'))
                                            }
                                            else {
-                                             sum(x[[layer$name]])/sum(layer$fit %>% predict(x.tmp))
+                                             sum(x[[layer$name]])/sum(layer$fit %>% predict(x.inputs.tmp))
                                            }
                                         })
   }
@@ -887,7 +1010,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   if(layer$method_options$bias_regularization)
     pred <- layer$fit$fitted.values
   else
-    pred <- layer$fit %>% predict(x)
+    pred <- layer$fit %>% predict(x.inputs)
 
   if(layer$method_options$distribution == 'gaussian') {
     layer$sigma <- sd(pred - y)

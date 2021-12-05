@@ -587,6 +587,52 @@ print(model4g$layers$size$shape.se)
 simulate_rbns(model4g)
 
 #=========================================================================#
+#         Case 4h: GLM + MLP (gamma, 3 hidden layers, embedding layers)   #
+#=========================================================================#
+
+init()
+reserving_data <- reserving_data %>% mutate(X1_factor = factor(X1))
+model4h <- hirem(reserving_data) %>%
+  split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
+             validation = .7, cv_fold = 6) %>%
+  layer_glm('close', binomial(link = logit)) %>%
+  layer_glm('payment', binomial(link = logit)) %>%
+  layer_mlp_keras('size', distribution = 'gamma', bias_regularization = T,
+                  use_embedding = T,
+                  output_dim = 1,
+                  step_log = F,
+                  step_normalize = F,
+                  loss = gamma_deviance_keras,
+                  metrics = metric_gamma_deviance_keras,
+                  optimizer = optimizer_nadam(),
+                  validation_split = 0,
+                  hidden = c(20,15,10),
+                  activation.output = 'exponential',
+                  batch_normalization = F,
+                  family_for_init = Gamma(link=log),
+                  epochs = 5,
+                  verbose = 1,
+                  batch_size = 1000,
+                  monitor = 'gamma_deviance_keras',
+                  patience = 20,
+                  filter = function(data){data$payment == 1})
+
+model4h <- hirem::fit(model4h,
+                      weights = weight,
+                      weight.var = 'development_year',
+                      balance.var = 'development_year',
+                      close = 'close ~ factor(development_year)',
+                      payment = 'payment ~ close + factor(development_year)',
+                      size = 'size ~ close + development_year_factor')
+
+# The shape parameter is (almost) identical to model 1 (glm, gamma log link for size):
+print(model4h$layers$size$shape)
+print(model4h$layers$size$shape.se)
+
+# Due to the bias regularization, we obtain RBNS simulations close to the true value:
+simulate_rbns(model4h)
+
+#=========================================================================#
 #             Case 5: GLM + CANN (gamma) + Bayesian opt                   #
 #=========================================================================#
 

@@ -19,6 +19,8 @@ layer_mlp_keras(
   activation.hidden = NULL,
   activation.output = "linear",
   batch_normalization = FALSE,
+  use_embedding = FALSE,
+  output_dim = 1,
   loss = "mse",
   optimizer = "nadam",
   epochs = 20,
@@ -28,6 +30,8 @@ layer_mlp_keras(
   monitor = "loss",
   patience = 20,
   family_for_init = NULL,
+  nfolds = 5,
+  bias_regularization = TRUE,
   bayesOpt = FALSE,
   bayesOpt_min = FALSE,
   bayesOpt_iters_n = 3,
@@ -85,6 +89,8 @@ If NULL, the linear activation function is used in all hidden layers.}
 
 \item{family_for_init}{If not NULL, an homogenous GLM is estimated and the resulting coefficient estimate is used to initialize the bias weight in the output layer, which may improve convergence.
 See Ferrario, Andrea and Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020). Available at SSRN: https://ssrn.com/abstract=3226852 or http://dx.doi.org/10.2139/ssrn.3226852}
+
+\item{nfolds}{The number of folds for cross-validation. Default is 5. Set it to 1 to deactivate cross-validation.}
 
 \item{filter}{Function with \itemize{
  \item input: Data set with same structure as the data passed to \code{hirem}

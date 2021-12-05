@@ -270,7 +270,7 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @export
 layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.hidden = NULL, ae.activation.hidden = NULL,
                             hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, verbose = 0,
-                            activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE,
+                            activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE, use_embedding = FALSE, output_dim = 1,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             monitor = "loss", patience = 20, family_for_init = NULL, nfolds = 5, bias_regularization = TRUE,
                             bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL,
@@ -304,6 +304,8 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
   options$bayesOpt_bounds <- bayesOpt_bounds
   options$nfolds <- nfolds
   options$bias_regularization <- bias_regularization
+  options$use_embedding <- use_embedding
+  options$output_dim <- output_dim
 
 
   if(is.null(options$ae.hidden)) {
@@ -318,6 +320,8 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
       if(length(options$ae.hidden) != length(options$ae.activation.hidden))
         stop('The length of ae.hidden and ae.activation.hidden should match.')
     }
+    if(options$use_embedding)
+      stop('If ae.hidden is not NULL, embedding layers cannot be used for factor variables.')
   }
 
   if(is.null(options$hidden)) {

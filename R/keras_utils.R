@@ -152,7 +152,7 @@ def_x_mlp <- function(use_embedding,
 
     x_fact <- list()
     for(i in 1:length(fact_var)) {
-      x_fact[[i]] <- select(data_baked,fact_var[i]) %>% as.matrix() %>% as.numeric()
+      x_fact[[i]] <- select(data_baked,as.name(fact_var[i]))[[1]] %>% as.integer()
       x_fact[[i]] <- x_fact[[i]]-1 # linked to issue with input_dim for embedding in keras
     }
     x_no_fact  <- select(data_baked,-as.name(label),-starts_with(fact_var)) %>% as.matrix()
@@ -188,21 +188,25 @@ def_x <- function(use_embedding,
     covariates      <- attr(terms(f),'term.labels')
     covariates.glm  <- attr(terms(f.glm),'term.labels')
 
-    fact_var        <- covariates[covariates %in% names(data)[sapply(data, is.factor)]]
-    no_fact_var     <- covariates[!(covariates %in% names(data)[sapply(data, is.factor)])]
     fact_var.glm    <- covariates.glm[covariates.glm %in% names(data)[sapply(data, is.factor)]]
     no_fact_var.glm <- covariates.glm[!(covariates.glm %in% names(data)[sapply(data, is.factor)])]
+    fact_var        <- covariates[covariates %in% names(data)[sapply(data, is.factor)]]
+    no_fact_var     <- covariates[!(covariates %in% names(data)[sapply(data, is.factor)])]
 
     x_fact <- list()
+    m <- 1
     for(i in 1:length(fact_var)) {
-      x_fact[[i]] <- select(data_baked,fact_var[i]) %>% as.matrix() %>% as.numeric()
-      x_fact[[i]] <- x_fact[[i]]-1 # linked to issue with input_dim for embedding in keras
+      if(!(fact_var[i] %in% fact_var.glm)) {
+        x_fact[[m]] <- select(data_baked,fact_var[i])[[1]] %>% as.integer()
+        x_fact[[m]] <- x_fact[[m]]-1 # linked to issue with input_dim for embedding in keras
+        m <- m+1
+      }
     }
     x_no_fact  <- select(data_baked,-as.name(label),-starts_with(fact_var)) %>% as.matrix()
 
     x_fact.glm <- list()
     for(i in 1:length(fact_var.glm)) {
-      x_fact.glm[[i]] <- select(data_baked.glm,fact_var.glm[i]) %>% as.matrix() %>% as.numeric()
+      x_fact.glm[[i]] <- select(data_baked.glm,fact_var.glm[i])[[1]] %>% as.integer()
       x_fact.glm[[i]] <- x_fact.glm[[i]]-1 # linked to issue with input_dim for embedding in keras
     }
     x_no_fact.glm <- select(data_baked.glm,-as.name(label),-starts_with(fact_var.glm)) %>% as.matrix()
@@ -319,17 +323,27 @@ def_inputs <- function(use_embedding,
 
     embedded_layer   <- list()
     input_layer_emb  <- list()
-    #beta.no_fact_var <- model_coefficients %>% select(!starts_with(fact_var)) %>% as.numeric()
-    #beta.fact_var    <- list()
+    input_layer_emb_c <- list()
+    m <- 1
+    n <- 1
+
     for(i in 1:length(fact_var)) {
 
-      input_layer_emb[[i]] <- layer_input(shape=c(1), dtype='int32', name = paste0('input_layer_',fact_var[i]))
-      embedded_layer[[i]]  <- input_layer_emb[[i]] %>%
-        layer_embedding(input_dim = max(x_fact[[i]])+1, output_dim = 1,
-                        input_length = 1, name = paste0('embedding_layer_',fact_var[i]))
-
-      embedded_layer[[i]] <- embedded_layer[[i]] %>%
-        layer_flatten(name = paste0('embedding_layer_',fact_var[i],'_flat'))
+      if(fact_var[i] %in% fact_var.glm) {
+        j <- which(fact_var.glm==fact_var[i])
+        input_layer_emb_c[[m]]  <- input_layer_emb.glm[[j]]
+        m <- m+1
+        embedded_layer[[i]]  <- embedded_layer.glm[[j]]
+      }
+      else {
+        input_layer_emb[[n]] <- layer_input(shape=c(1), dtype='int32', name = paste0('input_layer_',fact_var[i]))
+        embedded_layer[[i]]  <- input_layer_emb[[n]] %>%
+          layer_embedding(input_dim = max(x_fact[[n]])+1, output_dim = 1,
+                          input_length = 1, name = paste0('embedding_layer_',fact_var[i]))
+        n <- n+1
+        embedded_layer[[i]] <- embedded_layer[[i]] %>%
+          layer_flatten(name = paste0('embedding_layer_',fact_var[i],'_flat'))
+      }
 
     }
 
@@ -340,6 +354,7 @@ def_inputs <- function(use_embedding,
                         inputs_no_fact=inputs_no_fact,
                         inputs_no_fact.glm=inputs_no_fact.glm,
                         input_layer_emb=input_layer_emb,
+                        input_layer_emb_c=input_layer_emb_c,
                         input_layer_emb.glm=input_layer_emb.glm,
                         beta.no_fact_var.glm=beta.no_fact_var.glm)
 

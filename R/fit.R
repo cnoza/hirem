@@ -934,6 +934,15 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
       string
     }
 
+    glm.formula.2 <- function(cov) {
+      string <- "yy ~ "
+      for (i in 2:length(cov)) {
+        if(i==2) string <- paste0(string,' ',cov[i])
+        else string <- paste0(string,' + ',cov[i])
+      }
+      string
+    }
+
     zz        <- keras_model(inputs = model$input, outputs=get_layer(model,'last_hidden_layer_activation')$output)
     layer$zz  <- zz
 
@@ -967,7 +976,12 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
       stop('Bias regularization is not supported for this distribution.')
 
     glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
-    layer$fit <- glm1
+    cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
+    if(length(cov)>0) {
+      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec)
+      layer$fit <- glm2
+    }
+    else layer$fit <- glm1
   }
 
   if(!is.null(obj$balance.var)){

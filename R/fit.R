@@ -612,11 +612,18 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
             x.val    <- layer$x[Folds[[k]],]
         }
         else {
-          x_fact.val <- list()
-          for(i in 1:length(layer$fact_var)) {
-            x_fact.val[[i]]        <- layer$x_fact[[i]][Folds[[k]]] %>% as.numeric()
+          x_fact.val <- NULL
+          if(length(layer$fact_var)>0) {
+            x_fact.val <- list()
+            for(i in 1:length(layer$fact_var)) {
+              x_fact.val[[i]] <- layer$x_fact[[i]][Folds[[k]]] %>% as.integer()
+              x_fact.val[[i]] <- x_fact.val[[i]]-1 # linked to issue with input_dim for embedding in keras
+            }
           }
-          x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
+
+          x_no_fact.val <- NULL
+          if(length(layer$no_fact_var)>0)
+            x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
         }
 
         y.val    <- layer$y[Folds[[k]]]
@@ -642,11 +649,17 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
               x <- layer$x[-Folds[[k]],]
           }
           else {
-            x_fact <- list()
-            for(i in 1:length(layer$fact_var)) {
-              x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.numeric()
+            x_fact <- NULL
+            if(length(layer$fact_var)>0) {
+              x_fact <- list()
+              for(i in 1:length(layer$fact_var)) {
+                x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.integer()
+                x_fact[[i]] <- x_fact[[i]]-1 # linked to issue with input_dim for embedding in keras
+              }
             }
-            x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
+            x_no_fact <- NULL
+            if(length(layer$no_fact_var)>0)
+              x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
           }
 
           y <- layer$y[-Folds[[k]]]
@@ -725,7 +738,9 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
         }
         else {
           x.inputs <- list(x_no_fact,x_fact)
+          x.inputs[sapply(x.inputs, is.null)] <- NULL
           x.inputs.val <- list(x_no_fact.val,x_fact.val)
+          x.inputs.val[sapply(x.inputs.val, is.null)] <- NULL
         }
 
         history <- model %>%
@@ -811,14 +826,13 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
 
   }
 
+  x <- layer$x
+
   if(layer$method_options$use_embedding) {
     x_fact        <-layer$x_fact
     x_no_fact     <-layer$x_no_fact
     no_fact_var   <-layer$no_fact_var
     fact_var      <- layer$fact_var
-  }
-  else {
-    x <- layer$x
   }
 
   y <- layer$y
@@ -905,6 +919,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
   }
   else {
     x.inputs <- list(x_no_fact,x_fact)
+    x.inputs[sapply(x.inputs, is.null)] <- NULL
   }
 
   now <- Sys.time()
@@ -1005,6 +1020,7 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
                                              x_fact.tmp         <- def_x$x_fact
                                              x_no_fact.tmp      <- def_x$x_no_fact
                                              x.inputs.tmp <- list(x_no_fact.tmp,x_fact.tmp)
+                                             x.inputs.tmp[sapply(x.inputs.tmp, is.null)] <- NULL
                                            }
 
                                            if(!is.null(layer$method_options$ae.hidden))
@@ -1119,11 +1135,10 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                  data_baked.glm,
                  label)
 
-  if(!layer$method_options$use_embedding) {
-    layer$x     <- def_x$x
-    layer$x.glm <- def_x$x.glm
-  }
-  else {
+  layer$x     <- def_x$x
+  layer$x.glm <- def_x$x.glm
+
+  if(layer$method_options$use_embedding) {
     layer$x_fact         <- def_x$x_fact
     layer$x_no_fact      <- def_x$x_no_fact
     layer$x_fact.glm     <- def_x$x_fact.glm
@@ -1160,17 +1175,31 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
         else {
 
-          x_fact.val <- list()
-          for(i in 1:length(layer$fact_var)) {
-            x_fact.val[[i]]        <- layer$x_fact[[i]][Folds[[k]]] %>% as.numeric()
+          x_fact.val <- NULL
+          if(length(layer$fact_var)>0) {
+            x_fact.val <- list()
+            for(i in 1:length(layer$fact_var)) {
+              x_fact.val[[i]] <- layer$x_fact[[i]][Folds[[k]]] %>% as.integer()
+              x_fact.val[[i]] <- x_fact.val[[i]]-1 # linked to issue with input_dim for embedding in keras
+            }
           }
-          x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
 
-          x_fact.glm.val <- list()
-          for(i in 1:length(layer$fact_var.glm)) {
-            x_fact.glm.val[[i]]    <- layer$x_fact.glm[[i]][Folds[[k]]] %>% as.matrix()
+          x_no_fact.val <- NULL
+          if(length(layer$no_fact_var)>0)
+            x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
+
+          x_fact.glm.val <- NULL
+          if(length(layer$fact_var.glm)>0) {
+            x_fact.glm.val <- list()
+            for(i in 1:length(layer$fact_var.glm)) {
+              x_fact.glm.val[[i]] <- layer$x_fact.glm[[i]][Folds[[k]]] %>% as.integer()
+              x_fact.glm.val[[i]] <- x_fact.glm.val[[i]]-1 # linked to issue with input_dim for embedding in keras
+            }
           }
-          x_no_fact.glm.val <- layer$x_no_fact.glm[Folds[[k]],] %>% as.matrix()
+
+          x_no_fact.glm.val <- NULL
+          if(length(layer$no_fact_var.glm)>0)
+            x_no_fact.glm.val <- layer$x_no_fact.glm[Folds[[k]],] %>% as.matrix()
 
         }
 
@@ -1201,17 +1230,29 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
             x.glm  <- layer$x.glm[-Folds[[k]],]
           }
           else {
-            x_fact <- list()
-            for(i in 1:length(layer$fact_var)) {
-              x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.numeric()
+            x_fact <- NULL
+            if(length(layer$fact_var)>0) {
+              x_fact <- list()
+              for(i in 1:length(layer$fact_var)) {
+                x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.integer()
+                x_fact[[i]] <- x_fact[[i]]-1 # linked to issue with input_dim for embedding in keras
+              }
             }
-            x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
+            x_no_fact <- NULL
+            if(length(layer$no_fact_var)>0)
+              x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
 
-            x_fact.glm <- list()
-            for(i in 1:length(layer$fact_var.glm)) {
-              x_fact.glm[[i]] <- layer$x_fact.glm[[i]][-Folds[[k]]] %>% as.numeric()
+            x_fact.glm <- NULL
+            if(length(layer$fact_var.glm)>0) {
+              x_fact.glm <- list()
+              for(i in 1:length(layer$fact_var.glm)) {
+                x_fact.glm[[i]] <- layer$x_fact.glm[[i]][-Folds[[k]]] %>% as.integer()
+                x_fact.glm[[i]] <- x_fact.glm[[i]]-1 # linked to issue with input_dim for embedding in keras
+              }
             }
-            x_no_fact.glm <- layer$x_no_fact.glm[-Folds[[k]],] %>% as.matrix()
+            x_no_fact.glm <- NULL
+            if(length(layer$no_fact_var.glm)>0)
+              x_no_fact.glm <- layer$x_no_fact.glm[-Folds[[k]],] %>% as.matrix()
           }
 
           y <- layer$y[-Folds[[k]]]
@@ -1234,15 +1275,15 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         if(!layer$method_options$use_embedding) {
           GLMNetwork.tmp <- def_inputs$inputs.glm %>%
             layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
-                      weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
-                                   array(model.glm$coefficients[1],dim=c(1))))
+                        weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
+                                     array(model.glm$coefficients[1],dim=c(1))))
         }
         else {
           GLMNetwork.tmp <- def_inputs$inputs.glm %>%
             layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
-                        weights=list(array(c(beta.no_fact_var.glm[2:length(beta.no_fact_var.glm)],rep(1,length(fact_var.glm))),
-                                           dim=c(length(fact_var.glm)+length(beta.no_fact_var.glm)-1,1)),
-                                     array(beta.no_fact_var.glm[1],dim=c(1))))
+                        weights=list(array(c(def_inputs$beta.no_fact_var.glm[2:length(def_inputs$beta.no_fact_var.glm)],rep(1,length(fact_var.glm))),
+                                           dim=c(length(fact_var.glm)+length(def_inputs$beta.no_fact_var.glm)-1,1)),
+                                     array(def_inputs$beta.no_fact_var.glm[1],dim=c(1))))
         }
 
         # Hyperparameters
@@ -1276,12 +1317,12 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         # Neural network
 
         NNetwork.tmp <- def_NN_arch(def_inputs$inputs,
-                                layer$method_options$batch_normalization,
-                                mlp_hidden,
-                                layer$method_options$activation.hidden,
-                                mlp_dropout.hidden,
-                                layer$method_options$activation.output,
-                                layer$method_options$use_bias)
+                                    layer$method_options$batch_normalization,
+                                    mlp_hidden,
+                                    layer$method_options$activation.hidden,
+                                    mlp_dropout.hidden,
+                                    layer$method_options$activation.output,
+                                    layer$method_options$use_bias)
 
         # CANN
 
@@ -1318,7 +1359,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
         else {
           x.inputs <- list(x_no_fact.glm,x_fact.glm,x_no_fact,x_fact)
+          x.inputs[sapply(x.inputs, is.null)] <- NULL
           x.inputs.val <- list(x_no_fact.glm.val,x_fact.glm.val,x_no_fact.val,x_fact.val)
+          x.inputs.val[sapply(x.inputs.val, is.null)] <- NULL
         }
 
         history.tmp <- CANN.tmp %>%
@@ -1454,19 +1497,19 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   CANNoutput <- list(GLMNetwork, NNetwork) %>% layer_add() %>%
     layer_dense(units = 1, activation = layer$method_options$activation.output.cann, trainable = !layer$method_options$fixed.cann,
                 weights = switch(layer$method_options$fixed.cann + 1,NULL,list(array(c(1), dim=c(1,1)),
-                               array(0, dim=c(1)))),
+                                                                               array(0, dim=c(1)))),
                 name = 'output_layer_CANN')
 
   if(!layer$method_options$use_embedding)
     CANN <- keras_model(inputs = c(def_inputs$inputs,
-                                       def_inputs$inputs.glm),
-                            outputs = c(CANNoutput), name = 'CANN')
+                                   def_inputs$inputs.glm),
+                        outputs = c(CANNoutput), name = 'CANN')
   else
     CANN <- keras_model(inputs = c(def_inputs$inputs_no_fact.glm,
-                                       def_inputs$input_layer_emb.glm,
-                                       def_inputs$inputs_no_fact,
-                                       def_inputs$input_layer_emb),
-                            outputs = c(CANNoutput), name = 'CANN')
+                                   def_inputs$input_layer_emb.glm,
+                                   def_inputs$inputs_no_fact,
+                                   def_inputs$input_layer_emb),
+                        outputs = c(CANNoutput), name = 'CANN')
 
   print(summary(CANN))
 
@@ -1485,6 +1528,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
   else {
     x.inputs <- list(x_no_fact.glm,x_fact.glm,x_no_fact,x_fact)
+    x.inputs[sapply(x.inputs, is.null)] <- NULL
   }
 
   now <- Sys.time()
@@ -1502,7 +1546,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   load_model_weights_hdf5(CANN, fn)
 
   #if(!layer$method_options$bias_regularization) {
-    layer$fit <- CANN
+  layer$fit <- CANN
   # }
   # else {
   #   # We keep track of the neural network (biased) model
@@ -1570,6 +1614,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                            x_fact.glm.tmp     <- def_x$x_fact.glm
                                            x_no_fact.glm.tmp  <- def_x$x_no_fact.glm
                                            x.inputs.tmp <- list(x_no_fact.glm.tmp,x_fact.glm.tmp,x_no_fact.tmp,x_fact.tmp)
+                                           x.inputs.tmp[sapply(x.inputs.tmp, is.null)] <- NULL
                                          }
 
                                          if(layer$method_options$bias_regularization) {

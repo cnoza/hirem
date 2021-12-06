@@ -182,6 +182,7 @@ simulate.layer_mlp_keras <- function(obj, data, balance.correction, balance.var)
   }
   else {
     x.inputs <- list(def_x$x_no_fact,def_x$x_fact)
+    x.inputs[sapply(x.inputs, is.null)] <- NULL
   }
 
   if(!is.null(obj$method_options$ae.hidden)) {
@@ -259,6 +260,7 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   }
   else {
     x.inputs <- list(def_x$x_no_fact.glm,def_x$x_fact.glm,def_x$x_no_fact,def_x$x_fact)
+    x.inputs[sapply(x.inputs, is.null)] <- NULL
   }
 
   if(!obj$method_options$bias_regularization) {

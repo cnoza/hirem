@@ -1564,8 +1564,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     layer$fit.biased <- CANN
     # Source: Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020), p.52
     glm.formula <- function(nb) {
-      string <- "yy ~ X1 "
-      if(nb>1) {for (i in 2:nb) {string <- paste(string,"+ X",i, sep="")}}
+      #string <- "yy ~ logpred + X1"
+      string <- "yy ~ X1"
+      if(nb>1) {for (i in 2:nb) {string <- paste(string," + X",i, sep="")}}
       string
     }
 
@@ -1582,12 +1583,17 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     #zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'last_hidden_layer_activation')$output)
     layer$zz  <- zz
 
+    #logpred <- log(layer$model.glm$fitted.values)
+
     Zlearn    <- data.frame(zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
     # We keep track of the pre-processed data for analysis purposes
     layer$Zlearn <- Zlearn
 
     Zlearn$yy <- y
+    #Zlearn$logpred <- logpred
+    #data$logpred <- logpred
+
     if(layer$method_options$distribution == 'gamma')
       fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
     else if(layer$method_options$distribution == 'bernoulli')
@@ -1599,6 +1605,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     else
       stop('Bias regularization is not supported for this distribution.')
 
+    #glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-2)), data=Zlearn, family=fam, weights = weights.vec)
     glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
     cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
     if(length(cov)>0) {
@@ -1646,6 +1653,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                          if(layer$method_options$bias_regularization) {
                                            Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.inputs.tmp))
                                            names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
+                                           #Zlearn.tmp$logpred <- x$logpred
                                            sum(x[[layer$name]])/sum(predict(layer$fit, newdata = Zlearn.tmp, type = 'response'))
                                          }
                                          else {

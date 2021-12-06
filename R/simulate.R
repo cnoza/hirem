@@ -244,6 +244,8 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
+  #logpred <- log(predict(obj$model.glm, newdata = data_baked.glm, type = 'response'))
+
   x     <- select(data_baked,-as.name(label)) %>% as.matrix()
   x.glm <- select(data_baked.glm,-as.name(label)) %>% as.matrix()
 
@@ -269,6 +271,7 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   else {
     Zlearn   <- data.frame(obj$zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
+    #Zlearn$logpred <- logpred
     response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
   }
 

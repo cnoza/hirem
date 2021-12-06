@@ -617,7 +617,6 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
             x_fact.val <- list()
             for(i in 1:length(layer$fact_var)) {
               x_fact.val[[i]] <- layer$x_fact[[i]][Folds[[k]]] %>% as.integer()
-              x_fact.val[[i]] <- x_fact.val[[i]]-1 # linked to issue with input_dim for embedding in keras
             }
           }
 
@@ -654,7 +653,6 @@ fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NU
               x_fact <- list()
               for(i in 1:length(layer$fact_var)) {
                 x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.integer()
-                x_fact[[i]] <- x_fact[[i]]-1 # linked to issue with input_dim for embedding in keras
               }
             }
             x_no_fact <- NULL
@@ -1180,7 +1178,6 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
             x_fact.val <- list()
             for(i in 1:length(layer$fact_var)) {
               x_fact.val[[i]] <- layer$x_fact[[i]][Folds[[k]]] %>% as.integer()
-              x_fact.val[[i]] <- x_fact.val[[i]]-1 # linked to issue with input_dim for embedding in keras
             }
           }
 
@@ -1193,7 +1190,6 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
             x_fact.glm.val <- list()
             for(i in 1:length(layer$fact_var.glm)) {
               x_fact.glm.val[[i]] <- layer$x_fact.glm[[i]][Folds[[k]]] %>% as.integer()
-              x_fact.glm.val[[i]] <- x_fact.glm.val[[i]]-1 # linked to issue with input_dim for embedding in keras
             }
           }
 
@@ -1235,7 +1231,6 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
               x_fact <- list()
               for(i in 1:length(layer$fact_var)) {
                 x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.integer()
-                x_fact[[i]] <- x_fact[[i]]-1 # linked to issue with input_dim for embedding in keras
               }
             }
             x_no_fact <- NULL
@@ -1247,7 +1242,6 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
               x_fact.glm <- list()
               for(i in 1:length(layer$fact_var.glm)) {
                 x_fact.glm[[i]] <- layer$x_fact.glm[[i]][-Folds[[k]]] %>% as.integer()
-                x_fact.glm[[i]] <- x_fact.glm[[i]]-1 # linked to issue with input_dim for embedding in keras
               }
             }
             x_no_fact.glm <- NULL

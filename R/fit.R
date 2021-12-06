@@ -1273,10 +1273,19 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                      array(model.glm$coefficients[1],dim=c(1))))
         }
         else {
+
+          coef_no_fact.glm <- NULL
+          if(length(def_inputs$beta.no_fact_var.glm) > 1)
+            coef_no_fact.glm <- def_inputs$beta.no_fact_var.glm[2:length(def_inputs$beta.no_fact_var.glm)]
+
+          coef_fact_var.glm <- NULL
+          if(length(layer$fact_var.glm)>0)
+            coef_fact_var.glm <- rep(1,length(layer$fact_var.glm))
+
           GLMNetwork.tmp <- def_inputs$inputs.glm %>%
             layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
-                        weights=list(array(c(def_inputs$beta.no_fact_var.glm[2:length(def_inputs$beta.no_fact_var.glm)],rep(1,length(fact_var.glm))),
-                                           dim=c(length(fact_var.glm)+length(def_inputs$beta.no_fact_var.glm)-1,1)),
+                        weights=list(array(c(coef_no_fact.glm,coef_fact_var.glm),
+                                           dim=c(length(layer$fact_var.glm)+length(def_inputs$beta.no_fact_var.glm)-1,1)),
                                      array(def_inputs$beta.no_fact_var.glm[1],dim=c(1))))
         }
 
@@ -1469,9 +1478,17 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                array(model.glm$coefficients[1],dim=c(1))))
   }
   else {
+    coef_no_fact.glm <- NULL
+    if(length(def_inputs$beta.no_fact_var.glm) > 1)
+      coef_no_fact.glm <- def_inputs$beta.no_fact_var.glm[2:length(def_inputs$beta.no_fact_var.glm)]
+
+    coef_fact_var.glm <- NULL
+    if(length(fact_var.glm)>0)
+      coef_fact_var.glm <- rep(1,length(fact_var.glm))
+
     GLMNetwork <- def_inputs$inputs.glm %>%
       layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
-                  weights=list(array(c(def_inputs$beta.no_fact_var.glm[2:length(def_inputs$beta.no_fact_var.glm)],rep(1,length(fact_var.glm))),
+                  weights=list(array(c(coef_no_fact.glm,coef_fact_var.glm),
                                      dim=c(length(fact_var.glm)+length(def_inputs$beta.no_fact_var.glm)-1,1)),
                                array(def_inputs$beta.no_fact_var.glm[1],dim=c(1))))
   }
@@ -1539,42 +1556,57 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   load_model_weights_hdf5(CANN, fn)
 
-  #if(!layer$method_options$bias_regularization) {
+  if(!layer$method_options$bias_regularization) {
   layer$fit <- CANN
-  # }
-  # else {
-  #   # We keep track of the neural network (biased) model
-  #   layer$fit.biased <- CANN
-  #   # Source: Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020), p.52
-  #   glm.formula <- function(nb) {
-  #     string <- "yy ~ X1 "
-  #     if(nb>1) {for (i in 2:nb) {string <- paste(string,"+ X",i, sep="")}}
-  #     string
-  #   }
-  #
-  #   zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'output_layer_NN')$output)
-  #   layer$zz  <- zz
-  #
-  #   Zlearn    <- data.frame(zz %>% predict(list(x,x.glm)))
-  #   names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
-  #   # We keep track of the pre-processed data for analysis purposes
-  #   layer$Zlearn <- Zlearn
-  #
-  #   Zlearn$yy <- y
-  #   if(layer$method_options$distribution == 'gamma')
-  #     fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
-  #   else if(layer$method_options$distribution == 'bernoulli')
-  #     fam <- binomial() # default link = logit <-> activation function = sigmoid
-  #   else if(layer$method_options$distribution == 'poisson')
-  #     fam <- poisson() # default link = log <-> activation function = exponential
-  #   else if(layer$method_options$distribution == 'gaussian')
-  #     fam <- gaussian() # default link = identity <-> activation function = identity
-  #   else
-  #     stop('Bias regularization is not supported for this distribution.')
-  #
-  #   glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam)
-  #   layer$fit <- glm1
-  # }
+  }
+  else {
+    # We keep track of the neural network (biased) model
+    layer$fit.biased <- CANN
+    # Source: Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020), p.52
+    glm.formula <- function(nb) {
+      string <- "yy ~ X1 "
+      if(nb>1) {for (i in 2:nb) {string <- paste(string,"+ X",i, sep="")}}
+      string
+    }
+
+    glm.formula.2 <- function(cov) {
+      string <- "yy ~ "
+      for (i in 2:length(cov)) {
+        if(i==2) string <- paste0(string,' ',cov[i])
+        else string <- paste0(string,' + ',cov[i])
+      }
+      string
+    }
+
+    zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'output_layer_NN')$output)
+    #zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'last_hidden_layer_activation')$output)
+    layer$zz  <- zz
+
+    Zlearn    <- data.frame(zz %>% predict(x.inputs))
+    names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
+    # We keep track of the pre-processed data for analysis purposes
+    layer$Zlearn <- Zlearn
+
+    Zlearn$yy <- y
+    if(layer$method_options$distribution == 'gamma')
+      fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
+    else if(layer$method_options$distribution == 'bernoulli')
+      fam <- binomial() # default link = logit <-> activation function = sigmoid
+    else if(layer$method_options$distribution == 'poisson')
+      fam <- poisson() # default link = log <-> activation function = exponential
+    else if(layer$method_options$distribution == 'gaussian')
+      fam <- gaussian() # default link = identity <-> activation function = identity
+    else
+      stop('Bias regularization is not supported for this distribution.')
+
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
+    cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
+    if(length(cov)>0) {
+      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec)
+      layer$fit <- glm2
+    }
+    else layer$fit <- glm1
+  }
 
   if(!is.null(obj$balance.var)){
     layer$balance.correction <- sapply(data %>% group_split(data[[obj$balance.var]]),

@@ -45,7 +45,7 @@ The package is still under development. Currently supported layers are:
 * `layer_glm`: Estimates a layer using a generalized linear model
 * `layer_gbm`: Estimates a layer using a gradient boosting model
 * `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
-* `layer_dnn`: Estimates a layer using an MLP neural network model (`keras` package)
+* `layer_dnn`: Estimates a layer using an deep feed-forward neural network model (`keras` package)
 * `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
 * `layer_dnn_h2o`: Estimates a layer using an MLP neural network model (`h2o` package)
 * `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)

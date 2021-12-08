@@ -4,7 +4,8 @@ fit <- function(object, ...) {
 }
 
 fit.layer_glm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_glm ...\n")
+  #cat("Fitting layer_glm ...\n")
+  cat(sprintf("Fitting layer_glm for %s...\n", layer$name))
 
   layer$formula <- formula
 
@@ -56,7 +57,9 @@ fit.layer_glm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
 #' @export
 fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_gbm ...\n")
+  #cat("Fitting layer_gbm ...\n")
+  cat(sprintf("Fitting layer_gbm for %s...\n", layer$name))
+
   layer$formula <- formula
 
   data <- obj$data_training
@@ -123,7 +126,9 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 #' @import ParBayesianOptimization
 #' @export
 fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_xgb ...\n")
+  #cat("Fitting layer_xgb ...\n")
+  cat(sprintf("Fitting layer_xgb for %s...\n", layer$name))
+
   layer$formula <- formula
 
   data <- obj$data_training
@@ -415,7 +420,9 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 #' @importFrom h2o h2o.init h2o.no_progress as.h2o h2o.deeplearning h2o.predict
 #' @export
 fit.layer_dnn_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_mlp_h2o ...\n")
+  #cat("Fitting layer_dnn_h2o ...\n")
+  cat(sprintf("Fitting layer_dnn for %s...\n", layer$name))
+
   layer$formula <- formula
 
   data <- obj$data_training
@@ -481,7 +488,9 @@ fit.layer_dnn_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
 #' @importFrom recipes recipe step_log step_normalize step_dummy bake prep all_nominal all_numeric all_outcomes
 #' @export
 fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_mlp_keras ...\n")
+  #cat("Fitting layer_dnn ...\n")
+  cat(sprintf("Fitting layer_dnn for %s...\n", layer$name))
+
   layer$formula <- formula
 
   data <- obj$data_training
@@ -921,7 +930,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   now <- Sys.time()
-  fn <- paste0("mlp_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
+  fn <- paste0("dnn_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
 
   CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
 
@@ -1056,7 +1065,9 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 #' @importFrom data.table transpose
 #' @export
 fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_cann ...\n")
+  #cat("Fitting layer_cann ...\n")
+  cat(sprintf("Fitting layer_cann for %s...\n", layer$name))
+
   layer$formula <- formula
 
   data <- obj$data_training

@@ -236,7 +236,7 @@ model4 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gamma',
+  layer_dnn('size', distribution = 'gamma',
                   step_log = F,
                   step_normalize = F,
                   loss = gamma_deviance_keras,
@@ -298,7 +298,7 @@ model4b <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gamma',
+  layer_dnn('size', distribution = 'gamma',
                   step_log = F,
                   step_normalize = F,
                   loss = gamma_deviance_keras,
@@ -341,7 +341,7 @@ model4c <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gamma',
+  layer_dnn('size', distribution = 'gamma',
                   step_log = F,
                   step_normalize = F,
                   loss = gamma_deviance_keras,
@@ -395,7 +395,7 @@ model4d <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
-  layer_mlp_keras('payment', distribution = 'bernoulli',
+  layer_dnn('payment', distribution = 'bernoulli',
                   step_log = F,
                   step_normalize = F,
                   loss = 'binary_crossentropy',
@@ -442,7 +442,7 @@ model4e <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gaussian',
+  layer_dnn('size', distribution = 'gaussian',
                   step_normalize = F,
                   loss = 'mean_squared_error',
                   metrics = 'mean_squared_error',
@@ -497,7 +497,7 @@ model4f <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gamma',
+  layer_dnn('size', distribution = 'gamma',
                   ae.hidden = c(40,30,20),
                   ae.activation.hidden = rep('tanh',3),
                   step_log = F,
@@ -538,8 +538,8 @@ simulate_rbns(model4f)
 init()
 
 bounds <- list(
-  ae_hidden_1 = c(10L,15L)
-  #mlp_hidden_1 = c(10L,30L)
+  #ae_hidden_1 = c(10L,15L)
+  mlp_hidden_1 = c(10L,30L)
 )
 
 
@@ -548,11 +548,13 @@ model4g <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gamma',
+  layer_dnn('size', distribution = 'gamma',
                   bayesOpt = T,
                   bayesOpt_min = T,
                   bayesOpt_iters_n = 1,
                   bayesOpt_bounds = bounds,
+                  use_embedding = T,
+                  output_dim = 1,
                   hidden = c(20,15,10),
                   nfolds=2,
                   step_log = F,
@@ -597,7 +599,7 @@ model4h <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_keras('size', distribution = 'gamma', bias_regularization = T,
+  layer_dnn('size', distribution = 'gamma', bias_regularization = T,
                   use_embedding = T,
                   output_dim = 1,
                   step_log = F,
@@ -639,7 +641,7 @@ simulate_rbns(model4h)
 init()
 
 bounds <- list(
-  mlp_hidden_1 = c(10L,30L)
+  mlp_hidden_1 = c(20L,30L)
 )
 
 model5 <- hirem(reserving_data) %>%
@@ -648,7 +650,7 @@ model5 <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_cann('size', distribution = 'gamma', bias_regularization = FALSE,
-             bayesOpt = F,
+             bayesOpt = T,
              bayesOpt_min = T,
              bayesOpt_iters_n = 1,
              bayesOpt_bounds = bounds,
@@ -660,10 +662,10 @@ model5 <- hirem(reserving_data) %>%
              validation_split = 0,
              activation.output = 'linear',
              activation.output.cann = 'exponential',
-             fixed.cann = F,
+             fixed.cann = T,
              monitor = 'gamma_deviance_keras',
-             patience = 20,
-             epochs = 100,
+             patience = 2,
+             epochs = 2,
              batch_size = 1000,
              filter = function(data){data$payment == 1})
 
@@ -756,13 +758,19 @@ print(model5c$layers$size$sigma)
 #=========================================================================#
 
 init()
+
+bounds <- list(
+  mlp_hidden_1 = c(25L,30L)
+)
+
 reserving_data <- reserving_data %>% mutate(X1_factor = factor(X1))
 model5d <- hirem(reserving_data) %>%
   split_data(observed = reserving_data %>% dplyr::filter(calendar_year <= 6),
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_cann('size', distribution = 'gamma', bias_regularization = FALSE,
+  layer_cann('size', distribution = 'gamma', bias_regularization = T,
+             bayesOpt = F, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
              use_embedding = TRUE,
              formula.glm = 'size ~ close + development_year_factor',
              family_for_glm = Gamma(link=log),
@@ -773,10 +781,11 @@ model5d <- hirem(reserving_data) %>%
              hidden = c(20,15,10),
              activation.output = 'linear',
              activation.output.cann = 'exponential',
-             fixed.cann = FALSE,
+             fixed.cann = TRUE,
              monitor = 'gamma_deviance_keras',
-             patience = 20,
-             epochs = 100,
+             verbose = 0,
+             patience = 2,
+             epochs = 5,
              batch_size = 1000,
              filter = function(data){data$payment == 1})
 
@@ -790,7 +799,7 @@ model5d <- hirem::fit(model5d,
 
 print(model5d$layers$size$shape)
 
-simulate_rbns(model5d)
+simulate_rbns(model5d,30)
 
 #=========================================================================#
 #                                 Annex                                   #
@@ -803,7 +812,7 @@ modelA.1 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_h2o('size', distribution = 'gaussian',
+  layer_dnn_h2o('size', distribution = 'gaussian',
                 epochs = 1,
                 nfolds = 6,
                 hidden = c(10,30,50,30,10),
@@ -816,7 +825,7 @@ modelA.1 <- hirem::fit(modelA.1,
                      payment = 'payment ~ close + development_year',
                      size = 'size ~ close + development_year')
 
-# Rmk: bias regularization not implemented in layer_mlp_h2o
+# Rmk: bias regularization not implemented in layer_dnn_h2o
 simulate_rbns(modelA.1)
 
 
@@ -827,7 +836,7 @@ modelA.2 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_mlp_h2o('size', distribution = 'gaussian',
+  layer_dnn_h2o('size', distribution = 'gaussian',
                 epochs = 10,
                 hidden = c(10,10),
                 hidden_dropout_ratios = c(0.1,0.1),
@@ -839,7 +848,7 @@ modelA.2 <- hirem::fit(modelA.2,
                      payment = 'payment ~ close + development_year',
                      size = 'size ~ close + development_year')
 
-# Rmk: bias regularization not implemented in layer_mlp_h2o
+# Rmk: bias regularization not implemented in layer_dnn_h2o
 simulate_rbns(modelA.2)
 
 ### Case A.3: GLM + AutoML (h2o) ###

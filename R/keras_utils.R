@@ -261,7 +261,7 @@ def_inputs_mlp <- function(use_embedding,
 
     inputs_no_fact <- NULL
     if(length(no_fact_var)>0) {
-      inputs_no_fact <- layer_input(shape = c(length(no_fact_var)), name = 'input_layer_no_fact')
+      inputs_no_fact <- layer_input(shape = c(length(no_fact_var)), name = 'il_no_fact')
     }
 
     embedded_layer   <- NULL
@@ -272,13 +272,13 @@ def_inputs_mlp <- function(use_embedding,
       input_layer_emb  <- list()
       for(i in 1:length(fact_var)) {
 
-        input_layer_emb[[i]] <- layer_input(shape=c(1), dtype='int32', name = paste0('input_layer_',fact_var[i]))
+        input_layer_emb[[i]] <- layer_input(shape=c(1), dtype='int32', name = paste0('il_',fact_var[i]))
         embedded_layer[[i]]  <- input_layer_emb[[i]] %>%
           layer_embedding(input_dim = max(x_fact[[i]])+1, output_dim = output_dim,
-                          input_length = 1, name = paste0('embedding_layer_',fact_var[i]))
+                          input_length = 1, name = paste0('el_',fact_var[i]))
 
         embedded_layer[[i]] <- embedded_layer[[i]] %>%
-          layer_flatten(name = paste0('embedding_layer_',fact_var[i],'_flat'))
+          layer_flatten(name = paste0('el_',fact_var[i],'_flat'))
 
       }
     }
@@ -317,11 +317,11 @@ def_inputs <- function(use_embedding,
 
     inputs_no_fact <- NULL
     if(length(no_fact_var)>0)
-      inputs_no_fact      <- layer_input(shape = c(length(no_fact_var)), name = 'input_layer_no_fact')
+      inputs_no_fact      <- layer_input(shape = c(length(no_fact_var)), name = 'il_no_fact')
 
     inputs_no_fact.glm <- NULL
     if(length(no_fact_var.glm)>0)
-      inputs_no_fact.glm  <- layer_input(shape = c(length(no_fact_var.glm)), name = 'input_layer_no_fact_glm')
+      inputs_no_fact.glm  <- layer_input(shape = c(length(no_fact_var.glm)), name = 'il_no_fact_glm')
 
     model_coefficients <- model.glm$coefficients %>% as_tibble() %>% data.table::transpose()
     names(model_coefficients) <- attr(model.glm$coefficients,'names')
@@ -335,14 +335,14 @@ def_inputs <- function(use_embedding,
       input_layer_emb.glm  <- list()
       for(i in 1:length(fact_var.glm)) {
         beta.fact_var.glm[[i]]   <- model_coefficients %>% select(starts_with(fact_var.glm[i])) %>% as.numeric()
-        input_layer_emb.glm[[i]] <- layer_input(shape=c(1), dtype='int32', name = paste0('input_layer_',fact_var.glm[i],'_glm'))
+        input_layer_emb.glm[[i]] <- layer_input(shape=c(1), dtype='int32', name = paste0('il_',fact_var.glm[i],'_glm'))
         embedded_layer.glm[[i]]  <- input_layer_emb.glm[[i]] %>%
           layer_embedding(input_dim = max(x_fact.glm[[i]])+1, output_dim = 1, trainable = FALSE,
-                          input_length = 1, name = paste0('embedding_layer_',fact_var.glm[i],'_glm')
+                          input_length = 1, name = paste0('el_',fact_var.glm[i],'_glm')
                           ,weights = list(array(c(beta.no_fact_var.glm[1],beta.fact_var.glm[[i]]),
                                                 dim=c(length(beta.fact_var.glm[[i]])+1,1)))
           ) %>%
-          layer_flatten(name = paste0('embedding_layer_',fact_var.glm[i],'_flat_glm'))
+          layer_flatten(name = paste0('el_',fact_var.glm[i],'_flat_glm'))
       }
     }
 
@@ -357,13 +357,13 @@ def_inputs <- function(use_embedding,
       input_layer_emb  <- list()
       for(i in 1:length(fact_var)) {
 
-        input_layer_emb[[i]] <- layer_input(shape=c(1), dtype='int32', name = paste0('input_layer_',fact_var[i]))
+        input_layer_emb[[i]] <- layer_input(shape=c(1), dtype='int32', name = paste0('il_',fact_var[i]))
         embedded_layer[[i]]  <- input_layer_emb[[i]] %>%
           layer_embedding(input_dim = max(x_fact[[i]])+1, output_dim = 1,
-                          input_length = 1, name = paste0('embedding_layer_',fact_var[i]))
+                          input_length = 1, name = paste0('el_',fact_var[i]))
 
         embedded_layer[[i]] <- embedded_layer[[i]] %>%
-          layer_flatten(name = paste0('embedding_layer_',fact_var[i],'_flat'))
+          layer_flatten(name = paste0('el_',fact_var[i],'_flat'))
 
       }
     }

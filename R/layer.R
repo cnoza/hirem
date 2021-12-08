@@ -193,7 +193,7 @@ layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, ver
 #' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
+layer_dnn_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
                      reproducible = T, activation = "Tanh", nfolds = NULL,
                      single_node_mode = FALSE,
                      balance_classes = FALSE,
@@ -225,7 +225,7 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
   options$input_dropout_ratio <- input_dropout_ratio
   options$hidden_dropout_ratios <- hidden_dropout_ratios
 
-  hirem_layer(obj, name, 'mlp_h2o', 'layer_mlp_h2o', options, filter, transformation)
+  hirem_layer(obj, name, 'dnn_h2o', 'layer_dnn_h2o', options, filter, transformation)
 }
 
 #' Layer estimated using a multi-layer perceptron model with Keras
@@ -268,7 +268,7 @@ layer_mlp_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.hidden = NULL, ae.activation.hidden = NULL,
+layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.hidden = NULL, ae.activation.hidden = NULL,
                             hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, verbose = 0,
                             activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE, use_embedding = FALSE, output_dim = 1,
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
@@ -369,7 +369,7 @@ layer_mlp_keras <- function(obj, name, distribution = 'gaussian', use_bias = TRU
   #     stop('Bias regularization is not supported (yet) for this choice of distribution.')
   # }
 
-  hirem_layer(obj, name, 'mlp_keras', 'layer_mlp_keras', options, filter, transformation)
+  hirem_layer(obj, name, 'dnn', 'layer_dnn', options, filter, transformation)
 
 }
 

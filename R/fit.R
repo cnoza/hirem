@@ -414,7 +414,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
 #' @importFrom h2o h2o.init h2o.no_progress as.h2o h2o.deeplearning h2o.predict
 #' @export
-fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+fit.layer_dnn_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   cat("Fitting layer_mlp_h2o ...\n")
   layer$formula <- formula
 
@@ -480,7 +480,7 @@ fit.layer_mlp_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
 #' @importFrom data.table fsetdiff as.data.table
 #' @importFrom recipes recipe step_log step_normalize step_dummy bake prep all_nominal all_numeric all_outcomes
 #' @export
-fit.layer_mlp_keras <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   cat("Fitting layer_mlp_keras ...\n")
   layer$formula <- formula
 
@@ -1579,11 +1579,12 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       string
     }
 
+    #zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'output_layer_CANN')$output)
     zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'output_layer_NN')$output)
     #zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'last_hidden_layer_activation')$output)
     layer$zz  <- zz
 
-    #logpred <- log(layer$model.glm$fitted.values)
+    glm.pred <- layer$model.glm$fitted.values
 
     Zlearn    <- data.frame(zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
@@ -1591,8 +1592,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     layer$Zlearn <- Zlearn
 
     Zlearn$yy <- y
-    #Zlearn$logpred <- logpred
-    #data$logpred <- logpred
+    #Zlearn$glm.pred <- glm.pred
+    #data$glm.pred <- glm.pred
 
     if(layer$method_options$distribution == 'gamma')
       fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
@@ -1653,7 +1654,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                          if(layer$method_options$bias_regularization) {
                                            Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.inputs.tmp))
                                            names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
-                                           #Zlearn.tmp$logpred <- x$logpred
+                                           #Zlearn.tmp$glm.pred <- x$glm.pred
                                            sum(x[[layer$name]])/sum(predict(layer$fit, newdata = Zlearn.tmp, type = 'response'))
                                          }
                                          else {

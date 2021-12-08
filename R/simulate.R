@@ -134,7 +134,7 @@ simulate.layer_xgb <- function(obj, data, balance.correction, balance.var) {
 }
 
 #' @export
-simulate.layer_mlp_h2o <- function(obj, data, balance.correction, balance.var) {
+simulate.layer_dnn_h2o <- function(obj, data, balance.correction, balance.var) {
 
   select <- obj$filter(data)
   response <- h2o.predict(obj$fit, newdata = as.h2o(data[select,]))
@@ -158,7 +158,7 @@ simulate.layer_mlp_h2o <- function(obj, data, balance.correction, balance.var) {
 }
 
 #' @export
-simulate.layer_mlp_keras <- function(obj, data, balance.correction, balance.var) {
+simulate.layer_dnn <- function(obj, data, balance.correction, balance.var) {
 
   select <- obj$filter(data)
 
@@ -244,7 +244,7 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
-  #logpred <- log(predict(obj$model.glm, newdata = data_baked.glm, type = 'response'))
+  #glm.pred <- predict(obj$model.glm, newdata = data_baked.glm, type = 'response')
 
   x     <- select(data_baked,-as.name(label)) %>% as.matrix()
   x.glm <- select(data_baked.glm,-as.name(label)) %>% as.matrix()
@@ -271,7 +271,7 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   else {
     Zlearn   <- data.frame(obj$zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
-    #Zlearn$logpred <- logpred
+    #Zlearn$glm.pred <- glm.pred
     response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
   }
 

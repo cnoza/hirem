@@ -40,23 +40,10 @@ model <- fit(model,
             
 ```
 
-The package is still under development. Currently supported layers are:
+The package is still under development. Supported layers are:
 
 * `layer_glm`: Estimates a layer using a generalized linear model
 * `layer_gbm`: Estimates a layer using a gradient boosting model
-* `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
-* `layer_dnn`: Estimates a layer using an deep feed-forward neural network model (`keras` package)
-* `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
-* `layer_dnn_h2o`: Estimates a layer using an MLP neural network model (`h2o` package)
-* `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
-
-Examples of tested models can be found in the following files:  
-
-* [Use of an Extreme Gradient Boosting model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-Extreme-Gradient-Boosting-models-as-layer-in-hirem.html)
-* [Use of a MultiLayer Perceptron model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-MultiLayer-Perceptron-model-as-layer-in-hirem.html)
-* [Use of CANN model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-CANN-model-as-layer-in-hirem.html)
-* [Other tested models](https://github.com/cnoza/hirem/blob/master/tests/testing.R)
-
 
 Supported distributions are:
 
@@ -66,3 +53,20 @@ Supported distributions are:
 
 To use the `gamma` distribution in `layer_gbm` you require an experimental version of the package `gbm` that implements the `gamma` distribution. See
 https://github.com/harrysouthworth/gbm.
+
+The new layers made available in this fork are:
+* `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
+* `layer_dnn`: Estimates a layer using a deep feed-forward neural network model (`keras` package)
+* `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
+
+Other layers for which initial developments were made are:
+* `layer_dnn_h2o`: Estimates a layer using a deep feed-forward neural network (`h2o` package)
+* `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
+
+Examples of tested models can be found in the following files:  
+
+* [Use of an Extreme Gradient Boosting model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-Extreme-Gradient-Boosting-models-as-layer-in-hirem.html)
+* [Use of a MultiLayer Perceptron model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-MultiLayer-Perceptron-model-as-layer-in-hirem.html)
+* [Use of CANN model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-CANN-model-as-layer-in-hirem.html)
+* [Other tested models](https://github.com/cnoza/hirem/blob/master/tests/testing.R)
+

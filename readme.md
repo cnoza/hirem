@@ -1,12 +1,29 @@
 # The `hirem` package 
 
-This is the source code for the `hirem` package, forked from Jonas Crevecoeur's original version and merged with Jens Robben's updates. This version further extends the package with the following layers:
+This is the source code for the `hirem` package, forked from Jonas Crevecoeur's original version and merged with Jens Robben's updates extending the package with simulation machines based on various scenarios. 
+
+The following layers are supported in the orginial version:
+
+* `layer_glm`: Estimates a layer using a generalized linear model
+* `layer_gbm`: Estimates a layer using a gradient boosting model
+
+Supported distributions are:
+
+* `binomial`
+* `gaussian`
+* `gamma`
+
+To use the `gamma` distribution in `layer_gbm` you require an experimental version of the package `gbm` that implements the `gamma` distribution. See
+https://github.com/harrysouthworth/gbm.
+
+The new layers implemented in this fork are:
 
 * `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
 * `layer_dnn`: Estimates a layer using an deep feed-forward neural network model (`keras` package)
 * `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
 
-The following layers are still experimental and not further developed at the moment:
+Other layers for which first developments were made are:
+
 * `layer_dnn_h2o`: Estimates a layer using an deep feed-forward neural network model (`h2o` package)
 * `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
 
@@ -40,28 +57,7 @@ model <- fit(model,
             
 ```
 
-The package is still under development. Supported layers are:
-
-* `layer_glm`: Estimates a layer using a generalized linear model
-* `layer_gbm`: Estimates a layer using a gradient boosting model
-
-Supported distributions are:
-
-* `binomial`
-* `gaussian`
-* `gamma`
-
-To use the `gamma` distribution in `layer_gbm` you require an experimental version of the package `gbm` that implements the `gamma` distribution. See
-https://github.com/harrysouthworth/gbm.
-
-The new layers made available in this fork are:
-* `layer_xgb`: Estimates a layer using an extreme gradient boosting model (`xgboost` package)
-* `layer_dnn`: Estimates a layer using a deep feed-forward neural network model (`keras` package)
-* `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
-
-Other layers for which initial developments were made are:
-* `layer_dnn_h2o`: Estimates a layer using a deep feed-forward neural network (`h2o` package)
-* `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
+## Examples
 
 Examples of tested models can be found in the following files:  
 

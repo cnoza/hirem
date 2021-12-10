@@ -270,7 +270,7 @@ layer_dnn_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10
 #' @export
 layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.hidden = NULL, ae.activation.hidden = NULL,
                             hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, verbose = 0,
-                            activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE, use_embedding = FALSE, output_dim = 1,
+                            activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE, use_embedding = FALSE, output_dim = 1, embedding_var = c(),
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             monitor = "loss", patience = 20, family_for_init = NULL, nfolds = 5, bias_regularization = TRUE,
                             bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL,
@@ -306,6 +306,7 @@ layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.
   options$bias_regularization <- bias_regularization
   options$use_embedding <- use_embedding
   options$output_dim <- output_dim
+  options$embedding_var <- embedding_var
 
 
   if(is.null(options$ae.hidden)) {
@@ -410,7 +411,7 @@ layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.
 #'
 layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Gamma(link = log), use_bias = TRUE, formula.glm = NULL,
                        hidden = NULL, dropout.hidden = NULL, step_log = FALSE, step_normalize = FALSE, use_embedding = FALSE, bias_regularization = NULL,
-                       activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear',
+                       activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear', embedding_var = c(), embedding_var.glm = c(),
                        fixed.cann = TRUE, batch_normalization = FALSE, monitor = 'loss', patience = 20, verbose = 0,
                        loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                        nfolds = 5, bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL,
@@ -446,6 +447,8 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$use_embedding <- use_embedding
   options$formula.glm <- formula.glm
   options$bias_regularization <- bias_regularization
+  options$embedding_var <- embedding_var
+  options$embedding_var.glm <- embedding_var.glm
 
   if(is.null(options$hidden)) {
     if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')

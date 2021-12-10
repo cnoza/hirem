@@ -21,6 +21,7 @@ layer_dnn(
   batch_normalization = FALSE,
   use_embedding = FALSE,
   output_dim = 1,
+  embedding_var = c(),
   loss = "mse",
   optimizer = "nadam",
   epochs = 20,

@@ -172,9 +172,11 @@ simulate.layer_dnn <- function(obj, data, balance.correction, balance.var) {
   x <- select(data_baked,-as.name(label)) %>% as.matrix()
 
   def_x <- def_x_mlp(obj$method_options$use_embedding,
+                     obj$method_options$embedding_var,
                      f,
                      data[select,],
                      data_baked,
+                     obj$data_recipe,
                      label)
 
   if(!obj$method_options$use_embedding) {
@@ -235,6 +237,9 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   else
     f.glm <- f
 
+  data_baked_for_glm <- bake(obj$data_recipe.glm.no_dummy, new_data = data[select,])
+  glm.pred <- predict(obj$model.glm, newdata = data_baked_for_glm, type = 'response')
+
   #x <- as.matrix(sparse.model.matrix(f, data=data[select,])[,-1])
   data_baked <- bake(obj$data_recipe, new_data = data[select,])
   if(ncol(data_baked) == 1)
@@ -244,17 +249,19 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
-  #glm.pred <- predict(obj$model.glm, newdata = data_baked.glm, type = 'response')
-
   x     <- select(data_baked,-as.name(label)) %>% as.matrix()
   x.glm <- select(data_baked.glm,-as.name(label)) %>% as.matrix()
 
   def_x <- def_x(obj$method_options$use_embedding,
+                 obj$method_options$embedding_var,
+                 obj$method_options$embedding_var.glm,
                  f,
                  f.glm,
                  data[select,],
                  data_baked,
                  data_baked.glm,
+                 obj$data_recipe,
+                 obj$data_recipe.glm,
                  label)
 
   if(!obj$method_options$use_embedding) {
@@ -271,7 +278,7 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
   else {
     Zlearn   <- data.frame(obj$zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
-    #Zlearn$glm.pred <- glm.pred
+    Zlearn$glm.pred <- glm.pred
     response <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
   }
 

@@ -136,9 +136,11 @@ def_NN_arch <- function(inputs,
 
 #' @export
 def_x_mlp <- function(use_embedding,
+                      embedding_var,
                       f,
                       data,
                       data_baked,
+                      data_recipe,
                       label) {
 
   x <- select(data_baked,-as.name(label)) %>% as.matrix()
@@ -148,7 +150,18 @@ def_x_mlp <- function(use_embedding,
     covariates      <- attr(terms(f),'term.labels')
 
     fact_var        <- covariates[covariates %in% names(data)[sapply(data, is.factor)]]
-    no_fact_var     <- covariates[!(covariates %in% names(data)[sapply(data, is.factor)])]
+    no_fact_var     <- covariates[!(covariates %in% fact_var)]
+
+    # If embedding_var is filled in with factor variables, then we only consider those for the embedding layers
+    # All the other variables are then regrouped in no_fact_var (including the non-selected factor variables)
+    # Actually fact_var and no_fact_var should be renamed into emb_var and no_emb_var...
+    embedding_var   <- embedding_var[embedding_var %in% fact_var]
+    if(!is.null(embedding_var)) {
+      fact_var <- embedding_var
+      data_recipe <- data_recipe %>% step_dummy(all_nominal(),-all_of(fact_var),one_hot = TRUE) %>% prep()
+      data_baked <- data_baked <- bake(data_recipe, new_data = data)
+      no_fact_var <- names(data_baked)[!(names(data_baked) %in% fact_var) & (names(data_baked) != label)]
+    }
 
     x_fact <- NULL
     if(length(fact_var)>0) {
@@ -181,11 +194,15 @@ def_x_mlp <- function(use_embedding,
 
 #' @export
 def_x <- function(use_embedding,
+                  embedding_var,
+                  embedding_var.glm,
                   f,
                   f.glm,
                   data,
                   data_baked,
                   data_baked.glm,
+                  data_recipe,
+                  data_recipe.glm,
                   label) {
 
   if(use_embedding) {
@@ -194,9 +211,25 @@ def_x <- function(use_embedding,
     covariates.glm  <- attr(terms(f.glm),'term.labels')
 
     fact_var        <- covariates[covariates %in% names(data)[sapply(data, is.factor)]]
-    no_fact_var     <- covariates[!(covariates %in% names(data)[sapply(data, is.factor)])]
+    no_fact_var     <- covariates[!(covariates %in% fact_var)]
     fact_var.glm    <- covariates.glm[covariates.glm %in% names(data)[sapply(data, is.factor)]]
-    no_fact_var.glm <- covariates.glm[!(covariates.glm %in% names(data)[sapply(data, is.factor)])]
+    no_fact_var.glm <- covariates.glm[!(covariates.glm %in% fact_var.glm)]
+
+    embedding_var   <- embedding_var[embedding_var %in% fact_var]
+    if(!is.null(embedding_var)) {
+      fact_var <- embedding_var
+      data_recipe <- data_recipe %>% step_dummy(all_nominal(),-all_of(fact_var),one_hot = TRUE) %>% prep()
+      data_baked <- data_baked <- bake(data_recipe, new_data = data)
+      no_fact_var <- names(data_baked)[!(names(data_baked) %in% fact_var) & (names(data_baked) != label)]
+    }
+
+    embedding_var.glm   <- embedding_var.glm[embedding_var.glm %in% fact_var.glm]
+    if(!is.null(embedding_var.glm)) {
+      fact_var.glm <- embedding_var.glm
+      data_recipe.glm <- data_recipe.glm %>% step_dummy(all_nominal(),-all_of(fact_var.glm),one_hot = TRUE) %>% prep()
+      data_baked.glm <- data_baked.glm <- bake(data_recipe.glm, new_data = data)
+      no_fact_var.glm <- names(data_baked.glm)[!(names(data_baked.glm) %in% fact_var.glm) & (names(data_baked.glm) != label)]
+    }
 
     x_fact <- NULL
     if(length(fact_var)>0) {
@@ -254,7 +287,6 @@ def_inputs_mlp <- function(use_embedding,
 
   if(!use_embedding) {
     inputs     <- layer_input(shape = c(ncol(x)), name = 'input_layer_nn')
-
     list_inputs <- list(inputs=inputs)
   }
   else {

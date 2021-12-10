@@ -480,6 +480,7 @@ fit.layer_dnn_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
 
 #' @import tensorflow
 #' @import keras
+#' @importFrom tidyselect all_of
 #' @importFrom data.table fsetdiff as.data.table
 #' @importFrom recipes recipe step_log step_normalize step_dummy bake prep all_nominal all_numeric all_outcomes
 #' @export
@@ -526,10 +527,12 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     data_baked <- data_baked %>% mutate(intercept = 1)
 
   def_x <- def_x_mlp(layer$method_options$use_embedding,
-                 f,
-                 data,
-                 data_baked,
-                 label)
+                     layer$method_options$embedding_var,
+                     f,
+                     data,
+                     data_baked,
+                     data_recipe,
+                     label)
 
   x       <- def_x$x
   layer$x <- x
@@ -1009,9 +1012,11 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                              data_baked_bc <- data_baked_bc %>% mutate(intercept = 1)
 
                                            def_x <- def_x_mlp(layer$method_options$use_embedding,
+                                                              layer$method_options$embedding_var,
                                                               f,
                                                               x,
                                                               data_baked_bc,
+                                                              layer$data_recipe,
                                                               label)
 
                                            if(!layer$method_options$use_embedding) {
@@ -1103,6 +1108,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   data_recipe     <- data_recipe %>% prep()
   data_recipe.glm <- data_recipe.glm %>% prep()
+  layer$data_recipe.glm.no_dummy <- data_recipe.glm
 
   data_baked.glm <- bake(data_recipe.glm, new_data = data)
 
@@ -1121,21 +1127,25 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   data_baked <- bake(data_recipe, new_data = data)
   nrows <- nrow(data_baked)
 
-  layer$data_recipe.glm <- data_recipe.glm
-  layer$data_recipe     <- data_recipe
-
   if(ncol(data_baked) == 1)
     data_baked <- data_baked %>% mutate(intercept = 1)
 
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
+  layer$data_recipe.glm <- data_recipe.glm
+  layer$data_recipe     <- data_recipe
+
   def_x <- def_x(layer$method_options$use_embedding,
+                 layer$method_options$embedding_var,
+                 layer$method_options$embedding_var.glm,
                  f,
                  f.glm,
                  data,
                  data_baked,
                  data_baked.glm,
+                 data_recipe,
+                 data_recipe.glm,
                  label)
 
   layer$x     <- def_x$x
@@ -1597,8 +1607,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     layer$Zlearn <- Zlearn
 
     Zlearn$yy <- y
-    #Zlearn$glm.pred <- glm.pred
-    #data$glm.pred <- glm.pred
+    Zlearn$glm.pred <- glm.pred
+    data$glm.pred <- glm.pred
 
     if(layer$method_options$distribution == 'gamma')
       fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
@@ -1611,8 +1621,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     else
       stop('Bias regularization is not supported for this distribution.')
 
-    #glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-2)), data=Zlearn, family=fam, weights = weights.vec)
-    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-2)), data=Zlearn, family=fam, weights = weights.vec)
+    #glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
     cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
     if(length(cov)>0) {
       glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec)
@@ -1635,11 +1645,15 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                            data_baked_bc.glm <- data_baked_bc.glm %>% mutate(intercept = 1)
 
                                          def_x <- def_x(layer$method_options$use_embedding,
+                                                        layer$method_options$embedding_var,
+                                                        layer$method_options$embedding_var.glm,
                                                         f,
                                                         f.glm,
                                                         x,
                                                         data_baked_bc,
                                                         data_baked_bc.glm,
+                                                        layer$data_recipe,
+                                                        layer$data_recipe.glm,
                                                         label)
 
                                          if(!layer$method_options$use_embedding) {
@@ -1659,7 +1673,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                          if(layer$method_options$bias_regularization) {
                                            Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.inputs.tmp))
                                            names(Zlearn.tmp) <- paste0('X', 1:ncol(Zlearn.tmp))
-                                           #Zlearn.tmp$glm.pred <- x$glm.pred
+                                           Zlearn.tmp$glm.pred <- x$glm.pred
                                            sum(x[[layer$name]])/sum(predict(layer$fit, newdata = Zlearn.tmp, type = 'response'))
                                          }
                                          else {

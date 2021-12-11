@@ -20,6 +20,8 @@ layer_cann(
   activation.hidden = NULL,
   activation.output = "linear",
   activation.output.cann = "linear",
+  embedding_var = c(),
+  embedding_var.glm = c(),
   fixed.cann = TRUE,
   batch_normalization = FALSE,
   monitor = "loss",

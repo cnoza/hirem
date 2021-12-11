@@ -559,8 +559,9 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     names(Folds) <- names
 
     scoringFunction <- function(ae_hidden_1, ae_hidden_2, ae_hidden_3,
-                                mlp_hidden_1, mlp_hidden_2, mlp_hidden_3,
-                                mlp_dropout.hidden_1, mlp_dropout.hidden_2, mlp_dropout.hidden_3) {
+                                dnn_hidden_1, dnn_hidden_2, dnn_hidden_3,
+                                dnn_dropout.hidden_1, dnn_dropout.hidden_2, dnn_dropout.hidden_3,
+                                batch_size) {
 
       if(!layer$method_options$use_embedding) {
 
@@ -672,31 +673,34 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
         }
 
-        mlp_hidden <- c()
+        dnn_hidden <- c()
 
         if(!is.null(layer$method_options$hidden))
-          mlp_hidden <- layer$method_options$hidden
+          dnn_hidden <- layer$method_options$hidden
 
-        if(!missing(mlp_hidden_1)) mlp_hidden[1] <- mlp_hidden_1
-        if(!missing(mlp_hidden_2)) mlp_hidden[2] <- mlp_hidden_2
-        if(!missing(mlp_hidden_3)) mlp_hidden[3] <- mlp_hidden_3
+        if(!missing(dnn_hidden_1)) dnn_hidden[1] <- dnn_hidden_1
+        if(!missing(dnn_hidden_2)) dnn_hidden[2] <- dnn_hidden_2
+        if(!missing(dnn_hidden_3)) dnn_hidden[3] <- dnn_hidden_3
 
-        if(length(mlp_hidden)==0) mlp_hidden <- NULL
+        if(length(dnn_hidden)==0) dnn_hidden <- NULL
 
-        mlp_dropout.hidden <- c()
+        dnn_dropout.hidden <- c()
 
         if(!is.null(layer$method_options$dropout.hidden))
-          mlp_dropout.hidden <- layer$method_options$dropout.hidden
+          dnn_dropout.hidden <- layer$method_options$dropout.hidden
         else {
-          if(!is.null(mlp_hidden))
-            mlp_dropout.hidden <- rep(0,length(mlp_hidden))
+          if(!is.null(dnn_hidden))
+            dnn_dropout.hidden <- rep(0,length(dnn_hidden))
         }
 
-        if(!missing(mlp_dropout.hidden_1)) mlp_dropout.hidden[1] <- mlp_dropout.hidden_1
-        if(!missing(mlp_dropout.hidden_2)) mlp_dropout.hidden[2] <- mlp_dropout.hidden_2
-        if(!missing(mlp_dropout.hidden_3)) mlp_dropout.hidden[3] <- mlp_dropout.hidden_3
+        if(!missing(dnn_dropout.hidden_1)) dnn_dropout.hidden[1] <- dnn_dropout.hidden_1
+        if(!missing(dnn_dropout.hidden_2)) dnn_dropout.hidden[2] <- dnn_dropout.hidden_2
+        if(!missing(dnn_dropout.hidden_3)) dnn_dropout.hidden[3] <- dnn_dropout.hidden_3
 
-        if(length(mlp_dropout.hidden)==0) mlp_dropout.hidden <- NULL
+        if(length(dnn_dropout.hidden)==0) dnn_dropout.hidden <- NULL
+
+        batch_size_tmp <- layer$method_options$batch_size
+        if(!missing(batch_size)) batch_size_tmp <- batch_size*layer$method_options$batch_size
 
         def_inputs <- def_inputs_mlp(use_embedding=layer$method_options$use_embedding,
                                      x=x,
@@ -705,11 +709,11 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                      x_fact=x_fact,
                                      output_dim = layer$method_options$output_dim)
 
-        mlp_arch <- def_mlp_arch(inputs=def_inputs$inputs,
+        dnn_arch <- def_dnn_arch(inputs=def_inputs$inputs,
                                  batch_normalization=layer$method_options$batch_normalization,
-                                 hidden=mlp_hidden,
+                                 hidden=dnn_hidden,
                                  activation.hidden=layer$method_options$activation.hidden,
-                                 dropout.hidden=mlp_dropout.hidden,
+                                 dropout.hidden=dnn_dropout.hidden,
                                  family_for_init=layer$method_options$family_for_init,
                                  label=label,
                                  data=data,
@@ -719,12 +723,12 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                  weights.vec=weights.vec)
 
         if(!layer$method_options$use_embedding) {
-          model <- keras_model(inputs = def_inputs$inputs, outputs = c(mlp_arch$output))
+          model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
         }
         else {
           model <- keras_model(inputs = c(def_inputs$inputs_no_fact,
                                           def_inputs$input_layer_emb),
-                               outputs = c(mlp_arch$output))
+                               outputs = c(dnn_arch$output))
         }
 
         model %>% compile(
@@ -748,9 +752,11 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           x.inputs.val[sapply(x.inputs.val, is.null)] <- NULL
         }
 
+        print(layer$method_options$batch_size)
+
         history <- model %>%
           keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
-                     batch_size = layer$method_options$batch_size,
+                     batch_size = batch_size_tmp,
                      #validation_split = layer$method_options$validation_split,
                      validation_data = list(x.inputs.val,y.val,sample.w.val),
                      callbacks = list(earlystopping),
@@ -812,22 +818,25 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     if('ae_hidden_3' %in% bounds_names) layer$method_options$ae.hidden[3] <- getBestPars(optObj)$ae_hidden_3
 
     if(is.null(layer$method_options$hidden) &
-       (('mlp_hidden_1' %in% bounds_names) | ('mlp_hidden_2' %in% bounds_names) | ('mlp_hidden_3' %in% bounds_names)) ) {
+       (('dnn_hidden_1' %in% bounds_names) | ('dnn_hidden_2' %in% bounds_names) | ('dnn_hidden_3' %in% bounds_names)) ) {
       layer$method_options$hidden <- c()
-      layer$method_options$bias_regularization <- TRUE
+      #layer$method_options$bias_regularization <- TRUE
     }
 
-    if('mlp_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$mlp_hidden_1
-    if('mlp_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$mlp_hidden_2
-    if('mlp_hidden_3' %in% bounds_names) layer$method_options$hidden[3] <- getBestPars(optObj)$mlp_hidden_3
+    if('dnn_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$dnn_hidden_1
+    if('dnn_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$dnn_hidden_2
+    if('dnn_hidden_3' %in% bounds_names) layer$method_options$hidden[3] <- getBestPars(optObj)$dnn_hidden_3
 
     if(is.null(layer$method_options$dropout.hidden) &
-       (('mlp_dropout.hidden_1' %in% bounds_names) | ('mlp_dropout.hidden_2' %in% bounds_names) | ('mlp_dropout.hidden_3' %in% bounds_names)) )
+       (('dnn_dropout.hidden_1' %in% bounds_names) | ('dnn_dropout.hidden_2' %in% bounds_names) | ('dnn_dropout.hidden_3' %in% bounds_names)) )
       layer$method_options$dropout.hidden <- c()
 
-    if('mlp_dropout.hidden_1' %in% bounds_names) layer$method_options$dropout.hidden[1] <- getBestPars(optObj)$mlp_dropout.hidden_1
-    if('mlp_dropout.hidden_2' %in% bounds_names) layer$method_options$dropout.hidden[2] <- getBestPars(optObj)$mlp_dropout.hidden_2
-    if('mlp_dropout.hidden_3' %in% bounds_names) layer$method_options$dropout.hidden[3] <- getBestPars(optObj)$mlp_dropout.hidden_3
+    if('dnn_dropout.hidden_1' %in% bounds_names) layer$method_options$dropout.hidden[1] <- getBestPars(optObj)$dnn_dropout.hidden_1
+    if('dnn_dropout.hidden_2' %in% bounds_names) layer$method_options$dropout.hidden[2] <- getBestPars(optObj)$dnn_dropout.hidden_2
+    if('dnn_dropout.hidden_3' %in% bounds_names) layer$method_options$dropout.hidden[3] <- getBestPars(optObj)$dnn_dropout.hidden_3
+
+    if('batch_size' %in% bounds_names)
+      layer$method_options$batch_size <- getBestPars(optObj)$batch_size*layer$method_options$batch_size
 
   }
 
@@ -883,7 +892,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                x_fact=x_fact,
                                output_dim = layer$method_options$output_dim)
 
-  mlp_arch <- def_mlp_arch(inputs=def_inputs$inputs,
+  dnn_arch <- def_dnn_arch(inputs=def_inputs$inputs,
                            batch_normalization=layer$method_options$batch_normalization,
                            hidden=layer$method_options$hidden,
                            activation.hidden=layer$method_options$activation.hidden,
@@ -896,15 +905,15 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                            use_bias=layer$method_options$use_bias,
                            weights.vec=weights.vec)
 
-  if(!is.null(layer$method_options$family_for_init)) layer$glm.hom <- mlp_arch$glm.hom
+  if(!is.null(layer$method_options$family_for_init)) layer$glm.hom <- dnn_arch$glm.hom
 
   if(!layer$method_options$use_embedding) {
-    model <- keras_model(inputs = def_inputs$inputs, outputs = c(mlp_arch$output))
+    model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
   }
   else {
     model <- keras_model(inputs = c(def_inputs$inputs_no_fact,
                                     def_inputs$input_layer_emb),
-                         outputs = c(mlp_arch$output))
+                         outputs = c(dnn_arch$output))
   }
 
   print(summary(model))
@@ -928,7 +937,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   now <- Sys.time()
-  fn <- paste0("dnn_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
+  fn <- paste0("./tmp/dnn_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
 
   CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
 
@@ -1175,8 +1184,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     }
     names(Folds) <- names
 
-    scoringFunction <- function(mlp_hidden_1, mlp_hidden_2, mlp_hidden_3,
-                                mlp_dropout.hidden_1, mlp_dropout.hidden_2, mlp_dropout.hidden_3) {
+    scoringFunction <- function(dnn_hidden_1, dnn_hidden_2, dnn_hidden_3,
+                                dnn_dropout.hidden_1, dnn_dropout.hidden_2, dnn_dropout.hidden_3) {
 
       score <- c()
 
@@ -1306,39 +1315,39 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
         # Hyperparameters
 
-        mlp_hidden <- c()
+        dnn_hidden <- c()
 
         if(!is.null(layer$method_options$hidden))
-          mlp_hidden <- layer$method_options$hidden
+          dnn_hidden <- layer$method_options$hidden
 
-        if(!missing(mlp_hidden_1)) mlp_hidden[1] <- mlp_hidden_1
-        if(!missing(mlp_hidden_2)) mlp_hidden[2] <- mlp_hidden_2
-        if(!missing(mlp_hidden_3)) mlp_hidden[3] <- mlp_hidden_3
+        if(!missing(dnn_hidden_1)) dnn_hidden[1] <- dnn_hidden_1
+        if(!missing(dnn_hidden_2)) dnn_hidden[2] <- dnn_hidden_2
+        if(!missing(dnn_hidden_3)) dnn_hidden[3] <- dnn_hidden_3
 
-        if(length(mlp_hidden)==0) mlp_hidden <- NULL
+        if(length(dnn_hidden)==0) dnn_hidden <- NULL
 
-        mlp_dropout.hidden <- c()
+        dnn_dropout.hidden <- c()
 
         if(!is.null(layer$method_options$dropout.hidden))
-          mlp_dropout.hidden <- layer$method_options$dropout.hidden
+          dnn_dropout.hidden <- layer$method_options$dropout.hidden
         else {
-          if(!is.null(mlp_hidden))
-            mlp_dropout.hidden <- rep(0,length(mlp_hidden))
+          if(!is.null(dnn_hidden))
+            dnn_dropout.hidden <- rep(0,length(dnn_hidden))
         }
 
-        if(!missing(mlp_dropout.hidden_1)) mlp_dropout.hidden[1] <- mlp_dropout.hidden_1
-        if(!missing(mlp_dropout.hidden_2)) mlp_dropout.hidden[2] <- mlp_dropout.hidden_2
-        if(!missing(mlp_dropout.hidden_3)) mlp_dropout.hidden[3] <- mlp_dropout.hidden_3
+        if(!missing(dnn_dropout.hidden_1)) dnn_dropout.hidden[1] <- dnn_dropout.hidden_1
+        if(!missing(dnn_dropout.hidden_2)) dnn_dropout.hidden[2] <- dnn_dropout.hidden_2
+        if(!missing(dnn_dropout.hidden_3)) dnn_dropout.hidden[3] <- dnn_dropout.hidden_3
 
-        if(length(mlp_dropout.hidden)==0) mlp_dropout.hidden <- NULL
+        if(length(dnn_dropout.hidden)==0) dnn_dropout.hidden <- NULL
 
         # Neural network
 
         NNetwork.tmp <- def_NN_arch(def_inputs$inputs,
                                     layer$method_options$batch_normalization,
-                                    mlp_hidden,
+                                    dnn_hidden,
                                     layer$method_options$activation.hidden,
-                                    mlp_dropout.hidden,
+                                    dnn_dropout.hidden,
                                     layer$method_options$activation.output,
                                     layer$method_options$use_bias)
 
@@ -1437,22 +1446,22 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     layer$optObj <- optObj
 
     if(is.null(layer$method_options$hidden) &
-       (('mlp_hidden_1' %in% bounds_names) | ('mlp_hidden_2' %in% bounds_names) | ('mlp_hidden_3' %in% bounds_names)) ) {
+       (('dnn_hidden_1' %in% bounds_names) | ('dnn_hidden_2' %in% bounds_names) | ('dnn_hidden_3' %in% bounds_names)) ) {
       layer$method_options$hidden <- c()
       #layer$method_options$bias_regularization <- TRUE
     }
 
-    if('mlp_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$mlp_hidden_1
-    if('mlp_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$mlp_hidden_2
-    if('mlp_hidden_3' %in% bounds_names) layer$method_options$hidden[3] <- getBestPars(optObj)$mlp_hidden_3
+    if('dnn_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$dnn_hidden_1
+    if('dnn_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$dnn_hidden_2
+    if('dnn_hidden_3' %in% bounds_names) layer$method_options$hidden[3] <- getBestPars(optObj)$dnn_hidden_3
 
     if(is.null(layer$method_options$dropout.hidden) &
-       (('mlp_dropout.hidden_1' %in% bounds_names) | ('mlp_dropout.hidden_2' %in% bounds_names) | ('mlp_dropout.hidden_3' %in% bounds_names)) )
+       (('dnn_dropout.hidden_1' %in% bounds_names) | ('dnn_dropout.hidden_2' %in% bounds_names) | ('dnn_dropout.hidden_3' %in% bounds_names)) )
       layer$method_options$dropout.hidden <- c()
 
-    if('mlp_dropout.hidden_1' %in% bounds_names) layer$method_options$dropout.hidden[1] <- getBestPars(optObj)$mlp_dropout.hidden_1
-    if('mlp_dropout.hidden_2' %in% bounds_names) layer$method_options$dropout.hidden[2] <- getBestPars(optObj)$mlp_dropout.hidden_2
-    if('mlp_dropout.hidden_3' %in% bounds_names) layer$method_options$dropout.hidden[3] <- getBestPars(optObj)$mlp_dropout.hidden_3
+    if('dnn_dropout.hidden_1' %in% bounds_names) layer$method_options$dropout.hidden[1] <- getBestPars(optObj)$dnn_dropout.hidden_1
+    if('dnn_dropout.hidden_2' %in% bounds_names) layer$method_options$dropout.hidden[2] <- getBestPars(optObj)$dnn_dropout.hidden_2
+    if('dnn_dropout.hidden_3' %in% bounds_names) layer$method_options$dropout.hidden[3] <- getBestPars(optObj)$dnn_dropout.hidden_3
 
   }
 
@@ -1558,7 +1567,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   now <- Sys.time()
-  fn <- paste0("cann_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
+  fn <- paste0("./tmp/cann_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
 
   CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
 
@@ -1579,8 +1588,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     layer$fit.biased <- CANN
     # Source: Ferrario, Andrea and Noll, Alexander and Wuthrich, Mario V., Insights from Inside Neural Networks (April 23, 2020), p.52
     glm.formula <- function(nb) {
-      #string <- "yy ~ logpred + X1"
-      string <- "yy ~ X1"
+      string <- "yy ~ glm.pred + X1"
+      #string <- "yy ~ X1"
       if(nb>1) {for (i in 2:nb) {string <- paste(string," + X",i, sep="")}}
       string
     }
@@ -1599,16 +1608,18 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     #zz        <- keras_model(inputs = CANN$input, outputs=get_layer(CANN,'last_hidden_layer_activation')$output)
     layer$zz  <- zz
 
-    glm.pred <- layer$model.glm$fitted.values
+    #glm.pred <- layer$model.glm$fitted.values
+    glm.pred <- layer$model.glm$linear.predictors
 
     Zlearn    <- data.frame(zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
-    # We keep track of the pre-processed data for analysis purposes
-    layer$Zlearn <- Zlearn
 
     Zlearn$yy <- y
     Zlearn$glm.pred <- glm.pred
     data$glm.pred <- glm.pred
+
+    # We keep track of the pre-processed data for analysis purposes
+    layer$Zlearn <- Zlearn
 
     if(layer$method_options$distribution == 'gamma')
       fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function

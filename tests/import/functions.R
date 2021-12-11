@@ -42,6 +42,7 @@ simulate_rbns <- function(model, nsim = 5) {
 
   model <- register_updater(model, update)
 
+  balance.correction <- F
   if(!is.null(model$balance.var)) balance.correction = T
 
   simul <- simulate(model,
@@ -68,7 +69,7 @@ simulate_rbns <- function(model, nsim = 5) {
 
 gamma_deviance_keras <- function(yobs, yhat) {
   K <- backend()
-  2*K$sum((yobs-yhat)/yhat - K$log(yobs/yhat))
+  2*K$mean((yobs-yhat)/yhat - K$log(yobs/yhat))
 }
 
 metric_gamma_deviance_keras <- keras::custom_metric("gamma_deviance_keras", function(yobs, yhat) {

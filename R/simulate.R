@@ -238,7 +238,8 @@ simulate.layer_cann <- function(obj, data, balance.correction, balance.var) {
     f.glm <- f
 
   data_baked_for_glm <- bake(obj$data_recipe.glm.no_dummy, new_data = data[select,])
-  glm.pred <- predict(obj$model.glm, newdata = data_baked_for_glm, type = 'response')
+  #glm.pred <- predict(obj$model.glm, newdata = data_baked_for_glm, type = 'response')
+  glm.pred <- predict(obj$model.glm, newdata = data_baked_for_glm)
 
   #x <- as.matrix(sparse.model.matrix(f, data=data[select,])[,-1])
   data_baked <- bake(obj$data_recipe, new_data = data[select,])

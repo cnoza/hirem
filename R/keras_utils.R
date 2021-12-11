@@ -33,7 +33,7 @@ def_ae_arch <- function(inputs,
 }
 
 #' @export
-def_mlp_arch <- function(inputs,
+def_dnn_arch <- function(inputs,
                          batch_normalization,
                          hidden,
                          activation.hidden,

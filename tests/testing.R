@@ -539,7 +539,8 @@ init()
 
 bounds <- list(
   #ae_hidden_1 = c(10L,15L)
-  mlp_hidden_1 = c(10L,30L)
+  #dnn_hidden_1 = c(10L,30L)
+  batch_size = c(1L,6L)
 )
 
 
@@ -549,30 +550,30 @@ model4g <- hirem(reserving_data) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
   layer_dnn('size', distribution = 'gamma',
-                  bayesOpt = T,
-                  bayesOpt_min = T,
-                  bayesOpt_iters_n = 1,
-                  bayesOpt_bounds = bounds,
-                  use_embedding = T,
-                  output_dim = 1,
-                  hidden = c(20,15,10),
-                  nfolds=2,
-                  step_log = F,
-                  step_normalize = F,
-                  verbose = 1,
-                  bias_regularization = TRUE,
-                  loss = gamma_deviance_keras,
-                  metrics = metric_gamma_deviance_keras,
-                  optimizer = optimizer_nadam(),
-                  validation_split = .3,
-                  activation.output = 'exponential',
-                  batch_normalization = F,
-                  family_for_init = Gamma(link=log),
-                  epochs = 10,
-                  batch_size = 1000,
-                  monitor = 'gamma_deviance_keras',
-                  patience = 2,
-                  filter = function(data){data$payment == 1})
+            bayesOpt = T,
+            bayesOpt_min = T,
+            bayesOpt_iters_n = 1,
+            bayesOpt_bounds = bounds,
+            use_embedding = F,
+            output_dim = 1,
+            hidden = c(20,15,10),
+            nfolds=2,
+            step_log = F,
+            step_normalize = F,
+            verbose = 1,
+            bias_regularization = TRUE,
+            loss = gamma_deviance_keras,
+            metrics = metric_gamma_deviance_keras,
+            optimizer = optimizer_nadam(),
+            validation_split = .3,
+            activation.output = 'exponential',
+            batch_normalization = F,
+            family_for_init = Gamma(link=log),
+            epochs = 1,
+            batch_size = 1000,
+            monitor = 'gamma_deviance_keras',
+            patience = 2,
+            filter = function(data){data$payment == 1})
 
 model4g <- hirem::fit(model4g,
                       weights = weight,
@@ -642,7 +643,7 @@ simulate_rbns(model4h)
 init()
 
 bounds <- list(
-  mlp_hidden_1 = c(20L,30L)
+  dnn_hidden_1 = c(20L,30L)
 )
 
 model5 <- hirem(reserving_data) %>%
@@ -650,8 +651,8 @@ model5 <- hirem(reserving_data) %>%
              validation = .7, cv_fold = 6) %>%
   layer_glm('close', binomial(link = logit)) %>%
   layer_glm('payment', binomial(link = logit)) %>%
-  layer_cann('size', distribution = 'gamma', bias_regularization = FALSE,
-             bayesOpt = T,
+  layer_cann('size', distribution = 'gamma', bias_regularization = T,
+             bayesOpt = F,
              bayesOpt_min = T,
              bayesOpt_iters_n = 1,
              bayesOpt_bounds = bounds,
@@ -761,7 +762,7 @@ print(model5c$layers$size$sigma)
 init()
 
 bounds <- list(
-  mlp_hidden_1 = c(25L,30L)
+  dnn_hidden_1 = c(25L,30L)
 )
 
 reserving_data <- reserving_data %>% mutate(X1_factor = factor(X1))

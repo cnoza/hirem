@@ -992,6 +992,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     # We keep track of the pre-processed data for analysis purposes
     layer$Zlearn <- Zlearn
+    layer$Zlearn1 <- Zlearn1
 
     if(layer$method_options$distribution == 'gamma')
       fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function

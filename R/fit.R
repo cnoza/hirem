@@ -739,7 +739,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
         earlystopping <- callback_early_stopping(
           monitor = layer$method_options$monitor,
-          patience = layer$method_options$patience)
+          patience = layer$method_options$patience,
+          restore_best_weights = T)
 
         if(!layer$method_options$use_embedding) {
           x.inputs <- list(x)
@@ -926,7 +927,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   earlystopping <- callback_early_stopping(
     monitor = layer$method_options$monitor,
-    patience = layer$method_options$patience)
+    patience = layer$method_options$patience,
+    restore_best_weights = T)
 
   if(!layer$method_options$use_embedding) {
     x.inputs <- list(x)
@@ -936,19 +938,20 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     x.inputs[sapply(x.inputs, is.null)] <- NULL
   }
 
-  now <- Sys.time()
-  fn <- paste0("./tmp/dnn_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
+  #now <- Sys.time()
+  #fn <- paste0("./tmp/dnn_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
 
-  CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
+  #CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
 
   layer$history <- model %>%
     keras::fit(x=x.inputs, y=y, sample_weight=sample.w, epochs = layer$method_options$epochs,
                batch_size = layer$method_options$batch_size,
                validation_split = layer$method_options$validation_split,
-               callbacks = list(earlystopping, CBs),
+               #callbacks = list(earlystopping, CBs),
+               callbacks = list(earlystopping),
                verbose = layer$method_options$verbose)
 
-  load_model_weights_hdf5(model, fn)
+  #load_model_weights_hdf5(model, fn)
 
   if(!layer$method_options$bias_regularization) {
     layer$fit <- model
@@ -992,7 +995,6 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     # We keep track of the pre-processed data for analysis purposes
     layer$Zlearn <- Zlearn
-    layer$Zlearn1 <- Zlearn1
 
     if(layer$method_options$distribution == 'gamma')
       fam <- Gamma(link=log) # default link=inverse but we use exponential as activation function
@@ -1379,7 +1381,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
         earlystopping <- callback_early_stopping(
           monitor = layer$method_options$monitor,
-          patience = layer$method_options$patience)
+          patience = layer$method_options$patience,
+          restore_best_weights = T)
 
         if(!layer$method_options$use_embedding) {
           x.inputs <- list(x,x.glm)
@@ -1557,7 +1560,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   earlystopping <- callback_early_stopping(
     monitor = layer$method_options$monitor,
-    patience = layer$method_options$patience)
+    patience = layer$method_options$patience,
+    restore_best_weights = T)
 
   if(!layer$method_options$use_embedding) {
     x.inputs <- list(x,x.glm)
@@ -1567,19 +1571,20 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     x.inputs[sapply(x.inputs, is.null)] <- NULL
   }
 
-  now <- Sys.time()
-  fn <- paste0("./tmp/cann_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
+  #now <- Sys.time()
+  #fn <- paste0("./tmp/cann_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
 
-  CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
+  #CBs <- callback_model_checkpoint(fn, monitor=layer$method_options$monitor, save_best_only = TRUE, save_weights_only = TRUE)
 
   layer$history <- CANN %>%
     keras::fit(x=x.inputs, y=y, sample_weight=sample.w, epochs = layer$method_options$epochs,
                batch_size = layer$method_options$batch_size,
                validation_split = layer$method_options$validation_split,
-               callbacks = list(earlystopping,CBs),
+               #callbacks = list(earlystopping,CBs),
+               callbacks = list(earlystopping),
                verbose = layer$method_options$verbose)
 
-  load_model_weights_hdf5(CANN, fn)
+  #load_model_weights_hdf5(CANN, fn)
 
   if(!layer$method_options$bias_regularization) {
   layer$fit <- CANN

@@ -16,7 +16,7 @@ options(warn = -1)
 This version of this document extends a previous one written by Jens Robben, in which hierarchical GLM and hierarchical GBM are compared in the case of an extreme scenario. In the present version, hierarchical XGB, hierarchical MLP and hierarchical CANN are further considered in the case of a baseline event scenario. 
 
 ## Simulating the portfolio
-We evaluate the predictive performance of our hierarchical reserving model (hierarchical GLM, hierarchical GBM, hierarchical XGB and hierarchical MLP) on one portfolio simulated along the extreme event scenario. We compare the results with the ones obtained using an aggregate reserving model, namely the classical chain ladder model.
+We evaluate the predictive performance of our hierarchical reserving model (hierarchical GLM, hierarchical GBM, hierarchical XGB and hierarchical MLP) on one portfolio simulated along the baseline event scenario. We compare the results with the ones obtained using an aggregate reserving model, namely the classical chain ladder model.
 
 First, we load the required packages.
 
@@ -273,7 +273,7 @@ bounds <- list(
 model_dnn <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_dnn('settlement', distribution = 'bernoulli',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
             use_embedding = F, output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T, 
             step_log = F,
@@ -291,7 +291,7 @@ model_dnn <-  hirem(reserving_data) %>%
             monitor = 'binary_crossentropy',
             patience = 20) %>%
   layer_dnn('payment', distribution = 'bernoulli',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
             use_embedding = F, output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T,
             step_log = F,
@@ -309,7 +309,7 @@ model_dnn <-  hirem(reserving_data) %>%
             monitor = 'binary_crossentropy',
             patience = 20) %>%
   layer_dnn('size', distribution = 'gamma',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
             use_embedding = F, output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T, 
             step_log = F,

@@ -341,12 +341,10 @@ layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.
     }
   }
 
-
-
-  if(is.null(options$hidden)) {
-    # If no hidden layer, no need for bias regularization
-    options$bias_regularization <- FALSE
-  }
+  # if(is.null(options$hidden)) {
+  #   # If no hidden layer, no need for bias regularization
+  #   options$bias_regularization <- FALSE
+  # }
   # else {
   #   if(options$distribution == 'gamma') { # Link = log -> activation = exponential
   #     if(options$activation.output == 'exponential')

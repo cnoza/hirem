@@ -210,6 +210,7 @@ require(data.table)
 require(ggplot2)
 require(keras)
 require(tensorflow)
+set_random_seed (1)
 require(recipes)
 #install.packages(&#39;devtools&#39;)
 #devtools::install_github(&#39;cnoza/hirem&#39;)
@@ -276,9 +277,9 @@ model_glm &lt;- hirem::fit(model_glm,
                  settlement = formula_settle_glm,
                  payment = formula_pay_glm,
                  size = formula_size_glm)</code></pre>
-<pre><code>## Fitting layer_glm ...
-## Fitting layer_glm ...
-## Fitting layer_glm ...</code></pre>
+<pre><code>## Fitting layer_glm for settlement...
+## Fitting layer_glm for payment...
+## Fitting layer_glm for size...</code></pre>
 </div>
 <div id="hierarchical-gbm" class="section level3">
 <h3>Hierarchical GBM</h3>
@@ -314,9 +315,9 @@ model_gbm &lt;- hirem::fit(model_gbm,
                  settlement = paste0(&#39;settlement ~ 1 + &#39;, paste0(covariates_gbm, collapse = &#39; + &#39;)),
                  payment = paste0(&#39;payment ~ 1 + &#39;, paste0(c(covariates_gbm, &#39;settlement&#39;), collapse = &#39; + &#39;)),
                  size = paste0(&#39;size ~ 1 + &#39;, paste0(c(covariates_gbm,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
-<pre><code>## Fitting layer_gbm ...
-## Fitting layer_gbm ...
-## Fitting layer_gbm ...</code></pre>
+<pre><code>## Fitting layer_gbm for settlement...
+## Fitting layer_gbm for payment...
+## Fitting layer_gbm for size...</code></pre>
 </div>
 <div id="hierarchical-xgb" class="section level3">
 <h3>Hierarchical XGB</h3>
@@ -362,7 +363,7 @@ model_xgb &lt;- hirem::fit(model_xgb,
                         settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_xgb, collapse = &#39; + &#39;)) ,
                         payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_xgb, &#39;settlement&#39;), collapse = &#39; + &#39;)),
                         size = paste0(&#39;size ~ &#39;, paste0(c(covariates_xgb,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
-<pre><code>## Fitting layer_xgb ...</code></pre>
+<pre><code>## Fitting layer_xgb for settlement...</code></pre>
 <p>One can retrieve the best hyperparameters found by the Bayesian optimization as follows:</p>
 <pre class="r"><code># For settlement
 optObj &lt;- model_xgb$layers$settlement$optObj
@@ -446,12 +447,12 @@ print(model_xgb$layers$settlement$best_params)</code></pre>
 ## $scale_pos_weight
 ## [1] 1</code></pre>
 </div>
-<div id="hierarchical-mlp" class="section level3">
-<h3>Hierarchical MLP</h3>
+<div id="hierarchical-deep-feed-forward-neural-network" class="section level3">
+<h3>Hierarchical Deep feed-forward Neural Network</h3>
 <p>We will use the gamma deviance as custom loss function and metric in <code>keras</code>:</p>
 <pre class="r"><code>gamma_deviance_keras &lt;- function(yobs, yhat) {
   K &lt;- backend()
-  2*K$sum((yobs-yhat)/yhat - K$log(yobs/yhat))
+  2*K$mean((yobs-yhat)/yhat - K$log(yobs/yhat))
 }
 
 metric_gamma_deviance_keras &lt;- keras::custom_metric(&quot;gamma_deviance_keras&quot;, function(yobs, yhat) {
@@ -460,274 +461,110 @@ metric_gamma_deviance_keras &lt;- keras::custom_metric(&quot;gamma_deviance_kera
 <p>We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (<code>calendar.year &lt;= 9</code>).</p>
 <pre class="r"><code># Bounds specification for Bayesian optimization
 bounds &lt;- list(
-  mlp_hidden_1 = c(20L,60L),
-  mlp_hidden_2 = c(20L,60L),
-  mlp_hidden_3 = c(20L,60L)
+  dnn_hidden_1 = c(20L,60L),
+  dnn_hidden_2 = c(20L,60L),
+  dnn_hidden_3 = c(20L,60L)
+  #batch_size = c(1L,10L)
 )
 
 # Model specifications
-model_mlp &lt;-  hirem(reserving_data) %&gt;%
+model_dnn &lt;-  hirem(reserving_data) %&gt;%
   split_data(observed = function(df) df %&gt;% filter(calendar.year &lt;= 9, open == 1)) %&gt;%
-  layer_mlp_keras(&#39;settlement&#39;, distribution = &#39;bernoulli&#39;,
-                  bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-                  use_embedding = T, output_dim = 1,
-                  bias_regularization = TRUE,
-                  step_log = F,
-                  step_normalize = F,
-                  loss = &#39;binary_crossentropy&#39;,
-                  metrics = &#39;binary_crossentropy&#39;,
-                  optimizer = optimizer_nadam(),
-                  validation_split = 0,
-                  activation.output = &#39;sigmoid&#39;,
-                  batch_normalization = F,
-                  verbose = 0,
-                  family_for_init = binomial(), # default link = logit
-                  epochs = 100,
-                  batch_size = 1000,
-                  monitor = &#39;binary_crossentropy&#39;,
-                  patience = 20) %&gt;%
-  layer_mlp_keras(&#39;payment&#39;, distribution = &#39;bernoulli&#39;,
-                  bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-                  use_embedding = T, output_dim = 1,
-                  bias_regularization = TRUE,
-                  step_log = F,
-                  step_normalize = F,
-                  loss = &#39;binary_crossentropy&#39;,
-                  metrics = &#39;binary_crossentropy&#39;,
-                  optimizer = optimizer_nadam(),
-                  validation_split = 0,
-                  activation.output = &#39;sigmoid&#39;,
-                  batch_normalization = F,
-                  verbose = 0,
-                  family_for_init = binomial(), # default link = logit
-                  epochs = 100,
-                  batch_size = 1000,
-                  monitor = &#39;binary_crossentropy&#39;,
-                  patience = 20) %&gt;%
-  layer_mlp_keras(&#39;size&#39;, distribution = &#39;gamma&#39;,
-                  bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-                  use_embedding = T, output_dim = 1,
-                  bias_regularization = TRUE,
-                  step_log = F,
-                  step_normalize = F,
-                  loss = gamma_deviance_keras,
-                  metrics = metric_gamma_deviance_keras,
-                  optimizer = optimizer_nadam(),
-                  verbose = 0,
-                  validation_split = 0,
-                  activation.output = &#39;exponential&#39;,
-                  batch_normalization = F,
-                  family_for_init = Gamma(link=log), # default link = inverse
-                  epochs = 100,
-                  batch_size = 1000,
-                  monitor = &#39;gamma_deviance_keras&#39;,
-                  patience = 20,
-                  filter = function(data){data$payment == 1})</code></pre>
+  layer_dnn(&#39;settlement&#39;, distribution = &#39;bernoulli&#39;,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
+            use_embedding = F, output_dim = 1, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
+            bias_regularization = T, 
+            step_log = F,
+            step_normalize = F,
+            loss = &#39;binary_crossentropy&#39;,
+            metrics = &#39;binary_crossentropy&#39;,
+            optimizer = optimizer_nadam(),
+            validation_split = 0,
+            activation.output = &#39;sigmoid&#39;,
+            batch_normalization = F,
+            verbose = 0,
+            family_for_init = binomial(), # default link = logit
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;binary_crossentropy&#39;,
+            patience = 20) %&gt;%
+  layer_dnn(&#39;payment&#39;, distribution = &#39;bernoulli&#39;,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
+            use_embedding = F, output_dim = 1, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
+            bias_regularization = T,
+            step_log = F,
+            step_normalize = F,
+            loss = &#39;binary_crossentropy&#39;,
+            metrics = &#39;binary_crossentropy&#39;,
+            optimizer = optimizer_nadam(),
+            validation_split = 0,
+            activation.output = &#39;sigmoid&#39;,
+            batch_normalization = F,
+            verbose = 0,
+            family_for_init = binomial(), # default link = logit
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;binary_crossentropy&#39;,
+            patience = 20) %&gt;%
+  layer_dnn(&#39;size&#39;, distribution = &#39;gamma&#39;,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
+            use_embedding = F, output_dim = 1, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
+            bias_regularization = T, 
+            step_log = F,
+            step_normalize = F,
+            loss = gamma_deviance_keras,
+            metrics = metric_gamma_deviance_keras,
+            optimizer = optimizer_nadam(),
+            verbose = 0,
+            validation_split = 0,
+            activation.output = &#39;exponential&#39;,
+            batch_normalization = F,
+            family_for_init = Gamma(link=log), # default link = inverse
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;gamma_deviance_keras&#39;,
+            patience = 20,
+            filter = function(data){data$payment == 1})</code></pre>
 <p>We now fit the hierarchical MLP on the observed portfolio of simulated claims.</p>
 <pre class="r"><code># Covariates
-covariates_mlp &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;rep.year.fact&#39;, &#39;rep.delay&#39;, &#39;calendar.year&#39;)
+covariates_dnn &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;rep.year.fact&#39;, &#39;rep.delay&#39;, &#39;calendar.year&#39;)
 
 # Fitting the hierarchical MLP
-model_mlp &lt;- hirem::fit(model_mlp,
-                        weights = weight,
-                        weight.var = &#39;dev.year&#39;,
+model_dnn &lt;- hirem::fit(model_dnn,
                         balance.var = &#39;dev.year&#39;,
-                        settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_mlp, collapse = &#39; + &#39;)),
-                        payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_mlp, &#39;settlement&#39;), collapse = &#39; + &#39;)),
-                        size = paste0(&#39;size ~ &#39;, paste0(c(covariates_mlp,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
-<pre><code>## Fitting layer_mlp_keras ...</code></pre>
+                        settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_dnn, collapse = &#39; + &#39;)),
+                        payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_dnn, &#39;settlement&#39;), collapse = &#39; + &#39;)),
+                        size = paste0(&#39;size ~ &#39;, paste0(c(covariates_dnn,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
+<pre><code>## Fitting layer_dnn for settlement...</code></pre>
 <p>The bias regularization being activated, the neural network architecture can be recovered as follows:</p>
 <pre class="r"><code># Settlement
-model_mlp$layers$settlement$fit.biased</code></pre>
-<pre><code>## Model
-## Model: &quot;model_25&quot;
-## ________________________________________________________________________________
-## Layer (type)              Output Shape      Param #  Connected to               
-## ================================================================================
-## input_layer_type (InputLa [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_dev.year.fact [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_rep.month (In [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_rep.year.fact [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_type (Emb (None, 1, 1)      3        input_layer_type[0][0]     
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1, 1)      9        input_layer_dev.year.fact[0
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1, 1)      12       input_layer_rep.month[0][0]
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1, 1)      9        input_layer_rep.year.fact[0
-## ________________________________________________________________________________
-## input_layer_no_fact (Inpu [(None, 2)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_type_flat (None, 1)         0        embedding_layer_type[0][0] 
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1)         0        embedding_layer_dev.year.fa
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1)         0        embedding_layer_rep.month[0
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1)         0        embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## concatenate_25 (Concatena (None, 6)         0        input_layer_no_fact[0][0]  
-##                                                      embedding_layer_type_flat[0
-##                                                      embedding_layer_dev.year.fa
-##                                                      embedding_layer_rep.month_f
-##                                                      embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## hidden_layer_1 (Dense)    (None, 52)        364      concatenate_25[0][0]       
-## ________________________________________________________________________________
-## hidden_layer_activation_1 (None, 52)        0        hidden_layer_1[0][0]       
-## ________________________________________________________________________________
-## hidden_layer_2 (Dense)    (None, 35)        1855     hidden_layer_activation_1[0
-## ________________________________________________________________________________
-## hidden_layer_activation_2 (None, 35)        0        hidden_layer_2[0][0]       
-## ________________________________________________________________________________
-## last_hidden_layer (Dense) (None, 49)        1764     hidden_layer_activation_2[0
-## ________________________________________________________________________________
-## last_hidden_layer_activat (None, 49)        0        last_hidden_layer[0][0]    
-## ________________________________________________________________________________
-## output_layer (Dense)      (None, 1)         50       last_hidden_layer_activatio
-## ================================================================================
-## Total params: 4,066
-## Trainable params: 4,066
-## Non-trainable params: 0
-## ________________________________________________________________________________</code></pre>
+model_dnn$layers$settlement$fit.biased</code></pre>
+<pre><code>## NULL</code></pre>
 <pre class="r"><code># Payment
-model_mlp$layers$payment$fit.biased</code></pre>
-<pre><code>## Model
-## Model: &quot;model_52&quot;
-## ________________________________________________________________________________
-## Layer (type)              Output Shape      Param #  Connected to               
-## ================================================================================
-## input_layer_type (InputLa [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_dev.year.fact [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_rep.month (In [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_rep.year.fact [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_type (Emb (None, 1, 1)      3        input_layer_type[0][0]     
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1, 1)      9        input_layer_dev.year.fact[0
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1, 1)      12       input_layer_rep.month[0][0]
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1, 1)      9        input_layer_rep.year.fact[0
-## ________________________________________________________________________________
-## input_layer_no_fact (Inpu [(None, 3)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_type_flat (None, 1)         0        embedding_layer_type[0][0] 
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1)         0        embedding_layer_dev.year.fa
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1)         0        embedding_layer_rep.month[0
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1)         0        embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## concatenate_51 (Concatena (None, 7)         0        input_layer_no_fact[0][0]  
-##                                                      embedding_layer_type_flat[0
-##                                                      embedding_layer_dev.year.fa
-##                                                      embedding_layer_rep.month_f
-##                                                      embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## hidden_layer_1 (Dense)    (None, 37)        296      concatenate_51[0][0]       
-## ________________________________________________________________________________
-## hidden_layer_activation_1 (None, 37)        0        hidden_layer_1[0][0]       
-## ________________________________________________________________________________
-## hidden_layer_2 (Dense)    (None, 53)        2014     hidden_layer_activation_1[0
-## ________________________________________________________________________________
-## hidden_layer_activation_2 (None, 53)        0        hidden_layer_2[0][0]       
-## ________________________________________________________________________________
-## last_hidden_layer (Dense) (None, 37)        1998     hidden_layer_activation_2[0
-## ________________________________________________________________________________
-## last_hidden_layer_activat (None, 37)        0        last_hidden_layer[0][0]    
-## ________________________________________________________________________________
-## output_layer (Dense)      (None, 1)         38       last_hidden_layer_activatio
-## ================================================================================
-## Total params: 4,379
-## Trainable params: 4,379
-## Non-trainable params: 0
-## ________________________________________________________________________________</code></pre>
+model_dnn$layers$payment$fit.biased</code></pre>
+<pre><code>## NULL</code></pre>
 <pre class="r"><code># Size
-model_mlp$layers$size$fit.biased</code></pre>
-<pre><code>## Model
-## Model: &quot;model_79&quot;
-## ________________________________________________________________________________
-## Layer (type)              Output Shape      Param #  Connected to               
-## ================================================================================
-## input_layer_type (InputLa [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_dev.year.fact [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_rep.month (In [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_rep.year.fact [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_type (Emb (None, 1, 1)      3        input_layer_type[0][0]     
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1, 1)      9        input_layer_dev.year.fact[0
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1, 1)      12       input_layer_rep.month[0][0]
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1, 1)      9        input_layer_rep.year.fact[0
-## ________________________________________________________________________________
-## input_layer_no_fact (Inpu [(None, 3)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_type_flat (None, 1)         0        embedding_layer_type[0][0] 
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1)         0        embedding_layer_dev.year.fa
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1)         0        embedding_layer_rep.month[0
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1)         0        embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## concatenate_77 (Concatena (None, 7)         0        input_layer_no_fact[0][0]  
-##                                                      embedding_layer_type_flat[0
-##                                                      embedding_layer_dev.year.fa
-##                                                      embedding_layer_rep.month_f
-##                                                      embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## hidden_layer_1 (Dense)    (None, 46)        368      concatenate_77[0][0]       
-## ________________________________________________________________________________
-## hidden_layer_activation_1 (None, 46)        0        hidden_layer_1[0][0]       
-## ________________________________________________________________________________
-## hidden_layer_2 (Dense)    (None, 21)        987      hidden_layer_activation_1[0
-## ________________________________________________________________________________
-## hidden_layer_activation_2 (None, 21)        0        hidden_layer_2[0][0]       
-## ________________________________________________________________________________
-## last_hidden_layer (Dense) (None, 29)        638      hidden_layer_activation_2[0
-## ________________________________________________________________________________
-## last_hidden_layer_activat (None, 29)        0        last_hidden_layer[0][0]    
-## ________________________________________________________________________________
-## output_layer (Dense)      (None, 1)         30       last_hidden_layer_activatio
-## ================================================================================
-## Total params: 2,056
-## Trainable params: 2,056
-## Non-trainable params: 0
-## ________________________________________________________________________________</code></pre>
+model_dnn$layers$size$fit.biased</code></pre>
+<pre><code>## NULL</code></pre>
 </div>
-<div id="hierarchical-cann" class="section level3">
-<h3>Hierarchical CANN</h3>
+<div id="hierarchical-combined-actuarial-neural-network" class="section level3">
+<h3>Hierarchical Combined Actuarial Neural Network</h3>
 <p>We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (<code>calendar.year &lt;= 9</code>).</p>
 <pre class="r"><code># Bounds specification for Bayesian optimization
 bounds &lt;- list(
-  mlp_hidden_1 = c(20L,60L),
-  mlp_hidden_2 = c(20L,60L),
-  mlp_hidden_3 = c(20L,60L)
-)
+  dnn_hidden_1 = c(20L,60L),
+  dnn_hidden_2 = c(20L,60L),
+  dnn_hidden_3 = c(20L,60L)
+) 
 
 # Model specifications
 model_cann &lt;-  hirem(reserving_data) %&gt;%
   split_data(observed = function(df) df %&gt;% filter(calendar.year &lt;= 9, open == 1)) %&gt;%
   layer_cann(&#39;settlement&#39;, distribution = &#39;bernoulli&#39;,
-               formula.glm = formula_settle_glm, bias_regularization = F,
+               formula.glm = formula_settle_glm, bias_regularization = T,
                bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-               use_embedding = T,
-               family_for_glm = binomial(link=cloglog),
-               step_normalize = T,
+               use_embedding = F, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
+               family_for_glm = binomial(),
                loss = &#39;binary_crossentropy&#39;,
                metrics = &#39;binary_crossentropy&#39;,
                optimizer = optimizer_nadam(),
@@ -737,13 +574,12 @@ model_cann &lt;-  hirem(reserving_data) %&gt;%
                fixed.cann = T,
                monitor = &#39;binary_crossentropy&#39;,
                patience = 20,
-               verbose = 1,
                epochs = 100,
                batch_size = 1000) %&gt;%
   layer_cann(&#39;payment&#39;, distribution = &#39;bernoulli&#39;,
-               formula.glm = formula_pay_glm, bias_regularization = F,
+               formula.glm = formula_pay_glm, bias_regularization = T,
                bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-               use_embedding = T, 
+               use_embedding = F, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
                family_for_glm = binomial(),
                loss = &#39;binary_crossentropy&#39;,
                metrics = &#39;binary_crossentropy&#39;,
@@ -751,15 +587,15 @@ model_cann &lt;-  hirem(reserving_data) %&gt;%
                validation_split = 0,
                activation.output = &#39;linear&#39;,
                activation.output.cann = &#39;sigmoid&#39;,
-               fixed.cann = TRUE,
+               fixed.cann = T,
                monitor = &#39;binary_crossentropy&#39;,
                patience = 20,
                epochs = 100,
                batch_size = 1000) %&gt;%
   layer_cann(&#39;size&#39;, distribution = &#39;gamma&#39;,
-               formula.glm = formula_size_glm, bias_regularization = F,
+               formula.glm = formula_size_glm, bias_regularization = T,
                bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-               use_embedding = T, 
+               use_embedding = F, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
                family_for_glm = Gamma(link=log),
                loss = gamma_deviance_keras,
                metrics = metric_gamma_deviance_keras,
@@ -767,10 +603,10 @@ model_cann &lt;-  hirem(reserving_data) %&gt;%
                validation_split = 0,
                activation.output = &#39;linear&#39;,
                activation.output.cann = &#39;exponential&#39;,
-               fixed.cann = TRUE,
+               fixed.cann = T,
                monitor = &#39;gamma_deviance_keras&#39;,
                patience = 20,
-               epochs = 100,
+               epochs = 100, 
                batch_size = 1000,
                filter = function(data){data$payment == 1})</code></pre>
 <p>We now fit the hierarchical CANN on the observed portfolio of simulated claims. Notice that <code>dev.year.fact</code> is removed from the list of covariates to prevent an issue in the calibration process (loss function is <code>nan</code>).</p>
@@ -779,263 +615,119 @@ covariates_cann &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&
 
 # Fitting the hierarchical CANN
 model_cann &lt;- hirem::fit(model_cann,
-                 weights = weight,
-                 weight.var = &#39;dev.year&#39;,
                  balance.var = &#39;dev.year&#39;,
                  settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_cann, collapse = &#39; + &#39;)),
                  payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_cann, &#39;settlement&#39;), collapse = &#39; + &#39;)),
                  size = paste0(&#39;size ~ &#39;, paste0(c(covariates_cann,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
-<pre><code>## Fitting layer_cann ...</code></pre>
+<pre><code>## Fitting layer_cann for settlement...</code></pre>
 <p>We show the model retained:</p>
 <pre class="r"><code># Settlement
-model_cann$layers$settlement$fit</code></pre>
+model_cann$layers$settlement$fit.biased</code></pre>
 <pre><code>## Model
 ## Model: &quot;CANN&quot;
 ## ________________________________________________________________________________
 ## Layer (type)              Output Shape      Param #  Connected to               
 ## ================================================================================
-## input_layer_type (InputLa [(None, 1)]       0                                   
+## input_layer_nn (InputLaye [(None, 35)]      0                                   
 ## ________________________________________________________________________________
-## input_layer_dev.year.fact [(None, 1)]       0                                   
+## hidden_layer_1 (Dense)    (None, 20)        720      input_layer_nn[0][0]       
 ## ________________________________________________________________________________
-## input_layer_rep.month (In [(None, 1)]       0                                   
+## hidden_layer_activation_1 (None, 20)        0        hidden_layer_1[0][0]       
 ## ________________________________________________________________________________
-## input_layer_rep.year.fact [(None, 1)]       0                                   
+## hidden_layer_2 (Dense)    (None, 20)        420      hidden_layer_activation_1[0
 ## ________________________________________________________________________________
-## embedding_layer_type (Emb (None, 1, 1)      3        input_layer_type[0][0]     
+## hidden_layer_activation_2 (None, 20)        0        hidden_layer_2[0][0]       
 ## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1, 1)      9        input_layer_dev.year.fact[0
+## last_hidden_layer (Dense) (None, 38)        798      hidden_layer_activation_2[0
 ## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1, 1)      12       input_layer_rep.month[0][0]
+## input_layer_glm (InputLay [(None, 10)]      0                                   
 ## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1, 1)      9        input_layer_rep.year.fact[0
+## last_hidden_layer_activat (None, 38)        0        last_hidden_layer[0][0]    
 ## ________________________________________________________________________________
-## input_layer_no_fact (Inpu [(None, 2)]       0                                   
+## output_layer_glm (Dense)  (None, 1)         11       input_layer_glm[0][0]      
 ## ________________________________________________________________________________
-## embedding_layer_type_flat (None, 1)         0        embedding_layer_type[0][0] 
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1)         0        embedding_layer_dev.year.fa
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1)         0        embedding_layer_rep.month[0
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1)         0        embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## concatenate_129 (Concaten (None, 6)         0        input_layer_no_fact[0][0]  
-##                                                      embedding_layer_type_flat[0
-##                                                      embedding_layer_dev.year.fa
-##                                                      embedding_layer_rep.month_f
-##                                                      embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## hidden_layer_1 (Dense)    (None, 46)        322      concatenate_129[0][0]      
-## ________________________________________________________________________________
-## hidden_layer_activation_1 (None, 46)        0        hidden_layer_1[0][0]       
-## ________________________________________________________________________________
-## input_layer_type_glm (Inp [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_dev.year.fact [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## hidden_layer_2 (Dense)    (None, 21)        987      hidden_layer_activation_1[0
-## ________________________________________________________________________________
-## embedding_layer_type_glm  (None, 1, 1)      3        input_layer_type_glm[0][0] 
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1, 1)      9        input_layer_dev.year.fact_g
-## ________________________________________________________________________________
-## hidden_layer_activation_2 (None, 21)        0        hidden_layer_2[0][0]       
-## ________________________________________________________________________________
-## embedding_layer_type_flat (None, 1)         0        embedding_layer_type_glm[0]
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1)         0        embedding_layer_dev.year.fa
-## ________________________________________________________________________________
-## last_hidden_layer (Dense) (None, 28)        616      hidden_layer_activation_2[0
-## ________________________________________________________________________________
-## concatenate_128 (Concaten (None, 2)         0        embedding_layer_type_flat_g
-##                                                      embedding_layer_dev.year.fa
-## ________________________________________________________________________________
-## last_hidden_layer_activat (None, 28)        0        last_hidden_layer[0][0]    
-## ________________________________________________________________________________
-## output_layer_glm (Dense)  (None, 1)         3        concatenate_128[0][0]      
-## ________________________________________________________________________________
-## output_layer_NN (Dense)   (None, 1)         29       last_hidden_layer_activatio
+## output_layer_NN (Dense)   (None, 1)         39       last_hidden_layer_activatio
 ## ________________________________________________________________________________
 ## add_25 (Add)              (None, 1)         0        output_layer_glm[0][0]     
 ##                                                      output_layer_NN[0][0]      
 ## ________________________________________________________________________________
 ## output_layer_CANN (Dense) (None, 1)         2        add_25[0][0]               
 ## ================================================================================
-## Total params: 2,004
-## Trainable params: 1,987
-## Non-trainable params: 17
+## Total params: 1,990
+## Trainable params: 1,977
+## Non-trainable params: 13
 ## ________________________________________________________________________________</code></pre>
 <pre class="r"><code># Payment
-model_cann$layers$payment$fit</code></pre>
+model_cann$layers$payment$fit.biased</code></pre>
 <pre><code>## Model
 ## Model: &quot;CANN&quot;
 ## ________________________________________________________________________________
 ## Layer (type)              Output Shape      Param #  Connected to               
 ## ================================================================================
-## input_layer_type (InputLa [(None, 1)]       0                                   
+## input_layer_nn (InputLaye [(None, 36)]      0                                   
 ## ________________________________________________________________________________
-## input_layer_dev.year.fact [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_rep.month (In [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_rep.year.fact [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_type (Emb (None, 1, 1)      3        input_layer_type[0][0]     
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1, 1)      9        input_layer_dev.year.fact[0
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1, 1)      12       input_layer_rep.month[0][0]
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1, 1)      9        input_layer_rep.year.fact[0
-## ________________________________________________________________________________
-## input_layer_no_fact (Inpu [(None, 3)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_type_flat (None, 1)         0        embedding_layer_type[0][0] 
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1)         0        embedding_layer_dev.year.fa
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1)         0        embedding_layer_rep.month[0
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1)         0        embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## concatenate_181 (Concaten (None, 7)         0        input_layer_no_fact[0][0]  
-##                                                      embedding_layer_type_flat[0
-##                                                      embedding_layer_dev.year.fa
-##                                                      embedding_layer_rep.month_f
-##                                                      embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## hidden_layer_1 (Dense)    (None, 28)        224      concatenate_181[0][0]      
+## hidden_layer_1 (Dense)    (None, 28)        1036     input_layer_nn[0][0]       
 ## ________________________________________________________________________________
 ## hidden_layer_activation_1 (None, 28)        0        hidden_layer_1[0][0]       
 ## ________________________________________________________________________________
-## input_layer_type_glm (Inp [(None, 1)]       0                                   
+## hidden_layer_2 (Dense)    (None, 44)        1276     hidden_layer_activation_1[0
 ## ________________________________________________________________________________
-## input_layer_devYearMonth_ [(None, 1)]       0                                   
+## hidden_layer_activation_2 (None, 44)        0        hidden_layer_2[0][0]       
 ## ________________________________________________________________________________
-## hidden_layer_2 (Dense)    (None, 40)        1160     hidden_layer_activation_1[0
+## last_hidden_layer (Dense) (None, 57)        2565     hidden_layer_activation_2[0
 ## ________________________________________________________________________________
-## embedding_layer_type_glm  (None, 1, 1)      3        input_layer_type_glm[0][0] 
+## input_layer_glm (InputLay [(None, 44)]      0                                   
 ## ________________________________________________________________________________
-## embedding_layer_devYearMo (None, 1, 1)      42       input_layer_devYearMonth_gl
+## last_hidden_layer_activat (None, 57)        0        last_hidden_layer[0][0]    
 ## ________________________________________________________________________________
-## hidden_layer_activation_2 (None, 40)        0        hidden_layer_2[0][0]       
+## output_layer_glm (Dense)  (None, 1)         45       input_layer_glm[0][0]      
 ## ________________________________________________________________________________
-## input_layer_no_fact_glm ( [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_type_flat (None, 1)         0        embedding_layer_type_glm[0]
-## ________________________________________________________________________________
-## embedding_layer_devYearMo (None, 1)         0        embedding_layer_devYearMont
-## ________________________________________________________________________________
-## last_hidden_layer (Dense) (None, 51)        2091     hidden_layer_activation_2[0
-## ________________________________________________________________________________
-## concatenate_180 (Concaten (None, 3)         0        input_layer_no_fact_glm[0][
-##                                                      embedding_layer_type_flat_g
-##                                                      embedding_layer_devYearMont
-## ________________________________________________________________________________
-## last_hidden_layer_activat (None, 51)        0        last_hidden_layer[0][0]    
-## ________________________________________________________________________________
-## output_layer_glm (Dense)  (None, 1)         4        concatenate_180[0][0]      
-## ________________________________________________________________________________
-## output_layer_NN (Dense)   (None, 1)         52       last_hidden_layer_activatio
+## output_layer_NN (Dense)   (None, 1)         58       last_hidden_layer_activatio
 ## ________________________________________________________________________________
 ## add_51 (Add)              (None, 1)         0        output_layer_glm[0][0]     
 ##                                                      output_layer_NN[0][0]      
 ## ________________________________________________________________________________
 ## output_layer_CANN (Dense) (None, 1)         2        add_51[0][0]               
 ## ================================================================================
-## Total params: 3,611
-## Trainable params: 3,560
-## Non-trainable params: 51
+## Total params: 4,982
+## Trainable params: 4,935
+## Non-trainable params: 47
 ## ________________________________________________________________________________</code></pre>
 <pre class="r"><code># Size
-model_cann$layers$size$fit</code></pre>
+model_cann$layers$size$fit.biased</code></pre>
 <pre><code>## Model
 ## Model: &quot;CANN&quot;
 ## ________________________________________________________________________________
 ## Layer (type)              Output Shape      Param #  Connected to               
 ## ================================================================================
-## input_layer_type (InputLa [(None, 1)]       0                                   
+## input_layer_nn (InputLaye [(None, 36)]      0                                   
 ## ________________________________________________________________________________
-## input_layer_dev.year.fact [(None, 1)]       0                                   
+## hidden_layer_1 (Dense)    (None, 58)        2146     input_layer_nn[0][0]       
 ## ________________________________________________________________________________
-## input_layer_rep.month (In [(None, 1)]       0                                   
+## hidden_layer_activation_1 (None, 58)        0        hidden_layer_1[0][0]       
 ## ________________________________________________________________________________
-## input_layer_rep.year.fact [(None, 1)]       0                                   
+## hidden_layer_2 (Dense)    (None, 51)        3009     hidden_layer_activation_1[0
 ## ________________________________________________________________________________
-## embedding_layer_type (Emb (None, 1, 1)      3        input_layer_type[0][0]     
+## hidden_layer_activation_2 (None, 51)        0        hidden_layer_2[0][0]       
 ## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1, 1)      9        input_layer_dev.year.fact[0
+## last_hidden_layer (Dense) (None, 58)        3016     hidden_layer_activation_2[0
 ## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1, 1)      12       input_layer_rep.month[0][0]
+## input_layer_glm (InputLay [(None, 55)]      0                                   
 ## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1, 1)      9        input_layer_rep.year.fact[0
+## last_hidden_layer_activat (None, 58)        0        last_hidden_layer[0][0]    
 ## ________________________________________________________________________________
-## input_layer_no_fact (Inpu [(None, 3)]       0                                   
+## output_layer_glm (Dense)  (None, 1)         56       input_layer_glm[0][0]      
 ## ________________________________________________________________________________
-## embedding_layer_type_flat (None, 1)         0        embedding_layer_type[0][0] 
-## ________________________________________________________________________________
-## embedding_layer_dev.year. (None, 1)         0        embedding_layer_dev.year.fa
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1)         0        embedding_layer_rep.month[0
-## ________________________________________________________________________________
-## embedding_layer_rep.year. (None, 1)         0        embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## concatenate_233 (Concaten (None, 7)         0        input_layer_no_fact[0][0]  
-##                                                      embedding_layer_type_flat[0
-##                                                      embedding_layer_dev.year.fa
-##                                                      embedding_layer_rep.month_f
-##                                                      embedding_layer_rep.year.fa
-## ________________________________________________________________________________
-## hidden_layer_1 (Dense)    (None, 59)        472      concatenate_233[0][0]      
-## ________________________________________________________________________________
-## hidden_layer_activation_1 (None, 59)        0        hidden_layer_1[0][0]       
-## ________________________________________________________________________________
-## input_layer_devYearMonth_ [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_type_glm (Inp [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## input_layer_rep.month_glm [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## hidden_layer_2 (Dense)    (None, 44)        2640     hidden_layer_activation_1[0
-## ________________________________________________________________________________
-## embedding_layer_devYearMo (None, 1, 1)      42       input_layer_devYearMonth_gl
-## ________________________________________________________________________________
-## embedding_layer_type_glm  (None, 1, 1)      3        input_layer_type_glm[0][0] 
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1, 1)      12       input_layer_rep.month_glm[0
-## ________________________________________________________________________________
-## hidden_layer_activation_2 (None, 44)        0        hidden_layer_2[0][0]       
-## ________________________________________________________________________________
-## input_layer_no_fact_glm ( [(None, 1)]       0                                   
-## ________________________________________________________________________________
-## embedding_layer_devYearMo (None, 1)         0        embedding_layer_devYearMont
-## ________________________________________________________________________________
-## embedding_layer_type_flat (None, 1)         0        embedding_layer_type_glm[0]
-## ________________________________________________________________________________
-## embedding_layer_rep.month (None, 1)         0        embedding_layer_rep.month_g
-## ________________________________________________________________________________
-## last_hidden_layer (Dense) (None, 43)        1935     hidden_layer_activation_2[0
-## ________________________________________________________________________________
-## concatenate_232 (Concaten (None, 4)         0        input_layer_no_fact_glm[0][
-##                                                      embedding_layer_devYearMont
-##                                                      embedding_layer_type_flat_g
-##                                                      embedding_layer_rep.month_f
-## ________________________________________________________________________________
-## last_hidden_layer_activat (None, 43)        0        last_hidden_layer[0][0]    
-## ________________________________________________________________________________
-## output_layer_glm (Dense)  (None, 1)         5        concatenate_232[0][0]      
-## ________________________________________________________________________________
-## output_layer_NN (Dense)   (None, 1)         44       last_hidden_layer_activatio
+## output_layer_NN (Dense)   (None, 1)         59       last_hidden_layer_activatio
 ## ________________________________________________________________________________
 ## add_77 (Add)              (None, 1)         0        output_layer_glm[0][0]     
 ##                                                      output_layer_NN[0][0]      
 ## ________________________________________________________________________________
 ## output_layer_CANN (Dense) (None, 1)         2        add_77[0][0]               
 ## ================================================================================
-## Total params: 5,188
-## Trainable params: 5,124
-## Non-trainable params: 64
+## Total params: 8,288
+## Trainable params: 8,230
+## Non-trainable params: 58
 ## ________________________________________________________________________________</code></pre>
 </div>
 </div>
@@ -1059,7 +751,7 @@ update &lt;- function(data) {
 model_glm &lt;- register_updater(model_glm, update)
 model_gbm &lt;- register_updater(model_gbm, update)
 model_xgb &lt;- register_updater(model_xgb, update)
-model_mlp &lt;- register_updater(model_mlp, update)
+model_dnn &lt;- register_updater(model_dnn, update)
 model_cann &lt;- register_updater(model_cann, update)</code></pre>
 <p>Next, we apply the actual simulation of the development of claims over time beyond the observation window of those claims that are still open at the evaluation date (calendar year 9). Moreover, we apply the balance correction as explained in <span class="citation">Creveceour, Antonio, and Robben (2021)</span>.</p>
 <pre class="r"><code>nsim &lt;- 50 # Instead of 100 (original value), to avoid memory issues
@@ -1082,10 +774,10 @@ simul_xgb &lt;- simulate(model_xgb,
                       data = model_xgb$data_observed %&gt;% dplyr::filter(calendar.year == 9),
                       balance.correction = TRUE)
 
-simul_mlp &lt;- simulate(model_mlp,
+simul_dnn &lt;- simulate(model_dnn,
                       nsim = nsim,
                       filter = function(data){dplyr::filter(data, dev.year &lt;= 9, settlement == 0)},
-                      data = model_mlp$data_observed %&gt;% dplyr::filter(calendar.year == 9),
+                      data = model_dnn$data_observed %&gt;% dplyr::filter(calendar.year == 9),
                       balance.correction = TRUE)
 
 simul_cann &lt;- simulate(model_cann,
@@ -1132,15 +824,15 @@ cl_open_total  &lt;- sum(cl_open)
 glm_open_total &lt;- simul_glm %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 gbm_open_total &lt;- simul_gbm %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 xgb_open_total &lt;- simul_xgb %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
-mlp_open_total &lt;- simul_mlp %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
+dnn_open_total &lt;- simul_dnn %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 cann_open_total &lt;- simul_cann %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; =  obs_open_total, &#39;Chain-Ladder&#39; = cl_open_total, &#39;Hierarchical GLM&#39; = glm_open_total, &#39;Hierarchical GBM&#39; = gbm_open_total, &#39;Hierarchical XGB&#39; = xgb_open_total, &#39;Hierarchical MLP&#39; = mlp_open_total, &#39;Hierarchical CANN&#39; = cann_open_total)</code></pre>
+c(&#39;Actual&#39; =  obs_open_total, &#39;Chain-Ladder&#39; = cl_open_total, &#39;Hierarchical GLM&#39; = glm_open_total, &#39;Hierarchical GBM&#39; = gbm_open_total, &#39;Hierarchical XGB&#39; = xgb_open_total, &#39;Hierarchical DNN&#39; = dnn_open_total, &#39;Hierarchical CANN&#39; = cann_open_total)</code></pre>
 <pre><code>##            Actual      Chain-Ladder  Hierarchical GLM  Hierarchical GBM 
-##          51521.00          51504.86          51487.82          51600.62 
-##  Hierarchical XGB  Hierarchical MLP Hierarchical CANN 
-##          51438.76          50688.62          52655.02</code></pre>
+##          51521.00          51504.86          51520.24          51649.38 
+##  Hierarchical XGB  Hierarchical DNN Hierarchical CANN 
+##          51449.24          52257.02          51448.76</code></pre>
 <p>Second, we compare the prediction for the total number of payments in the prediction data set.</p>
 <pre class="r"><code># Predictions
 obs_pay_total &lt;- prediction_data %&gt;% summarise(Total = sum(payment)) %&gt;% pull(Total)
@@ -1148,15 +840,15 @@ cl_pay_total  &lt;- sum(cl_pay)
 glm_pay_total &lt;- simul_glm %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
 gbm_pay_total &lt;- simul_gbm %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
 xgb_pay_total &lt;- simul_xgb %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
-mlp_pay_total &lt;- simul_mlp %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
+dnn_pay_total &lt;- simul_dnn %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
 cann_pay_total &lt;- simul_cann %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; = obs_pay_total, &#39;Chain-Ladder&#39; = cl_pay_total, &#39;Hierarchical GLM&#39; = glm_pay_total, &#39;Hierarchical GBM&#39; = gbm_pay_total, &#39;Hierarchical XGB&#39; = xgb_pay_total, &#39;Hierarchical MLP&#39; = mlp_pay_total, &#39;Hierarchical CANN&#39; = cann_pay_total)</code></pre>
+c(&#39;Actual&#39; = obs_pay_total, &#39;Chain-Ladder&#39; = cl_pay_total, &#39;Hierarchical GLM&#39; = glm_pay_total, &#39;Hierarchical GBM&#39; = gbm_pay_total, &#39;Hierarchical XGB&#39; = xgb_pay_total, &#39;Hierarchical DNN&#39; = dnn_pay_total, &#39;Hierarchical CANN&#39; = cann_pay_total)</code></pre>
 <pre><code>##            Actual      Chain-Ladder  Hierarchical GLM  Hierarchical GBM 
-##          55434.00          55122.77          55224.82          55461.66 
-##  Hierarchical XGB  Hierarchical MLP Hierarchical CANN 
-##          55309.80          54896.76          56439.48</code></pre>
+##          55434.00          55122.77          55250.76          55464.82 
+##  Hierarchical XGB  Hierarchical DNN Hierarchical CANN 
+##          55332.06          55621.40          55249.06</code></pre>
 <p>Third, we compare the prediction for the total number of payment sizes in the prediction set.</p>
 <pre class="r"><code># Predictions
 obs_size_total &lt;- prediction_data %&gt;% summarise(Total = sum(size)) %&gt;% pull(Total)
@@ -1164,15 +856,15 @@ cl_size_total  &lt;- sum(cl_size)
 glm_size_total &lt;- simul_glm %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
 gbm_size_total &lt;- simul_gbm %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
 xgb_size_total &lt;- simul_xgb %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
-mlp_size_total &lt;- simul_mlp %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
+dnn_size_total &lt;- simul_dnn %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
 cann_size_total &lt;- simul_cann %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; = obs_size_total, &#39;Chain-Ladder&#39; = cl_size_total, &#39;Hierarchical GLM&#39; = glm_size_total, &#39;Hierarchical GBM&#39; = gbm_size_total, &#39;Hierarchical XGB&#39; = xgb_size_total, &#39;Hierarchical MLP&#39; = mlp_size_total, &#39;Hierarchical CANN&#39; = cann_size_total)</code></pre>
+c(&#39;Actual&#39; = obs_size_total, &#39;Chain-Ladder&#39; = cl_size_total, &#39;Hierarchical GLM&#39; = glm_size_total, &#39;Hierarchical GBM&#39; = gbm_size_total, &#39;Hierarchical XGB&#39; = xgb_size_total, &#39;Hierarchical DNN&#39; = dnn_size_total, &#39;Hierarchical CANN&#39; = cann_size_total)</code></pre>
 <pre><code>##            Actual      Chain-Ladder  Hierarchical GLM  Hierarchical GBM 
-##          68009166          68366064          68114122          68844595 
-##  Hierarchical XGB  Hierarchical MLP Hierarchical CANN 
-##          68114010          68939556          71277627</code></pre>
+##          68009166          68366064          68141936          68820972 
+##  Hierarchical XGB  Hierarchical DNN Hierarchical CANN 
+##          68113449          67049942          68165698</code></pre>
 </div>
 <div id="references" class="section level2">
 <h2>References</h2>

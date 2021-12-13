@@ -1,5 +1,5 @@
 ---
-title: "MultiLayer Perceptron models as layer in `hirem`"
+title: "Deep Neural Network model as layer in `hirem`"
 author: "Christophe Nozaradan"
 date: "November 2021"
 output: html_document
@@ -76,7 +76,7 @@ We will use the gamma deviance as custom loss function and metric in `keras`:
 ```{r message=FALSE}
 gamma_deviance_keras <- function(yobs, yhat) {
   K <- backend()
-  2*K$sum((yobs-yhat)/yhat - K$log(yobs/yhat))
+  2*K$mean((yobs-yhat)/yhat - K$log(yobs/yhat))
 }
 
 metric_gamma_deviance_keras <- keras::custom_metric("gamma_deviance_keras", function(yobs, yhat) {

@@ -195,11 +195,11 @@ pre code {
 
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
-<p>This version of this document extends a previous one written by Jens Robben, in which hierarchical GLM and hierarchical GBM are compared. In the present version, hierarchical XGB, hierarchical MLP and hierarchical CANN are further considered. For the latter ones, however, no proper tuning strategy is (yet) followed to justify the chosen model hyperparameters, which may reflect in the results presented below.</p>
+<p>This version of this document extends a previous one written by Jens Robben, in which hierarchical GLM and hierarchical GBM are compared. In the present version, hierarchical XGB, hierarchical DNN and hierarchical CANN are further considered.</p>
 </div>
 <div id="simulating-the-portfolio" class="section level2">
 <h2>Simulating the portfolio</h2>
-<p>We evaluate the predictive performance of our hierarchical reserving model (hierarchical GLM, hierarchical GBM, hierarchical XGB and hierarchical MLP) on one portfolio simulated along the extreme event scenario. We compare the results with the ones obtained using an aggregate reserving model, namely the classical chain ladder model.</p>
+<p>We evaluate the predictive performance of our hierarchical reserving model (hierarchical GLM, hierarchical GBM, hierarchical XGB and hierarchical DNN) on one portfolio simulated along the extreme event scenario. We compare the results with the ones obtained using an aggregate reserving model, namely the classical chain ladder model.</p>
 <p>First, we load the required packages.</p>
 <pre class="r"><code>require(tidyverse)
 require(xgboost)
@@ -275,9 +275,9 @@ model_glm &lt;- hirem::fit(model_glm,
                  settlement = formula_settle_glm,
                  payment = formula_pay_glm,
                  size = formula_size_glm)</code></pre>
-<pre><code>## Fitting layer_glm ...
-## Fitting layer_glm ...
-## Fitting layer_glm ...</code></pre>
+<pre><code>## Fitting layer_glm for settlement...
+## Fitting layer_glm for payment...
+## Fitting layer_glm for size...</code></pre>
 </div>
 <div id="hierarchical-gbm" class="section level3">
 <h3>Hierarchical GBM</h3>
@@ -313,9 +313,9 @@ model_gbm &lt;- hirem::fit(model_gbm,
                  settlement = paste0(&#39;settlement ~ 1 + &#39;, paste0(covariates_gbm, collapse = &#39; + &#39;)),
                  payment = paste0(&#39;payment ~ 1 + &#39;, paste0(c(covariates_gbm, &#39;settlement&#39;), collapse = &#39; + &#39;)),
                  size = paste0(&#39;size ~ 1 + &#39;, paste0(c(covariates_gbm,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
-<pre><code>## Fitting layer_gbm ...
-## Fitting layer_gbm ...
-## Fitting layer_gbm ...</code></pre>
+<pre><code>## Fitting layer_gbm for settlement...
+## Fitting layer_gbm for payment...
+## Fitting layer_gbm for size...</code></pre>
 </div>
 <div id="hierarchical-xgb" class="section level3">
 <h3>Hierarchical XGB</h3>
@@ -361,10 +361,10 @@ model_xgb &lt;- hirem::fit(model_xgb,
                         settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_xgb, collapse = &#39; + &#39;)),
                         payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_xgb, &#39;settlement&#39;), collapse = &#39; + &#39;)),
                         size = paste0(&#39;size ~ &#39;, paste0(c(covariates_xgb,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
-<pre><code>## Fitting layer_xgb ...</code></pre>
+<pre><code>## Fitting layer_xgb for settlement...</code></pre>
 </div>
-<div id="hierarchical-mlp" class="section level3">
-<h3>Hierarchical MLP</h3>
+<div id="hierarchical-dnn" class="section level3">
+<h3>Hierarchical DNN</h3>
 <p>We will use the gamma deviance as custom loss function and metric in <code>keras</code>:</p>
 <pre class="r"><code>gamma_deviance_keras &lt;- function(yobs, yhat) {
   K &lt;- backend()
@@ -375,301 +375,348 @@ metric_gamma_deviance_keras &lt;- keras::custom_metric(&quot;gamma_deviance_kera
   gamma_deviance_keras(yobs, yhat)
 })</code></pre>
 <p>We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (<code>calendar.year &lt;= 9</code>).</p>
-<pre class="r"><code># Model specifications
-model_mlp &lt;-  hirem(reserving_data) %&gt;%
+<pre class="r"><code># Bounds specification for Bayesian optimization
+bounds &lt;- list(
+  dnn_hidden_1 = c(20L,60L),
+  dnn_hidden_2 = c(20L,60L),
+  dnn_hidden_3 = c(20L,60L)
+  #batch_size = c(1L,10L)
+)
+
+# Model specifications
+model_dnn &lt;-  hirem(reserving_data) %&gt;%
   split_data(observed = function(df) df %&gt;% filter(calendar.year &lt;= 9, open == 1)) %&gt;%
-  layer_mlp_keras(&#39;settlement&#39;, distribution = &#39;bernoulli&#39;,
-                  step_log = F,
-                  step_normalize = F,
-                  loss = &#39;binary_crossentropy&#39;,
-                  metrics = &#39;accuracy&#39;,
-                  optimizer = optimizer_nadam(learning_rate = .01),
-                  validation_split = 0,
-                  hidden = c(20,15,10),
-                  activation.output = &#39;sigmoid&#39;,
-                  batch_normalization = F,
-                  family_for_init = binomial(), # default link = logit
-                  epochs = 100,
-                  batch_size = 1000,
-                  monitor = &#39;accuracy&#39;,
-                  patience = 20) %&gt;%
-  layer_mlp_keras(&#39;payment&#39;, distribution = &#39;bernoulli&#39;,
-                  step_log = F,
-                  step_normalize = F,
-                  loss = &#39;binary_crossentropy&#39;,
-                  metrics = &#39;accuracy&#39;,
-                  optimizer = optimizer_nadam(learning_rate = .01),
-                  validation_split = 0,
-                  hidden = c(20,15,10),
-                  activation.output = &#39;sigmoid&#39;,
-                  batch_normalization = F,
-                  family_for_init = binomial(), # default link = logit
-                  epochs = 100,
-                  batch_size = 1000,
-                  monitor = &#39;accuracy&#39;,
-                  patience = 20) %&gt;%
-  layer_mlp_keras(&#39;size&#39;, distribution = &#39;gamma&#39;,
-                  step_log = F,
-                  step_normalize = F,
-                  loss = gamma_deviance_keras,
-                  metrics = metric_gamma_deviance_keras,
-                  optimizer = optimizer_nadam(learning_rate = .01),
-                  validation_split = 0,
-                  hidden = c(50,45,40),
-                  activation.output = &#39;exponential&#39;,
-                  batch_normalization = F,
-                  family_for_init = Gamma(link=log), # default link = inverse
-                  epochs = 100,
-                  batch_size = 1000,
-                  monitor = &#39;gamma_deviance_keras&#39;,
-                  patience = 20,
-                  filter = function(data){data$payment == 1})</code></pre>
-<p>We now fit the hierarchical MLP on the observed portfolio of simulated claims.</p>
+  layer_dnn(&#39;settlement&#39;, distribution = &#39;bernoulli&#39;,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
+            use_embedding = F, output_dim = 1, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
+            bias_regularization = T, 
+            step_log = F,
+            step_normalize = F,
+            loss = &#39;binary_crossentropy&#39;,
+            metrics = &#39;binary_crossentropy&#39;,
+            optimizer = optimizer_nadam(),
+            validation_split = 0,
+            activation.output = &#39;sigmoid&#39;,
+            batch_normalization = F,
+            verbose = 0,
+            family_for_init = binomial(), # default link = logit
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;binary_crossentropy&#39;,
+            patience = 20) %&gt;%
+  layer_dnn(&#39;payment&#39;, distribution = &#39;bernoulli&#39;,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
+            use_embedding = F, output_dim = 1, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
+            bias_regularization = T,
+            step_log = F,
+            step_normalize = F,
+            loss = &#39;binary_crossentropy&#39;,
+            metrics = &#39;binary_crossentropy&#39;,
+            optimizer = optimizer_nadam(),
+            validation_split = 0,
+            activation.output = &#39;sigmoid&#39;,
+            batch_normalization = F,
+            verbose = 0,
+            family_for_init = binomial(), # default link = logit
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;binary_crossentropy&#39;,
+            patience = 20) %&gt;%
+  layer_dnn(&#39;size&#39;, distribution = &#39;gamma&#39;,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
+            use_embedding = F, output_dim = 1, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
+            bias_regularization = T, 
+            step_log = F,
+            step_normalize = F,
+            loss = gamma_deviance_keras,
+            metrics = metric_gamma_deviance_keras,
+            optimizer = optimizer_nadam(),
+            verbose = 0,
+            validation_split = 0,
+            activation.output = &#39;exponential&#39;,
+            batch_normalization = F,
+            family_for_init = Gamma(link=log), # default link = inverse
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;gamma_deviance_keras&#39;,
+            patience = 20,
+            filter = function(data){data$payment == 1})</code></pre>
+<p>We now fit the hierarchical DNN on the observed portfolio of simulated claims.</p>
 <pre class="r"><code># Covariates
-covariates_mlp &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;rep.year.fact&#39;, &#39;rep.delay&#39;, &#39;calendar.year&#39;)
+covariates_dnn &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;rep.year.fact&#39;, &#39;rep.delay&#39;, &#39;calendar.year&#39;)
 
 # Fitting the hierarchical MLP
-model_mlp &lt;- hirem::fit(model_mlp,
-                 settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_mlp, collapse = &#39; + &#39;)),
-                 payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_mlp, &#39;settlement&#39;), collapse = &#39; + &#39;)),
-                 size = paste0(&#39;size ~ &#39;, paste0(c(covariates_mlp,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
-<pre><code>## Fitting layer_mlp_keras ...
-## Model: &quot;model&quot;
+model_dnn &lt;- hirem::fit(model_dnn,
+                        balance.var = &#39;dev.year&#39;,
+                        settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_dnn, collapse = &#39; + &#39;)),
+                        payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_dnn, &#39;settlement&#39;), collapse = &#39; + &#39;)),
+                        size = paste0(&#39;size ~ &#39;, paste0(c(covariates_dnn,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
+<pre><code>## Fitting layer_dnn for settlement...</code></pre>
+<p>The bias regularization being activated, the neural network architecture can be recovered as follows:</p>
+<pre class="r"><code># Settlement
+model_dnn$layers$settlement$fit.biased</code></pre>
+<pre><code>## Model
+## Model: &quot;model_35&quot;
 ## ________________________________________________________________________________
 ## Layer (type)                        Output Shape                    Param #     
 ## ================================================================================
-## ae_input_layer (InputLayer)         [(None, 31)]                    0           
+## input_layer_nn (InputLayer)         [(None, 35)]                    0           
 ## ________________________________________________________________________________
-## hidden_layer_1 (Dense)              (None, 20)                      640         
+## hidden_layer_1 (Dense)              (None, 20)                      720         
 ## ________________________________________________________________________________
-## activation (Activation)             (None, 20)                      0           
+## hidden_layer_activation_1 (Activati (None, 20)                      0           
 ## ________________________________________________________________________________
-## hidden_layer_2 (Dense)              (None, 15)                      315         
+## hidden_layer_2 (Dense)              (None, 60)                      1260        
 ## ________________________________________________________________________________
-## activation_1 (Activation)           (None, 15)                      0           
+## hidden_layer_activation_2 (Activati (None, 60)                      0           
 ## ________________________________________________________________________________
-## last_hidden_layer (Dense)           (None, 10)                      160         
+## last_hidden_layer (Dense)           (None, 44)                      2684        
 ## ________________________________________________________________________________
-## activation_2 (Activation)           (None, 10)                      0           
+## last_hidden_layer_activation (Activ (None, 44)                      0           
 ## ________________________________________________________________________________
-## output_layer (Dense)                (None, 1)                       11          
+## output_layer (Dense)                (None, 1)                       45          
 ## ================================================================================
-## Total params: 1,126
-## Trainable params: 1,126
+## Total params: 4,709
+## Trainable params: 4,709
 ## Non-trainable params: 0
-## ________________________________________________________________________________
-## NULL
-## Fitting layer_mlp_keras ...
-## Model: &quot;model_2&quot;
+## ________________________________________________________________________________</code></pre>
+<pre class="r"><code># Payment
+model_dnn$layers$payment$fit.biased</code></pre>
+<pre><code>## Model
+## Model: &quot;model_72&quot;
 ## ________________________________________________________________________________
 ## Layer (type)                        Output Shape                    Param #     
 ## ================================================================================
-## ae_input_layer (InputLayer)         [(None, 32)]                    0           
+## input_layer_nn (InputLayer)         [(None, 36)]                    0           
 ## ________________________________________________________________________________
-## hidden_layer_1 (Dense)              (None, 20)                      660         
+## hidden_layer_1 (Dense)              (None, 20)                      740         
 ## ________________________________________________________________________________
-## activation_3 (Activation)           (None, 20)                      0           
+## hidden_layer_activation_1 (Activati (None, 20)                      0           
 ## ________________________________________________________________________________
-## hidden_layer_2 (Dense)              (None, 15)                      315         
+## hidden_layer_2 (Dense)              (None, 20)                      420         
 ## ________________________________________________________________________________
-## activation_4 (Activation)           (None, 15)                      0           
+## hidden_layer_activation_2 (Activati (None, 20)                      0           
 ## ________________________________________________________________________________
-## last_hidden_layer (Dense)           (None, 10)                      160         
+## last_hidden_layer (Dense)           (None, 53)                      1113        
 ## ________________________________________________________________________________
-## activation_5 (Activation)           (None, 10)                      0           
+## last_hidden_layer_activation (Activ (None, 53)                      0           
 ## ________________________________________________________________________________
-## output_layer (Dense)                (None, 1)                       11          
+## output_layer (Dense)                (None, 1)                       54          
 ## ================================================================================
-## Total params: 1,146
-## Trainable params: 1,146
+## Total params: 2,327
+## Trainable params: 2,327
 ## Non-trainable params: 0
-## ________________________________________________________________________________
-## NULL
-## Fitting layer_mlp_keras ...
-## Model: &quot;model_4&quot;
+## ________________________________________________________________________________</code></pre>
+<pre class="r"><code># Size
+model_dnn$layers$size$fit.biased</code></pre>
+<pre><code>## Model
+## Model: &quot;model_109&quot;
 ## ________________________________________________________________________________
 ## Layer (type)                        Output Shape                    Param #     
 ## ================================================================================
-## ae_input_layer (InputLayer)         [(None, 32)]                    0           
+## input_layer_nn (InputLayer)         [(None, 36)]                    0           
 ## ________________________________________________________________________________
-## hidden_layer_1 (Dense)              (None, 50)                      1650        
+## hidden_layer_1 (Dense)              (None, 20)                      740         
 ## ________________________________________________________________________________
-## activation_6 (Activation)           (None, 50)                      0           
+## hidden_layer_activation_1 (Activati (None, 20)                      0           
 ## ________________________________________________________________________________
-## hidden_layer_2 (Dense)              (None, 45)                      2295        
+## hidden_layer_2 (Dense)              (None, 20)                      420         
 ## ________________________________________________________________________________
-## activation_7 (Activation)           (None, 45)                      0           
+## hidden_layer_activation_2 (Activati (None, 20)                      0           
 ## ________________________________________________________________________________
-## last_hidden_layer (Dense)           (None, 40)                      1840        
+## last_hidden_layer (Dense)           (None, 25)                      525         
 ## ________________________________________________________________________________
-## activation_8 (Activation)           (None, 40)                      0           
+## last_hidden_layer_activation (Activ (None, 25)                      0           
 ## ________________________________________________________________________________
-## output_layer (Dense)                (None, 1)                       41          
+## output_layer (Dense)                (None, 1)                       26          
 ## ================================================================================
-## Total params: 5,826
-## Trainable params: 5,826
+## Total params: 1,711
+## Trainable params: 1,711
 ## Non-trainable params: 0
-## ________________________________________________________________________________
-## NULL</code></pre>
+## ________________________________________________________________________________</code></pre>
 </div>
 <div id="hierarchical-cann" class="section level3">
 <h3>Hierarchical CANN</h3>
 <p>We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (<code>calendar.year &lt;= 9</code>).</p>
-<pre class="r"><code># Model specifications
+<pre class="r"><code># Bounds specification for Bayesian optimization
+bounds &lt;- list(
+  dnn_hidden_1 = c(20L,60L),
+  dnn_hidden_2 = c(20L,60L),
+  dnn_hidden_3 = c(20L,60L)
+) 
+
+# Model specifications
 model_cann &lt;-  hirem(reserving_data) %&gt;%
   split_data(observed = function(df) df %&gt;% filter(calendar.year &lt;= 9, open == 1)) %&gt;%
   layer_cann(&#39;settlement&#39;, distribution = &#39;bernoulli&#39;,
-               family_for_glm = binomial(link=logit),
+               formula.glm = formula_settle_glm, bias_regularization = T,
+               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+               use_embedding = F, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
+               family_for_glm = binomial(),
                loss = &#39;binary_crossentropy&#39;,
                metrics = &#39;binary_crossentropy&#39;,
-               optimizer = optimizer_nadam(learning_rate = .01),
+               optimizer = optimizer_nadam(),
                validation_split = 0,
-               hidden = c(20,15,10),
-               activation.output = &#39;sigmoid&#39;,
+               activation.output = &#39;linear&#39;,
                activation.output.cann = &#39;sigmoid&#39;,
-               fixed.cann = TRUE,
+               fixed.cann = T,
                monitor = &#39;binary_crossentropy&#39;,
                patience = 20,
                epochs = 100,
                batch_size = 1000) %&gt;%
   layer_cann(&#39;payment&#39;, distribution = &#39;bernoulli&#39;,
-               family_for_glm = binomial(link=logit),
+               formula.glm = formula_pay_glm, bias_regularization = T,
+               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+               use_embedding = F, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
+               family_for_glm = binomial(),
                loss = &#39;binary_crossentropy&#39;,
                metrics = &#39;binary_crossentropy&#39;,
-               optimizer = optimizer_nadam(learning_rate = .01),
+               optimizer = optimizer_nadam(),
                validation_split = 0,
-               hidden = c(20,15,10),
-               activation.output = &#39;sigmoid&#39;,
+               activation.output = &#39;linear&#39;,
                activation.output.cann = &#39;sigmoid&#39;,
-               fixed.cann = TRUE,
+               fixed.cann = T,
                monitor = &#39;binary_crossentropy&#39;,
                patience = 20,
                epochs = 100,
                batch_size = 1000) %&gt;%
   layer_cann(&#39;size&#39;, distribution = &#39;gamma&#39;,
+               formula.glm = formula_size_glm, bias_regularization = T,
+               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+               use_embedding = F, embedding_var = c(&#39;rep.month&#39;, &#39;rep.year.fact&#39;),
                family_for_glm = Gamma(link=log),
                loss = gamma_deviance_keras,
                metrics = metric_gamma_deviance_keras,
-               optimizer = optimizer_nadam(learning_rate = .01),
+               optimizer = optimizer_nadam(),
                validation_split = 0,
-               hidden = c(20,15,10),
-               activation.output = &#39;exponential&#39;,
+               activation.output = &#39;linear&#39;,
                activation.output.cann = &#39;exponential&#39;,
-               fixed.cann = TRUE,
+               fixed.cann = T,
                monitor = &#39;gamma_deviance_keras&#39;,
                patience = 20,
-               epochs = 100,
+               epochs = 100, 
                batch_size = 1000,
                filter = function(data){data$payment == 1})</code></pre>
 <p>We now fit the hierarchical CANN on the observed portfolio of simulated claims. Notice that <code>dev.year.fact</code> is removed from the list of covariates to prevent an issue in the calibration process (loss function is <code>nan</code>).</p>
-<pre class="r"><code># Covariates
-#covariates_cann &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;rep.year.fact&#39;, &#39;rep.delay&#39;, &#39;calendar.year&#39;)
-covariates_cann2 &lt;- c(&#39;type&#39;, &#39;rep.year.fact&#39;, &#39;rep.month&#39;, &#39;rep.delay&#39;, &#39;calendar.year&#39;)
+<pre class="r"><code>#Covariates
+covariates_cann &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;rep.year.fact&#39;, &#39;rep.delay&#39;, &#39;calendar.year&#39;)
 
 # Fitting the hierarchical CANN
 model_cann &lt;- hirem::fit(model_cann,
-                 settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_cann2, collapse = &#39; + &#39;)),
-                 payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_cann2, &#39;settlement&#39;), collapse = &#39; + &#39;)),
-                 size = paste0(&#39;size ~ &#39;, paste0(c(covariates_cann2,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
-<pre><code>## Fitting layer_cann ...
+                 balance.var = &#39;dev.year&#39;,
+                 settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_cann, collapse = &#39; + &#39;)),
+                 payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_cann, &#39;settlement&#39;), collapse = &#39; + &#39;)),
+                 size = paste0(&#39;size ~ &#39;, paste0(c(covariates_cann,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
+<pre><code>## Fitting layer_cann for settlement...</code></pre>
+<p>We show the model retained:</p>
+<pre class="r"><code># Settlement
+model_cann$layers$settlement$fit.biased</code></pre>
+<pre><code>## Model
 ## Model: &quot;CANN&quot;
 ## ________________________________________________________________________________
 ## Layer (type)              Output Shape      Param #  Connected to               
 ## ================================================================================
-## input_layer (InputLayer)  [(None, 23)]      0                                   
+## input_layer_nn (InputLaye [(None, 35)]      0                                   
 ## ________________________________________________________________________________
-## hidden_layer_1 (Dense)    (None, 20)        480      input_layer[0][0]          
+## hidden_layer_1 (Dense)    (None, 33)        1188     input_layer_nn[0][0]       
 ## ________________________________________________________________________________
-## activation_9 (Activation) (None, 20)        0        hidden_layer_1[0][0]       
+## hidden_layer_activation_1 (None, 33)        0        hidden_layer_1[0][0]       
 ## ________________________________________________________________________________
-## hidden_layer_2 (Dense)    (None, 15)        315      activation_9[0][0]         
+## hidden_layer_2 (Dense)    (None, 56)        1904     hidden_layer_activation_1[0
 ## ________________________________________________________________________________
-## activation_10 (Activation (None, 15)        0        hidden_layer_2[0][0]       
+## hidden_layer_activation_2 (None, 56)        0        hidden_layer_2[0][0]       
 ## ________________________________________________________________________________
-## last_hidden_layer (Dense) (None, 10)        160      activation_10[0][0]        
+## last_hidden_layer (Dense) (None, 27)        1539     hidden_layer_activation_2[0
 ## ________________________________________________________________________________
-## activation_11 (Activation (None, 10)        0        last_hidden_layer[0][0]    
+## input_layer_glm (InputLay [(None, 10)]      0                                   
 ## ________________________________________________________________________________
-## output_layer_GLM (Dense)  (None, 1)         24       input_layer[0][0]          
+## last_hidden_layer_activat (None, 27)        0        last_hidden_layer[0][0]    
 ## ________________________________________________________________________________
-## output_layer (Dense)      (None, 1)         11       activation_11[0][0]        
+## output_layer_glm (Dense)  (None, 1)         11       input_layer_glm[0][0]      
 ## ________________________________________________________________________________
-## add (Add)                 (None, 1)         0        output_layer_GLM[0][0]     
-##                                                      output_layer[0][0]         
+## output_layer_NN (Dense)   (None, 1)         28       last_hidden_layer_activatio
 ## ________________________________________________________________________________
-## output_layer_CANN (Dense) (None, 1)         2        add[0][0]                  
+## add_25 (Add)              (None, 1)         0        output_layer_glm[0][0]     
+##                                                      output_layer_NN[0][0]      
+## ________________________________________________________________________________
+## output_layer_CANN (Dense) (None, 1)         2        add_25[0][0]               
 ## ================================================================================
-## Total params: 992
-## Trainable params: 966
-## Non-trainable params: 26
-## ________________________________________________________________________________
-## NULL
-## Fitting layer_cann ...
+## Total params: 4,672
+## Trainable params: 4,659
+## Non-trainable params: 13
+## ________________________________________________________________________________</code></pre>
+<pre class="r"><code># Payment
+model_cann$layers$payment$fit.biased</code></pre>
+<pre><code>## Model
 ## Model: &quot;CANN&quot;
 ## ________________________________________________________________________________
 ## Layer (type)              Output Shape      Param #  Connected to               
 ## ================================================================================
-## input_layer (InputLayer)  [(None, 24)]      0                                   
+## input_layer_nn (InputLaye [(None, 36)]      0                                   
 ## ________________________________________________________________________________
-## hidden_layer_1 (Dense)    (None, 20)        500      input_layer[0][0]          
+## hidden_layer_1 (Dense)    (None, 26)        962      input_layer_nn[0][0]       
 ## ________________________________________________________________________________
-## activation_12 (Activation (None, 20)        0        hidden_layer_1[0][0]       
+## hidden_layer_activation_1 (None, 26)        0        hidden_layer_1[0][0]       
 ## ________________________________________________________________________________
-## hidden_layer_2 (Dense)    (None, 15)        315      activation_12[0][0]        
+## hidden_layer_2 (Dense)    (None, 38)        1026     hidden_layer_activation_1[0
 ## ________________________________________________________________________________
-## activation_13 (Activation (None, 15)        0        hidden_layer_2[0][0]       
+## hidden_layer_activation_2 (None, 38)        0        hidden_layer_2[0][0]       
 ## ________________________________________________________________________________
-## last_hidden_layer (Dense) (None, 10)        160      activation_13[0][0]        
+## last_hidden_layer (Dense) (None, 45)        1755     hidden_layer_activation_2[0
 ## ________________________________________________________________________________
-## activation_14 (Activation (None, 10)        0        last_hidden_layer[0][0]    
+## input_layer_glm (InputLay [(None, 44)]      0                                   
 ## ________________________________________________________________________________
-## output_layer_GLM (Dense)  (None, 1)         25       input_layer[0][0]          
+## last_hidden_layer_activat (None, 45)        0        last_hidden_layer[0][0]    
 ## ________________________________________________________________________________
-## output_layer (Dense)      (None, 1)         11       activation_14[0][0]        
+## output_layer_glm (Dense)  (None, 1)         45       input_layer_glm[0][0]      
 ## ________________________________________________________________________________
-## add_1 (Add)               (None, 1)         0        output_layer_GLM[0][0]     
-##                                                      output_layer[0][0]         
+## output_layer_NN (Dense)   (None, 1)         46       last_hidden_layer_activatio
 ## ________________________________________________________________________________
-## output_layer_CANN (Dense) (None, 1)         2        add_1[0][0]                
+## add_51 (Add)              (None, 1)         0        output_layer_glm[0][0]     
+##                                                      output_layer_NN[0][0]      
+## ________________________________________________________________________________
+## output_layer_CANN (Dense) (None, 1)         2        add_51[0][0]               
 ## ================================================================================
-## Total params: 1,013
-## Trainable params: 986
-## Non-trainable params: 27
-## ________________________________________________________________________________
-## NULL
-## Fitting layer_cann ...
+## Total params: 3,836
+## Trainable params: 3,789
+## Non-trainable params: 47
+## ________________________________________________________________________________</code></pre>
+<pre class="r"><code># Size
+model_cann$layers$size$fit.biased</code></pre>
+<pre><code>## Model
 ## Model: &quot;CANN&quot;
 ## ________________________________________________________________________________
 ## Layer (type)              Output Shape      Param #  Connected to               
 ## ================================================================================
-## input_layer (InputLayer)  [(None, 24)]      0                                   
+## input_layer_nn (InputLaye [(None, 36)]      0                                   
 ## ________________________________________________________________________________
-## hidden_layer_1 (Dense)    (None, 20)        500      input_layer[0][0]          
+## hidden_layer_1 (Dense)    (None, 37)        1369     input_layer_nn[0][0]       
 ## ________________________________________________________________________________
-## activation_15 (Activation (None, 20)        0        hidden_layer_1[0][0]       
+## hidden_layer_activation_1 (None, 37)        0        hidden_layer_1[0][0]       
 ## ________________________________________________________________________________
-## hidden_layer_2 (Dense)    (None, 15)        315      activation_15[0][0]        
+## hidden_layer_2 (Dense)    (None, 46)        1748     hidden_layer_activation_1[0
 ## ________________________________________________________________________________
-## activation_16 (Activation (None, 15)        0        hidden_layer_2[0][0]       
+## hidden_layer_activation_2 (None, 46)        0        hidden_layer_2[0][0]       
 ## ________________________________________________________________________________
-## last_hidden_layer (Dense) (None, 10)        160      activation_16[0][0]        
+## last_hidden_layer (Dense) (None, 59)        2773     hidden_layer_activation_2[0
 ## ________________________________________________________________________________
-## activation_17 (Activation (None, 10)        0        last_hidden_layer[0][0]    
+## input_layer_glm (InputLay [(None, 55)]      0                                   
 ## ________________________________________________________________________________
-## output_layer_GLM (Dense)  (None, 1)         25       input_layer[0][0]          
+## last_hidden_layer_activat (None, 59)        0        last_hidden_layer[0][0]    
 ## ________________________________________________________________________________
-## output_layer (Dense)      (None, 1)         11       activation_17[0][0]        
+## output_layer_glm (Dense)  (None, 1)         56       input_layer_glm[0][0]      
 ## ________________________________________________________________________________
-## add_2 (Add)               (None, 1)         0        output_layer_GLM[0][0]     
-##                                                      output_layer[0][0]         
+## output_layer_NN (Dense)   (None, 1)         60       last_hidden_layer_activatio
 ## ________________________________________________________________________________
-## output_layer_CANN (Dense) (None, 1)         2        add_2[0][0]                
+## add_77 (Add)              (None, 1)         0        output_layer_glm[0][0]     
+##                                                      output_layer_NN[0][0]      
+## ________________________________________________________________________________
+## output_layer_CANN (Dense) (None, 1)         2        add_77[0][0]               
 ## ================================================================================
-## Total params: 1,013
-## Trainable params: 986
-## Non-trainable params: 27
-## ________________________________________________________________________________
-## NULL</code></pre>
+## Total params: 6,008
+## Trainable params: 5,950
+## Non-trainable params: 58
+## ________________________________________________________________________________</code></pre>
 </div>
 </div>
 <div id="predicting-the-future-development-of-claims-in-the-hierarchical-reserving-models" class="section level2">
@@ -692,7 +739,7 @@ update &lt;- function(data) {
 model_glm &lt;- register_updater(model_glm, update)
 model_gbm &lt;- register_updater(model_gbm, update)
 model_xgb &lt;- register_updater(model_xgb, update)
-model_mlp &lt;- register_updater(model_mlp, update)
+model_dnn &lt;- register_updater(model_dnn, update)
 model_cann &lt;- register_updater(model_cann, update)</code></pre>
 <p>Next, we apply the actual simulation of the development of claims over time beyond the observation window of those claims that are still open at the evaluation date (calendar year 9). Moreover, we apply the balance correction as explained in <span class="citation">Creveceour, Antonio, and Robben (2021)</span>.</p>
 <pre class="r"><code>nsim &lt;- 50 # Instead of 100 (original value), to avoid memory issues
@@ -715,15 +762,17 @@ simul_xgb &lt;- simulate(model_xgb,
                       data = model_xgb$data_observed %&gt;% dplyr::filter(calendar.year == 9),
                       balance.correction = TRUE)
 
-simul_mlp &lt;- simulate(model_mlp,
+simul_dnn &lt;- simulate(model_dnn,
                       nsim = nsim,
                       filter = function(data){dplyr::filter(data, dev.year &lt;= 9, settlement == 0)},
-                      data = model_mlp$data_observed %&gt;% dplyr::filter(calendar.year == 9))
+                      data = model_dnn$data_observed %&gt;% dplyr::filter(calendar.year == 9),
+                      balance.correction = TRUE)
 
 simul_cann &lt;- simulate(model_cann,
                       nsim = nsim,
                       filter = function(data){dplyr::filter(data, dev.year &lt;= 9, settlement == 0)},
-                      data = model_cann$data_observed %&gt;% dplyr::filter(calendar.year == 9))</code></pre>
+                      data = model_cann$data_observed %&gt;% dplyr::filter(calendar.year == 9),
+                      balance.correction = TRUE)</code></pre>
 </div>
 <div id="chain-ladder-model" class="section level2">
 <h2>Chain-ladder model</h2>
@@ -763,47 +812,47 @@ cl_open_total  &lt;- sum(cl_open)
 glm_open_total &lt;- simul_glm %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 gbm_open_total &lt;- simul_gbm %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 xgb_open_total &lt;- simul_xgb %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
-mlp_open_total &lt;- simul_mlp %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
+dnn_open_total &lt;- simul_dnn %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 cann_open_total &lt;- simul_cann %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; =  obs_open_total, &#39;Chain-Ladder&#39; = cl_open_total, &#39;Hierarchical GLM&#39; = glm_open_total, &#39;Hierarchical GBM&#39; = gbm_open_total, &#39;Hierarchical XGB&#39; = xgb_open_total, &#39;Hierarchical MLP&#39; = mlp_open_total, &#39;Hierarchical CANN&#39; = cann_open_total)</code></pre>
+c(&#39;Actual&#39; =  obs_open_total, &#39;Chain-Ladder&#39; = cl_open_total, &#39;Hierarchical GLM&#39; = glm_open_total, &#39;Hierarchical GBM&#39; = gbm_open_total, &#39;Hierarchical XGB&#39; = xgb_open_total, &#39;Hierarchical DNN&#39; = dnn_open_total, &#39;Hierarchical CANN&#39; = cann_open_total)</code></pre>
 <pre><code>##            Actual      Chain-Ladder  Hierarchical GLM  Hierarchical GBM 
-##          55093.00          55802.10          55911.82          55850.82 
-##  Hierarchical XGB  Hierarchical MLP Hierarchical CANN 
-##          55166.20          57046.92          61225.48</code></pre>
+##          55093.00          55802.10          55947.26          55823.52 
+##  Hierarchical XGB  Hierarchical DNN Hierarchical CANN 
+##          55160.18          54241.22          54093.98</code></pre>
 <p>Second, we compare the prediction for the total number of payments in the prediction data set.</p>
 <pre class="r"><code># Predictions
-obs_pay_total &lt;- prediction_data %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(payment)) %&gt;% pull(Total)
+obs_pay_total &lt;- prediction_data %&gt;% summarise(Total = sum(payment)) %&gt;% pull(Total)
 cl_pay_total  &lt;- sum(cl_pay)
-glm_pay_total &lt;- simul_glm %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
-gbm_pay_total &lt;- simul_gbm %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
-xgb_pay_total &lt;- simul_xgb %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
-mlp_pay_total &lt;- simul_mlp %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
-cann_pay_total &lt;- simul_cann %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
+glm_pay_total &lt;- simul_glm %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
+gbm_pay_total &lt;- simul_gbm %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
+xgb_pay_total &lt;- simul_xgb %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
+dnn_pay_total &lt;- simul_dnn %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
+cann_pay_total &lt;- simul_cann %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; = obs_pay_total, &#39;Chain-Ladder&#39; = cl_pay_total, &#39;Hierarchical GLM&#39; = glm_pay_total, &#39;Hierarchical GBM&#39; = gbm_pay_total, &#39;Hierarchical XGB&#39; = xgb_pay_total, &#39;Hierarchical MLP&#39; = mlp_pay_total, &#39;Hierarchical CANN&#39; = cann_pay_total)</code></pre>
+c(&#39;Actual&#39; = obs_pay_total, &#39;Chain-Ladder&#39; = cl_pay_total, &#39;Hierarchical GLM&#39; = glm_pay_total, &#39;Hierarchical GBM&#39; = gbm_pay_total, &#39;Hierarchical XGB&#39; = xgb_pay_total, &#39;Hierarchical DNN&#39; = dnn_pay_total, &#39;Hierarchical CANN&#39; = cann_pay_total)</code></pre>
 <pre><code>##            Actual      Chain-Ladder  Hierarchical GLM  Hierarchical GBM 
-##          36789.00          61224.55          37630.62          37616.88 
-##  Hierarchical XGB  Hierarchical MLP Hierarchical CANN 
-##          37165.10          38355.88          46979.10</code></pre>
+##          59079.00          61224.55          60034.22          59973.82 
+##  Hierarchical XGB  Hierarchical DNN Hierarchical CANN 
+##          59519.44          59339.34          58476.66</code></pre>
 <p>Third, we compare the prediction for the total number of payment sizes in the prediction set.</p>
 <pre class="r"><code># Predictions
-obs_size_total &lt;- prediction_data %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(size)) %&gt;% pull(Total)
+obs_size_total &lt;- prediction_data %&gt;% summarise(Total = sum(size)) %&gt;% pull(Total)
 cl_size_total  &lt;- sum(cl_size)
-glm_size_total &lt;- simul_glm %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
-gbm_size_total &lt;- simul_gbm %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
-xgb_size_total &lt;- simul_xgb %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
-mlp_size_total &lt;- simul_mlp %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
-cann_size_total &lt;- simul_cann %&gt;% filter(calendar.year != 10) %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
+glm_size_total &lt;- simul_glm %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
+gbm_size_total &lt;- simul_gbm %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
+xgb_size_total &lt;- simul_xgb %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
+dnn_size_total &lt;- simul_dnn %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
+cann_size_total &lt;- simul_cann %&gt;% summarise(Total = sum(size)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; = obs_size_total, &#39;Chain-Ladder&#39; = cl_size_total, &#39;Hierarchical GLM&#39; = glm_size_total, &#39;Hierarchical GBM&#39; = gbm_size_total, &#39;Hierarchical XGB&#39; = xgb_size_total, &#39;Hierarchical MLP&#39; = mlp_size_total, &#39;Hierarchical CANN&#39; = cann_size_total)</code></pre>
+c(&#39;Actual&#39; = obs_size_total, &#39;Chain-Ladder&#39; = cl_size_total, &#39;Hierarchical GLM&#39; = glm_size_total, &#39;Hierarchical GBM&#39; = gbm_size_total, &#39;Hierarchical XGB&#39; = xgb_size_total, &#39;Hierarchical DNN&#39; = dnn_size_total, &#39;Hierarchical CANN&#39; = cann_size_total)</code></pre>
 <pre><code>##            Actual      Chain-Ladder  Hierarchical GLM  Hierarchical GBM 
-##          49716692          74597146          53059610          52697797 
-##  Hierarchical XGB  Hierarchical MLP Hierarchical CANN 
-##          51861880          50807898          44459821</code></pre>
+##          69755532          74597146          73464247          73011337 
+##  Hierarchical XGB  Hierarchical DNN Hierarchical CANN 
+##          72242716          71843724          70924047</code></pre>
 </div>
 <div id="references" class="section level2">
 <h2>References</h2>

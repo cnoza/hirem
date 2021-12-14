@@ -467,7 +467,7 @@ update <- function(data) {
   
   data$calendar.year <- data$calendar.year + 1
   
-  data$monthDev12[data$dev.year > 3] <- 'dev.year > 3'
+  data$monthDev12[data$dev.year > 3] <- 'dev.year.over.3'
   data$devYearMonth <- factor(paste(data$dev.year, data$monthDev12, sep = '-'))
   
   data

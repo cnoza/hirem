@@ -18,6 +18,12 @@ This version of this document extends a previous one written by Jens Robben, in 
 ## Simulating the portfolio
 We evaluate the predictive performance of our hierarchical reserving model (hierarchical GLM, hierarchical GBM, hierarchical XGB and hierarchical MLP) on one portfolio simulated along the baseline event scenario. We compare the results with the ones obtained using an aggregate reserving model, namely the classical chain ladder model.
 
+The seed number is:
+```{r}
+cat(sprintf("%s", seed))
+```
+
+
 First, we load the required packages.
 
 ```{r, results='hide'}
@@ -30,18 +36,18 @@ require(data.table)
 require(ggplot2)
 require(keras)
 require(tensorflow)
-set_random_seed (1)
+set_random_seed (seed)
 require(recipes)
 #install.packages('devtools')
 #devtools::install_github('cnoza/hirem')
 require(hirem)
 ```
 
-We simulate one portfolio (with `set.seed = 1`) along the baseline event scenario. The portfolio initially consists of $125\ 000$ claims, but only the claims that are reported between January 1, 2012 and December 31, 2020 are retained. Claims are tracked over 9 development years since reporting. In addition, we create an extra covariate `devYearMonth`, representing a simplified version of the interaction effect between `dev.year` and `rep.month`.
+We simulate one portfolio along the baseline event scenario. The portfolio initially consists of $125\ 000$ claims, but only the claims that are reported between January 1, 2012 and December 31, 2020 are retained. Claims are tracked over 9 development years since reporting. In addition, we create an extra covariate `devYearMonth`, representing a simplified version of the interaction effect between `dev.year` and `rep.month`.
 
 ```{r}
 # The complete portfolio
-reserving_data <- simulate_scenario_baseline(seed = 1, n = 125000)
+reserving_data <- simulate_scenario_baseline(seed = seed, n = 125000)
 
 # Creating the interaction effect
 reserving_data$monthDev12 <- as.character(reserving_data$rep.month)

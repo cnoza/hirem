@@ -6,6 +6,12 @@ output: html_document
 bibliography: references.bib
 ---
 
+```{css, echo=FALSE}
+.main-container {
+  max-width: 1200px; 
+}
+```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
 options(dplyr.summarise.inform = FALSE)

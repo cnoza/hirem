@@ -1,8 +1,7 @@
 # Launch Rmd file for different seeds
 
-#install_github("petrelharp/templater")
-library(templater)
+seed <- 5
+rmarkdown::render("./Examples/Baseline with seed param.Rmd",
+                  output_file=paste0("./Examples/baseline/baseline_seed_",seed,".html"),
+                  output_format = "all")
 
-for (seed in 1:3) {
-  render_template("./Examples/Scenario testing on simulated portfolio (baseline scenario) parallel.Rmd", output=paste0("baseline_scenario_",seed,".html"))
-}

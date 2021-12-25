@@ -293,7 +293,8 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       optObj <- bayesOpt(
         FUN = scoringFunction
         , bounds = bounds
-        , initPoints = max(length(bounds)+1,3)
+        #, initPoints = max(length(bounds)+1,3)
+        , initPoints = layer$method_options$bayesOpt_initPoints
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
       )
@@ -552,8 +553,12 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     Folds <- list()
     names <- c()
+    folds <- caret::createFolds(y = y, k = layer$method_options$nfolds, list = F)
+    data_baked$folds <- folds
+
     for(i in 1:layer$method_options$nfolds) {
-      Folds[[i]] <- as.integer(seq(i,nrow(x),by = layer$method_options$nfolds))
+      #Folds[[i]] <- as.integer(seq(i,nrow(x),by = layer$method_options$nfolds))
+      Folds[[i]] <- which(data_baked$folds == i)
       names[i] <- paste0('Fold',i)
     }
     names(Folds) <- names
@@ -755,13 +760,24 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
         print(layer$method_options$batch_size)
 
-        history <- model %>%
-          keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
-                     batch_size = batch_size_tmp,
-                     #validation_split = layer$method_options$validation_split,
-                     validation_data = list(x.inputs.val,y.val,sample.w.val),
-                     callbacks = list(earlystopping),
-                     verbose = layer$method_options$verbose)
+        if(layer$method_options$nfolds > 1) {
+          history <- model %>%
+            keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+                       batch_size = batch_size_tmp,
+                       #validation_split = layer$method_options$validation_split,
+                       validation_data = list(x.inputs.val,y.val,sample.w.val),
+                       callbacks = list(earlystopping),
+                       verbose = layer$method_options$verbose)
+        }
+        else {
+          history <- model %>%
+            keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+                       batch_size = batch_size_tmp,
+                       validation_split = layer$method_options$validation_split,
+                       #validation_data = list(x.inputs.val,y.val,sample.w.val),
+                       callbacks = list(earlystopping),
+                       verbose = layer$method_options$verbose)
+        }
 
         score[k] <- ifelse(layer$method_options$bayesOpt.min, -min(history$metrics[[2]]), max(history$metrics[[2]]))
 
@@ -781,7 +797,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       optObj <- bayesOpt(
         FUN = scoringFunction
         , bounds = bounds
-        , initPoints = max(length(bounds)+1,3)
+        #, initPoints = max(length(bounds)+1,3)
+        , initPoints = layer$method_options$bayesOpt_initPoints
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
       )
@@ -1075,6 +1092,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 }
 
 #' @importFrom data.table transpose
+#' @importFrom caret createFolds
 #' @export
 fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   cat(sprintf("Fitting layer_cann for %s...\n", layer$name))
@@ -1181,11 +1199,17 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     Folds <- list()
     names <- c()
+    folds <- caret::createFolds(y = y, k = layer$method_options$nfolds, list = F)
+    data_baked$folds <- folds
+
     for(i in 1:layer$method_options$nfolds) {
-      Folds[[i]] <- as.integer(seq(i,nrows,by = layer$method_options$nfolds))
+      #Folds[[i]] <- as.integer(seq(i,nrows,by = layer$method_options$nfolds))
+      Folds[[i]] <- which(data_baked$folds == i)
       names[i]   <- paste0('Fold',i)
     }
     names(Folds) <- names
+
+    layer$init.weights <- T
 
     scoringFunction <- function(dnn_hidden_1, dnn_hidden_2, dnn_hidden_3,
                                 dnn_dropout.hidden_1, dnn_dropout.hidden_2, dnn_dropout.hidden_3) {
@@ -1379,6 +1403,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           metrics = layer$method_options$metrics
         )
 
+        if(k==1) weights.init <- keras::get_weights(CANN.tmp)
+        else keras::set_weights(CANN.tmp, weights.init)
+
         earlystopping <- callback_early_stopping(
           monitor = layer$method_options$monitor,
           patience = layer$method_options$patience,
@@ -1395,13 +1422,24 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           x.inputs.val[sapply(x.inputs.val, is.null)] <- NULL
         }
 
-        history.tmp <- CANN.tmp %>%
-          keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
-                     batch_size = layer$method_options$batch_size,
-                     #validation_split = layer$method_options$validation_split,
-                     validation_data = list(x.inputs.val,y.val,sample.w.val),
-                     callbacks = list(earlystopping),
-                     verbose = layer$method_options$verbose)
+        if(layer$method_options$nfolds > 1) {
+          history.tmp <- CANN.tmp %>%
+            keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+                       batch_size = layer$method_options$batch_size,
+                       #validation_split = layer$method_options$validation_split,
+                       validation_data = list(x.inputs.val,y.val,sample.w.val),
+                       callbacks = list(earlystopping),
+                       verbose = layer$method_options$verbose)
+        }
+        else {
+          history.tmp <- CANN.tmp %>%
+            keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+                       batch_size = layer$method_options$batch_size,
+                       validation_split = layer$method_options$validation_split,
+                       #validation_data = list(x.inputs.val,y.val,sample.w.val),
+                       callbacks = list(earlystopping),
+                       verbose = layer$method_options$verbose)
+        }
 
         score[k] <- ifelse(layer$method_options$bayesOpt.min, -min(history.tmp$metrics[[2]]), max(history.tmp$metrics[[2]]))
 
@@ -1421,7 +1459,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       optObj <- bayesOpt(
         FUN = scoringFunction
         , bounds = bounds
-        , initPoints = max(length(bounds)+1,3)
+        #, initPoints = max(length(bounds)+1,3)
+        , initPoints = layer$method_options$bayesOpt_initPoints
         , iters.n = layer$method_options$bayesOpt_iters_n
         , iters.k = 1
       )

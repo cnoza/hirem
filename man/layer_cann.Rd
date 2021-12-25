@@ -38,6 +38,7 @@ layer_cann(
   bayesOpt_min = FALSE,
   bayesOpt_iters_n = 3,
   bayesOpt_bounds = NULL,
+  bayesOpt_initPoints = 4,
   filter = NULL,
   transformation = NULL
 )

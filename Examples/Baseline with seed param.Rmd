@@ -42,7 +42,6 @@ require(data.table)
 require(ggplot2)
 require(keras)
 require(tensorflow)
-set_random_seed (seed)
 require(recipes)
 #install.packages('devtools')
 #devtools::install_github('cnoza/hirem')
@@ -54,6 +53,9 @@ We simulate one portfolio along the baseline event scenario. The portfolio initi
 ```{r}
 # The complete portfolio
 reserving_data <- simulate_scenario_baseline(seed = seed, n = 125000)
+
+# We unset the seed
+set.seed(NULL)
 
 # Creating the interaction effect
 reserving_data$monthDev12 <- as.character(reserving_data$rep.month)
@@ -190,19 +192,22 @@ model_xgb <- hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_xgb('settlement', objective = 'binary:logistic',
             eval_metric = 'logloss',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+            bayesOpt = F, #bayesOpt_min = T, bayesOpt_iters_n = 5, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10,
+            eta = 1, max_depth = 1,
             grow_policy = 'lossguide',
             nfolds = 5,
             verbose = F) %>%
   layer_xgb('payment', objective = 'binary:logistic',
             eval_metric = 'logloss',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+            bayesOpt = F, #bayesOpt_min = T, bayesOpt_iters_n = 5, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10,
+            eta = 1, max_depth = 3,
             grow_policy = 'lossguide',
             nfolds = 5,
             verbose = F) %>%
   layer_xgb('size', objective = 'reg:gamma',
             eval_metric = 'gamma-deviance',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+            bayesOpt = F, #bayesOpt_min = T, bayesOpt_iters_n = 5, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10,
+            eta = 1, max_depth = 1,
             grow_policy = 'lossguide',
             nfolds = 5,
             verbose = F,
@@ -285,7 +290,8 @@ bounds <- list(
 model_dnn <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_dnn('settlement', distribution = 'bernoulli',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
+            #hidden = c(20,50,30),
             use_embedding = F, #output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T, 
             step_log = F,
@@ -293,17 +299,18 @@ model_dnn <-  hirem(reserving_data) %>%
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
-            validation_split = 0,
+            validation_split = .3,
             activation.output = 'sigmoid',
             batch_normalization = F,
             verbose = 0,
             family_for_init = binomial(), # default link = logit
             epochs = 100,
             batch_size = 1000,
-            monitor = 'binary_crossentropy',
+            monitor = 'val_binary_crossentropy',
             patience = 20) %>%
   layer_dnn('payment', distribution = 'bernoulli',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
+            #hidden = c(20,20,20),
             use_embedding = F, #output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T,
             step_log = F,
@@ -311,17 +318,18 @@ model_dnn <-  hirem(reserving_data) %>%
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
-            validation_split = 0,
+            validation_split = .3,
             activation.output = 'sigmoid',
             batch_normalization = F,
             verbose = 0,
             family_for_init = binomial(), # default link = logit
             epochs = 100,
             batch_size = 1000,
-            monitor = 'binary_crossentropy',
+            monitor = 'val_binary_crossentropy',
             patience = 20) %>%
   layer_dnn('size', distribution = 'gamma',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
+            #hidden = c(60,30,30),
             use_embedding = F, #output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T, 
             step_log = F,
@@ -330,13 +338,13 @@ model_dnn <-  hirem(reserving_data) %>%
             metrics = metric_gamma_deviance_keras,
             optimizer = optimizer_nadam(),
             verbose = 0,
-            validation_split = 0,
+            validation_split = .3,
             activation.output = 'exponential',
             batch_normalization = F,
             family_for_init = Gamma(link=log), # default link = inverse
             epochs = 100,
             batch_size = 1000,
-            monitor = 'gamma_deviance_keras',
+            monitor = 'val_gamma_deviance_keras',
             patience = 20,
             filter = function(data){data$payment == 1})
 ```
@@ -388,49 +396,52 @@ model_cann <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_cann('settlement', distribution = 'bernoulli',
                formula.glm = formula_settle_glm, bias_regularization = T,
-               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
+               #hidden = c(20,20,50),
                use_embedding = F, #embedding_var = c('rep.month', 'rep.year.fact'),
                family_for_glm = binomial(),
                loss = 'binary_crossentropy',
                metrics = 'binary_crossentropy',
                optimizer = optimizer_nadam(),
-               validation_split = 0,
+               validation_split = .3,
                activation.output = 'linear',
                activation.output.cann = 'sigmoid',
                fixed.cann = T,
-               monitor = 'binary_crossentropy',
+               monitor = 'val_binary_crossentropy',
                patience = 20,
                epochs = 100,
                batch_size = 1000) %>%
   layer_cann('payment', distribution = 'bernoulli',
                formula.glm = formula_pay_glm, bias_regularization = T,
-               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
+               #hidden = c(25,30,25),
                use_embedding = F, #embedding_var = c('rep.month', 'rep.year.fact'),
                family_for_glm = binomial(),
                loss = 'binary_crossentropy',
                metrics = 'binary_crossentropy',
                optimizer = optimizer_nadam(),
-               validation_split = 0,
+               validation_split = .3,
                activation.output = 'linear',
                activation.output.cann = 'sigmoid',
                fixed.cann = T,
-               monitor = 'binary_crossentropy',
+               monitor = 'val_binary_crossentropy',
                patience = 20,
                epochs = 100,
                batch_size = 1000) %>%
   layer_cann('size', distribution = 'gamma',
                formula.glm = formula_size_glm, bias_regularization = T,
-               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
+               #hidden = c(45,45,20),
                use_embedding = F, #embedding_var = c('rep.month', 'rep.year.fact'),
                family_for_glm = Gamma(link=log),
                loss = gamma_deviance_keras,
                metrics = metric_gamma_deviance_keras,
                optimizer = optimizer_nadam(),
-               validation_split = 0,
+               validation_split = .3,
                activation.output = 'linear',
                activation.output.cann = 'exponential',
                fixed.cann = T,
-               monitor = 'gamma_deviance_keras',
+               monitor = 'val_gamma_deviance_keras',
                patience = 20,
                epochs = 100, 
                batch_size = 1000,

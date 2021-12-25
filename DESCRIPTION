@@ -27,7 +27,8 @@ Imports:
 	  tensorflow,
 	  recipes,
 	  data.table,
-	  ParBayesianOptimization
+	  ParBayesianOptimization,
+	  caret
 RoxygenNote: 7.1.2
 Suggests: 
     testthat (>= 3.0.0),

@@ -261,7 +261,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , lambda = lambda
         , alpha = alpha
         , colsample_bynode = colsample_bynode
-        , eta = eta/20
+        , eta = eta
         , gamma = gamma
         , max_delta_step = max_delta_step
         , objective = layer$method_options$objective
@@ -342,7 +342,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       eval_metric = layer$method_options$eval_metric,
       tree_method = layer$method_options$tree_method,
       grow_policy = layer$method_options$grow_policy,
-      eta = ifelse('eta' %in% bounds_names,getBestPars(optObj)$eta/20,layer$method_options$eta),
+      eta = ifelse('eta' %in% bounds_names,getBestPars(optObj)$eta,layer$method_options$eta),
       subsample = ifelse('subsample' %in% bounds_names,getBestPars(optObj)$subsample,layer$method_options$subsample),
       colsample_bynode = ifelse('colsample_bynode' %in% bounds_names,getBestPars(optObj)$colsample_bynode,layer$method_options$colsample_bynode),
       max_depth = ifelse('max_depth' %in% bounds_names,getBestPars(optObj)$max_depth,layer$method_options$max_depth),

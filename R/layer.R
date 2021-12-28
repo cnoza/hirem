@@ -121,11 +121,11 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 #' @param transformation Object of class \code{hirem_transformation} specifying the transformation
 #' applied before modelling this layer.
 #' @export
-layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, verbose = F, booster = 'gbtree', objective, stratified = F, grow_policy = 'depthwise',
+layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, verbose = 0, booster = 'gbtree', objective, stratified = T, grow_policy = 'depthwise',
                       eval_metric = 'rmse', eta = 0.05, nthread = 1, subsample = 1, colsample_bynode = 1, max_depth = 6, max_delta_step = 0, scale_pos_weight = 1,
                       min_child_weight = 100, gamma = 0, lambda = 1, alpha = 0, hyper_grid = NULL, gridsearch_cv = FALSE, nfolds = 5, tree_method = 'auto',
                       bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4,
-                      filter = NULL, transformation = NULL) {
+                      filter = NULL, transformation = NULL, select_trees = 'perf') {
 
   options <- c()
   options$nrounds <- nrounds
@@ -156,6 +156,7 @@ layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, ver
   options$bayesOpt_bounds <- bayesOpt_bounds
   options$bayesOpt_initPoints <- bayesOpt_initPoints
   options$scale_pos_weight <- scale_pos_weight
+  options$select_trees <- select_trees
 
   if(options$gridsearch_cv & options$bayesOpt)
     stop('Those options, if TRUE, are mutually exclusive.')
@@ -274,7 +275,7 @@ layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.
                             activation.hidden = NULL, activation.output = 'linear', batch_normalization = FALSE, use_embedding = FALSE, output_dim = 1, embedding_var = c(),
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             monitor = "loss", patience = 20, family_for_init = NULL, nfolds = 5, bias_regularization = TRUE,
-                            bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4,
+                            bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4, bayesOpt_step = 1,
                             filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -309,6 +310,7 @@ layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.
   options$use_embedding <- use_embedding
   options$output_dim <- output_dim
   options$embedding_var <- embedding_var
+  options$bayesOpt_step <- bayesOpt_step
 
 
   if(is.null(options$ae.hidden)) {
@@ -414,7 +416,7 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
                        activation.hidden = NULL, activation.output = 'linear', activation.output.cann = 'linear', embedding_var = c(), embedding_var.glm = c(),
                        fixed.cann = TRUE, batch_normalization = FALSE, monitor = 'loss', patience = 20, verbose = 0,
                        loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
-                       nfolds = 5, bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4,
+                       nfolds = 5, bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4, bayesOpt_step = 1,
                        filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -450,6 +452,7 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$bias_regularization <- bias_regularization
   options$embedding_var <- embedding_var
   options$embedding_var.glm <- embedding_var.glm
+  options$bayesOpt_step <- bayesOpt_step
 
   if(is.null(options$hidden)) {
     if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')

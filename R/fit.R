@@ -77,6 +77,7 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   weights.vec <- if(is.null(obj$weights)) NULL else obj$weights[data[[obj$weight.var]]]
+  layer$weights.vec <- weights.vec
 
   layer$fit <- gbm(as.formula(formula),
                    data = data,
@@ -151,9 +152,10 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   if(!is.null(obj$weights)) {
     weights.vec <- obj$weights[data[[obj$weight.var]]]
+    weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
     data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
                             info = list('label' = as.matrix(data[,label]),
-                                        'weight' = as.matrix(weights.vec)))
+                                        'weight' = as.matrix(weights.vec.n)))
   }
   else {
     data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
@@ -161,6 +163,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   if(layer$method_options$gridsearch_cv) {
+
     if(!is.null(layer$method_options$hyper_grid)) {
       hyper_grid <- layer$method_options$hyper_grid
     }
@@ -170,33 +173,40 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         max_depth = c(3,6),
         min_child_weight = 1000,
         subsample = c(0.5,0.75),
-        colsample_bytree = 0.5,
+        colsample_bynode = 1,
         gamma = c(0),
         lambda = c(0,.1),
         alpha = c(0,.1)
       )
     }
-    best_eval_metric = Inf
+
+    best_eval_metric = 10^6
 
     for(i in seq_len(nrow(hyper_grid))) {
 
       params = list(
-        booster = "gbtree",
-        eval_metric = layer$method_options$eval_metric,
-        eta = hyper_grid$eta[i],
-        max_depth = hyper_grid$max_depth[i],
-        min_child_weight = hyper_grid$min_child_weight[i],
-        subsample = hyper_grid$subsample[i],
-        colsample_bytree = hyper_grid$colsample_bytree[i],
-        gamma = hyper_grid$gamma[i],
-        lambda = hyper_grid$lambda[i],
-        alpha = hyper_grid$alpha[i]
+        booster = layer$method_options$booster
+        , tree_method = layer$method_options$tree_method
+        , grow_policy = layer$method_options$grow_policy
+        , eval_metric = layer$method_options$eval_metric
+        , eta = hyper_grid$eta[i]
+        , max_depth = hyper_grid$max_depth[i]
+        , min_child_weight = hyper_grid$min_child_weight[i]
+        , subsample = hyper_grid$subsample[i]
+        , colsample_bynode = hyper_grid$colsample_bynode[i]
+        , gamma = hyper_grid$gamma[i]
+        , lambda = hyper_grid$lambda[i]
+        , alpha = hyper_grid$alpha[i]
+        , max_delta_step = layer$method_options$max_delta_step
+        , objective = layer$method_options$objective
+        , eval_metric = layer$method_options$eval_metric
+        , nthread = layer$method_options$nthread
+        , scale_pos_weight = layer$method_options$scale_pos_weight
       )
 
       xval <- xgb.cv(
         data = data.xgb,
         nrounds = layer$method_options$nrounds,
-        objective = layer$method_options$objective,
         early_stopping_rounds = layer$method_options$early_stopping_rounds,
         nfold = layer$method_options$nfolds,
         stratified = layer$method_options$stratified,
@@ -215,18 +225,19 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     }
 
     nrounds <- best_eval_index
+    layer$best_score <- best_eval_metric
     params <- best_param
 
   }
   else if(layer$method_options$bayesOpt) {
 
-    Folds <- list()
-    names <- c()
-    for(i in 1:layer$method_options$nfolds) {
-      Folds[[i]] <- as.integer(seq(i,nrow(data.xgb),by = layer$method_options$nfolds))
-      names[i] <- paste0('Fold',i)
-    }
-    names(Folds) <- names
+    # Folds <- list()
+    # names <- c()
+    # for(i in 1:layer$method_options$nfolds) {
+    #   Folds[[i]] <- as.integer(seq(i,nrow(data.xgb),by = layer$method_options$nfolds))
+    #   names[i] <- paste0('Fold',i)
+    # }
+    # names(Folds) <- names
 
     scoringFunction <- function(max_depth = layer$method_options$max_depth,
                                 min_child_weight = layer$method_options$min_child_weight,
@@ -250,7 +261,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , lambda = lambda
         , alpha = alpha
         , colsample_bynode = colsample_bynode
-        , eta = eta
+        , eta = eta/20
         , gamma = gamma
         , max_delta_step = max_delta_step
         , objective = layer$method_options$objective
@@ -263,11 +274,11 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         params = Pars
         , data = data.xgb
         , nround = layer$method_options$nrounds
-        , folds = Folds
+        , nfold = layer$method_options$nfolds
         , early_stopping_rounds = layer$method_options$early_stopping_rounds
         , stratified = layer$method_options$stratified
-        , verbose = 0
-        , maximize = !layer$method_options$bayesOpt.min
+        , verbose = layer$method_options$verbose
+        #, maximize = !layer$method_options$bayesOpt.min
       )
 
       return(list(Score = ifelse(layer$method_options$bayesOpt.min,
@@ -284,8 +295,9 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , colsample_bynode = c(0.5, 1)
       )
     }
-    else
+    else {
       bounds <- layer$method_options$bayesOpt_bounds
+    }
 
     bounds_names <- as.vector(names(bounds))
 
@@ -330,7 +342,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       eval_metric = layer$method_options$eval_metric,
       tree_method = layer$method_options$tree_method,
       grow_policy = layer$method_options$grow_policy,
-      eta = ifelse('eta' %in% bounds_names,getBestPars(optObj)$eta,layer$method_options$eta),
+      eta = ifelse('eta' %in% bounds_names,getBestPars(optObj)$eta/20,layer$method_options$eta),
       subsample = ifelse('subsample' %in% bounds_names,getBestPars(optObj)$subsample,layer$method_options$subsample),
       colsample_bynode = ifelse('colsample_bynode' %in% bounds_names,getBestPars(optObj)$colsample_bynode,layer$method_options$colsample_bynode),
       max_depth = ifelse('max_depth' %in% bounds_names,getBestPars(optObj)$max_depth,layer$method_options$max_depth),
@@ -367,18 +379,24 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   }
 
+  if(layer$method_options$select_trees == 'last') {
+    nrounds <- layer$method_options$nrounds
+    layer$fit$niter <- NULL
+  }
+
   layer$fit <- xgb.train(
     data = data.xgb,
     nrounds = nrounds,
+    #early_stopping_rounds = layer$method_options$early_stopping_rounds,
     verbose = layer$method_options$verbose,
     params = params
   )
 
   layer$best_params <- params
-  layer$best_iteration <- layer$fit$best_iteration
-  layer$best_ntreelimit <- layer$fit$best_ntreelimit
-  layer$best_score <- layer$fit$best_score
-  layer$niter <- layer$fit$niter
+  #layer$nrounds <- nrounds
+
+  #print('best params')
+  #print(params)
 
   if(!is.null(obj$balance.var)){
     layer$balance.correction <- sapply(data %>% split(data[[obj$balance.var]]),
@@ -387,29 +405,34 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                          names(contrasts.arg) <- colnames(x %>% select_if(is.factor))
                                          if(!is.null(obj$weights)) {
                                            weights.vec <- obj$weights[x[[obj$weight.var]]]
+                                           weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
                                            newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
-                                                                  info = list('label' = as.matrix(x[,label]),'weight' = as.matrix(weights.vec)))
+                                                                  info = list('label' = as.matrix(x[,label]),'weight' = as.matrix(weights.vec.n)))
                                          }
                                          else {
                                            newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
                                                                   info = list('label' = as.matrix(x[,label])))
                                          }
-                                         sum(x[[layer$name]])/sum(predict(layer$fit,newdata = newdata,ntreelimit = layer$best_ntreelimit,type = 'response'))
+                                         sum(x[[layer$name]])/sum(predict(layer$fit, ntreelimit = layer$fit$niter, newdata = newdata,type = 'response'))
                                          }
                                        )
   }
 
   if(layer$method_options$objective == 'reg:squarederror') {
-    layer$sigma <- sd(predict(layer$fit, ntreelimit = layer$best_ntreelimit, newdata = data.xgb, type = "response") - as.matrix(data[,label]))
+    layer$sigma <- sd(predict(layer$fit, ntreelimit = layer$fit$niter, newdata = data.xgb, type = "response") - as.matrix(data[,label]))
   }
 
   if(layer$method_options$objective == 'reg:gamma') {
-    if(is.null(obj$weights)) weights.vec <- NULL
+
+    if(is.null(obj$weights)) weights.vec.normalized <- NULL
+    else weights.vec.normalized <- weights.vec*length(weights.vec)/sum(weights.vec)
+
     shape <- hirem_gamma_shape(observed = as.matrix(data[,label]),
-                               fitted = predict(layer$fit, ntreelimit = layer$best_ntreelimit, newdata = data.xgb, type = "response"),
-                               weight = weights.vec)
+                               fitted = predict(layer$fit, ntreelimit = layer$fit$niter, newdata = data.xgb, type = "response"),
+                               weight = weights.vec.normalized)
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
+    layer$weights.vec.normalized <- weights.vec.normalized
   }
 
   return(layer)
@@ -509,7 +532,11 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   weights.vec <- if(is.null(obj$weights) | !is.null(layer$method_options$ae.hidden)) NULL else obj$weights[data[[obj$weight.var]]]
-  layer$weights.vec <- weights.vec
+
+  if(!is.null(weights.vec)) weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
+  else weights.vec.n <- NULL
+
+  layer$weights.vec.n <- weights.vec.n
 
   data_recipe <- recipe(f, data=data)
 
@@ -639,7 +666,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val    <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec[Folds[[k]]]
+        sample.w.val <- weights.vec.n[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
           if(!layer$method_options$use_embedding) {
@@ -674,7 +701,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec[-Folds[[k]]]
+          sample.w <- weights.vec.n[-Folds[[k]]]
 
         }
 
@@ -683,9 +710,9 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         if(!is.null(layer$method_options$hidden))
           dnn_hidden <- layer$method_options$hidden
 
-        if(!missing(dnn_hidden_1)) dnn_hidden[1] <- dnn_hidden_1
-        if(!missing(dnn_hidden_2)) dnn_hidden[2] <- dnn_hidden_2
-        if(!missing(dnn_hidden_3)) dnn_hidden[3] <- dnn_hidden_3
+        if(!missing(dnn_hidden_1)) dnn_hidden[1] <- dnn_hidden_1 * layer$method_options$bayesOpt_step
+        if(!missing(dnn_hidden_2)) dnn_hidden[2] <- dnn_hidden_2 * layer$method_options$bayesOpt_step
+        if(!missing(dnn_hidden_3)) dnn_hidden[3] <- dnn_hidden_3 * layer$method_options$bayesOpt_step
 
         if(length(dnn_hidden)==0) dnn_hidden <- NULL
 
@@ -725,7 +752,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                  activation.output=layer$method_options$activation.output,
                                  x=x,
                                  use_bias=layer$method_options$use_bias,
-                                 weights.vec=weights.vec)
+                                 weights.vec=weights.vec.n)
 
         if(!layer$method_options$use_embedding) {
           model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -841,9 +868,9 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       #layer$method_options$bias_regularization <- TRUE
     }
 
-    if('dnn_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$dnn_hidden_1
-    if('dnn_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$dnn_hidden_2
-    if('dnn_hidden_3' %in% bounds_names) layer$method_options$hidden[3] <- getBestPars(optObj)$dnn_hidden_3
+    if('dnn_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$dnn_hidden_1 * layer$method_options$bayesOpt_step
+    if('dnn_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$dnn_hidden_2 * layer$method_options$bayesOpt_step
+    if('dnn_hidden_3' %in% bounds_names) layer$method_options$hidden[3] <- getBestPars(optObj)$dnn_hidden_3 * layer$method_options$bayesOpt_step
 
     if(is.null(layer$method_options$dropout.hidden) &
        (('dnn_dropout.hidden_1' %in% bounds_names) | ('dnn_dropout.hidden_2' %in% bounds_names) | ('dnn_dropout.hidden_3' %in% bounds_names)) )
@@ -868,7 +895,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   y <- layer$y
-  sample.w <- weights.vec
+  sample.w <- weights.vec.n
 
   if(!is.null(layer$method_options$ae.hidden)) {
 
@@ -921,7 +948,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                            activation.output=layer$method_options$activation.output,
                            x=x,
                            use_bias=layer$method_options$use_bias,
-                           weights.vec=weights.vec)
+                           weights.vec=weights.vec.n)
 
   if(!is.null(layer$method_options$family_for_init)) layer$glm.hom <- dnn_arch$glm.hom
 
@@ -1024,10 +1051,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     else
       stop('Bias regularization is not supported for this distribution.')
 
-    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec.n)
     cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
     if(length(cov)>0) {
-      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec)
+      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec.n)
       layer$fit <- glm2
     }
     else layer$fit <- glm1
@@ -1083,9 +1110,14 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- hirem_gamma_shape(observed = y, fitted = pred, weight = weights.vec)
+
+    if(is.null(obj$weights)) weights.vec.normalized <- NULL
+    else weights.vec.normalized <- weights.vec*length(weights.vec)/sum(weights.vec)
+
+    shape <- hirem_gamma_shape(observed = y, fitted = pred, weight = weights.vec.normalized)
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
+    layer$weights.vec.normalized <- weights.vec.normalized
   }
 
   return(layer)
@@ -1124,6 +1156,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   if(!is.null(obj$weights)) weights.vec <- obj$weights[data[[obj$weight.var]]] else weights.vec <- NULL
 
+  if(!is.null(weights.vec)) weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
+  else weights.vec.n <- NULL
+
   data_recipe     <- recipe(f, data=data)
   data_recipe.glm <- recipe(f.glm, data=data)
 
@@ -1145,7 +1180,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
-  model.glm       <- glm(f.glm, data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec)
+  model.glm       <- glm(f.glm, data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec.n)
   layer$model.glm <- model.glm
 
   if(!layer$method_options$use_embedding) {
@@ -1251,7 +1286,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val        <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec[Folds[[k]]]
+        sample.w.val <- weights.vec.n[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
 
@@ -1301,7 +1336,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec[-Folds[[k]]]
+          sample.w <- weights.vec.n[-Folds[[k]]]
 
         }
 
@@ -1347,9 +1382,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         if(!is.null(layer$method_options$hidden))
           dnn_hidden <- layer$method_options$hidden
 
-        if(!missing(dnn_hidden_1)) dnn_hidden[1] <- dnn_hidden_1
-        if(!missing(dnn_hidden_2)) dnn_hidden[2] <- dnn_hidden_2
-        if(!missing(dnn_hidden_3)) dnn_hidden[3] <- dnn_hidden_3
+        if(!missing(dnn_hidden_1)) dnn_hidden[1] <- dnn_hidden_1 * layer$method_options$bayesOpt_step
+        if(!missing(dnn_hidden_2)) dnn_hidden[2] <- dnn_hidden_2 * layer$method_options$bayesOpt_step
+        if(!missing(dnn_hidden_3)) dnn_hidden[3] <- dnn_hidden_3 * layer$method_options$bayesOpt_step
 
         if(length(dnn_hidden)==0) dnn_hidden <- NULL
 
@@ -1494,9 +1529,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       #layer$method_options$bias_regularization <- TRUE
     }
 
-    if('dnn_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$dnn_hidden_1
-    if('dnn_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$dnn_hidden_2
-    if('dnn_hidden_3' %in% bounds_names) layer$method_options$hidden[3] <- getBestPars(optObj)$dnn_hidden_3
+    if('dnn_hidden_1' %in% bounds_names) layer$method_options$hidden[1] <- getBestPars(optObj)$dnn_hidden_1 * layer$method_options$bayesOpt_step
+    if('dnn_hidden_2' %in% bounds_names) layer$method_options$hidden[2] <- getBestPars(optObj)$dnn_hidden_2 * layer$method_options$bayesOpt_step
+    if('dnn_hidden_3' %in% bounds_names) layer$method_options$hidden[3] <- getBestPars(optObj)$dnn_hidden_3 * layer$method_options$bayesOpt_step
 
     if(is.null(layer$method_options$dropout.hidden) &
        (('dnn_dropout.hidden_1' %in% bounds_names) | ('dnn_dropout.hidden_2' %in% bounds_names) | ('dnn_dropout.hidden_3' %in% bounds_names)) )
@@ -1523,7 +1558,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   y        <- layer$y
-  sample.w <- weights.vec
+  sample.w <- weights.vec.n
 
 
   def_inputs <- def_inputs(use_embedding=layer$method_options$use_embedding,
@@ -1677,11 +1712,11 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     else
       stop('Bias regularization is not supported for this distribution.')
 
-    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-2)), data=Zlearn, family=fam, weights = weights.vec)
-    #glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-2)), data=Zlearn, family=fam, weights = weights.vec.n)
+    #glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec.n)
     cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
     if(length(cov)>0) {
-      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec)
+      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec.n)
       layer$fit <- glm2
     }
     else layer$fit <- glm1
@@ -1749,9 +1784,14 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   if(layer$method_options$distribution == 'gamma') {
-    shape <- hirem_gamma_shape(observed = y, fitted = pred, weight = weights.vec)
+
+    if(is.null(obj$weights)) weights.vec.normalized <- NULL
+    else weights.vec.normalized <- weights.vec*length(weights.vec)/sum(weights.vec)
+
+    shape <- hirem_gamma_shape(observed = y, fitted = pred, weight = weights.vec.normalized)
     layer$shape <- shape$shape
     layer$shape.se <- shape$se
+    layer$weights.vec.normalized <- weights.vec.normalized
   }
 
   return(layer)

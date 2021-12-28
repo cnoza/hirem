@@ -109,7 +109,7 @@ simulate.layer_xgb <- function(obj, data, balance.correction, balance.var) {
   names(contrasts.arg) <- colnames(data %>% select_if(is.factor))
   dmm <- sparse.model.matrix(f,data=data[select, ],contrasts.arg = contrasts.arg)
   newdata.xgb <- xgb.DMatrix(data = as.matrix(dmm), info = list('label' = as.matrix(data[select,label])))
-  response <- predict(obj$fit, ntreelimit = obj$best_ntreelimit, newdata = newdata.xgb, type = 'response')
+  response <- predict(obj$fit, ntreelimit = obj$fit$niter, newdata = newdata.xgb, type = 'response')
 
   if(balance.correction) {
     response <- response * obj$balance.correction[(data[select,])[[balance.var]]]

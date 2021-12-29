@@ -509,6 +509,7 @@ fit.layer_dnn_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL
 #' @importFrom recipes recipe step_log step_normalize step_dummy bake prep all_nominal all_numeric all_outcomes
 #' @export
 fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
+
   cat(sprintf("Fitting layer_dnn for %s...\n", layer$name))
 
   layer$formula <- formula
@@ -545,7 +546,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(layer$method_options$step_normalize)
     data_recipe <- data_recipe %>% step_normalize(all_numeric(), -all_outcomes())
   if(!layer$method_options$use_embedding)
-    data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE)
+    data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = layer$method_options$one_hot)
 
   data_recipe <- data_recipe %>% prep()
   layer$data_recipe <- data_recipe
@@ -576,7 +577,503 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   layer$y <- y
 
-  if(layer$method_options$bayesOpt) {
+  if(layer$method_options$gridsearch_cv) {
+
+    Folds <- list()
+    names <- c()
+    folds <- caret::createFolds(y = y, k = layer$method_options$nfolds, list = F)
+    data_baked$folds <- folds
+
+    for(i in 1:layer$method_options$nfolds) {
+      #Folds[[i]] <- as.integer(seq(i,nrow(x),by = layer$method_options$nfolds))
+      Folds[[i]] <- which(data_baked$folds == i)
+      names[i] <- paste0('Fold',i)
+    }
+    names(Folds) <- names
+
+    if(!is.null(layer$method_options$hyper_grid)) {
+      hyper_grid <- layer$method_options$hyper_grid
+      hyper_grid <- hyper_grid %>%
+        filter(!(dnn_hidden_1 == 0 & ((dnn_hidden_2 != 0) | (dnn_hidden_3 != 0)))) %>%
+        filter(!(dnn_hidden_2 == 0 & dnn_hidden_3 != 0))
+    }
+    else {
+      hyper_grid <- expand.grid(
+        dnn_hidden_1 = seq(from = 10, to = 60, by = 10)
+      , dnn_hidden_2 = seq(from = 10, to = 60, by = 10)
+      , dnn_hidden_3 = seq(from = 10, to = 60, by = 10)
+      )
+    }
+
+
+    if(layer$method_options$verbose == 1) cat('Initializing the weights...')
+
+    init_weights <- list()
+
+    for(j in seq_len(nrow(hyper_grid))) {
+
+      if(!layer$method_options$use_embedding) {
+
+        ae.hidden <- c()
+
+        if(!is.null(layer$method_options$ae.hidden))
+          ae.hidden <- layer$method_options$ae.hidden
+
+        if(!is.null(hyper_grid$ae_hidden_1)) ae.hidden[1] <- hyper_grid$ae_hidden_1[j]
+        if(!is.null(hyper_grid$ae_hidden_2)) ae.hidden[2] <- hyper_grid$ae_hidden_2[j]
+        if(!is.null(hyper_grid$ae_hidden_3)) ae.hidden[3] <- hyper_grid$ae_hidden_3[j]
+
+        if(length(ae.hidden)==0) ae.hidden <- NULL
+
+        inputs <- layer_input(shape = c(ncol(x)), name='input_layer')
+
+        if(!is.null(ae.hidden)) {
+
+          ae_arch <- def_ae_arch(inputs=inputs,
+                                 x=x,
+                                 ae.hidden=ae.hidden,
+                                 ae.activation.hidden=layer$method_options$ae.activation.hidden)
+
+          autoencoder <- keras_model(inputs, ae_arch$ae_output_l)
+
+          model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(ae.hidden)]])
+
+          autoencoder %>% compile(loss = 'mae', optimizer='adam')
+
+          autoencoder %>% keras::fit(
+            x = x,
+            y = x,
+            epochs = layer$method_options$epochs,
+            batch_size = layer$method_options$batch_size,
+            verbose = layer$method_options$verbose
+          )
+
+          x <- model_en %>% predict(x)
+
+          inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
+
+          x.sav <- x
+
+        }
+
+      }
+
+      #for(k in 1:layer$method_options$nfolds) {
+
+      # We only need to do this for 1 fold
+      k <- 1
+
+      if(!layer$method_options$use_embedding) {
+        if(!is.null(ae.hidden))
+          x.val    <- x.sav[Folds[[k]],]
+        else
+          x.val    <- layer$x[Folds[[k]],]
+      }
+      else {
+        x_fact.val <- NULL
+        if(length(layer$fact_var)>0) {
+          x_fact.val <- list()
+          for(i in 1:length(layer$fact_var)) {
+            x_fact.val[[i]] <- layer$x_fact[[i]][Folds[[k]]] %>% as.integer()
+          }
+        }
+
+        x_no_fact.val <- NULL
+        if(length(layer$no_fact_var)>0)
+          x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
+      }
+
+      y.val    <- layer$y[Folds[[k]]]
+      sample.w.val <- weights.vec.n[Folds[[k]]]
+
+      if(layer$method_options$nfolds==1) {
+        if(!layer$method_options$use_embedding) {
+          x    <- x.val
+        }
+        else {
+          x_fact        <- x_fact.val
+          x_no_fact     <- x_no_fact.val
+        }
+        y    <- y.val
+        sample.w <- sample.w.val
+      }
+      else {
+
+        if(!layer$method_options$use_embedding) {
+          if(!is.null(ae.hidden))
+            x <- x.sav[-Folds[[k]],]
+          else
+            x <- layer$x[-Folds[[k]],]
+        }
+        else {
+          x_fact <- NULL
+          if(length(layer$fact_var)>0) {
+            x_fact <- list()
+            for(i in 1:length(layer$fact_var)) {
+              x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.integer()
+            }
+          }
+          x_no_fact <- NULL
+          if(length(layer$no_fact_var)>0)
+            x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
+        }
+
+        y <- layer$y[-Folds[[k]]]
+        sample.w <- weights.vec.n[-Folds[[k]]]
+
+      }
+
+      dnn_hidden <- c()
+
+      if(!is.null(layer$method_options$hidden))
+        dnn_hidden <- layer$method_options$hidden
+
+      if(!is.null(hyper_grid$dnn_hidden_1) && hyper_grid$dnn_hidden_1[j] > 0) dnn_hidden[1] <- hyper_grid$dnn_hidden_1[j]
+      if(!is.null(hyper_grid$dnn_hidden_2) && hyper_grid$dnn_hidden_2[j] > 0) dnn_hidden[2] <- hyper_grid$dnn_hidden_2[j]
+      if(!is.null(hyper_grid$dnn_hidden_3) && hyper_grid$dnn_hidden_3[j] > 0) dnn_hidden[3] <- hyper_grid$dnn_hidden_3[j]
+
+      if(length(dnn_hidden)==0) dnn_hidden <- NULL
+
+      dnn_dropout.hidden <- c()
+
+      if(!is.null(layer$method_options$dropout.hidden))
+        dnn_dropout.hidden <- layer$method_options$dropout.hidden
+      else {
+        if(!is.null(dnn_hidden))
+          dnn_dropout.hidden <- rep(0,length(dnn_hidden))
+      }
+
+      if(!is.null(hyper_grid$dnn_dropout.hidden_1) && hyper_grid$dnn_dropout.hidden_1[j] > 0) dnn_dropout.hidden[1] <- hyper_grid$dnn_dropout.hidden_1[j]
+      if(!is.null(hyper_grid$dnn_dropout.hidden_2) && hyper_grid$dnn_dropout.hidden_2[j] > 0) dnn_dropout.hidden[2] <- hyper_grid$dnn_dropout.hidden_2[j]
+      if(!is.null(hyper_grid$dnn_dropout.hidden_3) && hyper_grid$dnn_dropout.hidden_3[j] > 0) dnn_dropout.hidden[3] <- hyper_grid$dnn_dropout.hidden_3[j]
+
+      if(length(dnn_dropout.hidden)==0) dnn_dropout.hidden <- NULL
+
+      batch_size <- layer$method_options$batch_size
+      if(!is.null(hyper_grid$batch_size)) batch_size <- hyper_grid$batch_size[j]
+
+      def_inputs <- def_inputs_mlp(use_embedding=layer$method_options$use_embedding,
+                                   x=x,
+                                   no_fact_var=layer$no_fact_var,
+                                   fact_var=layer$fact_var,
+                                   x_fact=x_fact,
+                                   output_dim = layer$method_options$output_dim)
+
+      dnn_arch <- def_dnn_arch(inputs=def_inputs$inputs,
+                               batch_normalization=layer$method_options$batch_normalization,
+                               hidden=dnn_hidden,
+                               activation.hidden=layer$method_options$activation.hidden,
+                               dropout.hidden=dnn_dropout.hidden,
+                               family_for_init=layer$method_options$family_for_init,
+                               label=label,
+                               data=data,
+                               activation.output=layer$method_options$activation.output,
+                               x=x,
+                               use_bias=layer$method_options$use_bias,
+                               weights.vec=weights.vec.n)
+
+      if(!layer$method_options$use_embedding) {
+        model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
+      }
+      else {
+        model <- keras_model(inputs = c(def_inputs$inputs_no_fact,
+                                        def_inputs$input_layer_emb),
+                             outputs = c(dnn_arch$output))
+      }
+
+      model %>% compile(
+        loss = layer$method_options$loss,
+        optimizer = layer$method_options$optimizer,
+        metrics = layer$method_options$metrics
+      )
+
+      if(layer$method_options$verbose == 1) print(summary(model))
+
+      init_weights[[j]] <- keras::get_weights(model)
+
+    }
+
+    if(layer$method_options$verbose == 1) cat('Starting hypergrid search...')
+
+    best_score <- ifelse(layer$method_options$gridsearch_cv.min, 10^6, -10^6)
+
+    for(j in seq_len(nrow(hyper_grid))) {
+
+      if(layer$method_options$verbose == 1) print(hyper_grid[j,])
+
+      if(!layer$method_options$use_embedding) {
+
+        ae.hidden <- c()
+
+        if(!is.null(layer$method_options$ae.hidden))
+          ae.hidden <- layer$method_options$ae.hidden
+
+        if(!is.null(hyper_grid$ae_hidden_1)) ae.hidden[1] <- hyper_grid$ae_hidden_1[j]
+        if(!is.null(hyper_grid$ae_hidden_2)) ae.hidden[2] <- hyper_grid$ae_hidden_2[j]
+        if(!is.null(hyper_grid$ae_hidden_3)) ae.hidden[3] <- hyper_grid$ae_hidden_3[j]
+
+        if(length(ae.hidden)==0) ae.hidden <- NULL
+
+        inputs <- layer_input(shape = c(ncol(x)), name='input_layer')
+
+        if(!is.null(ae.hidden)) {
+
+          ae_arch <- def_ae_arch(inputs=inputs,
+                                 x=x,
+                                 ae.hidden=ae.hidden,
+                                 ae.activation.hidden=layer$method_options$ae.activation.hidden)
+
+          autoencoder <- keras_model(inputs, ae_arch$ae_output_l)
+
+          model_en <- keras_model(inputs, ae_arch$ae_hidden_l[[length(ae.hidden)]])
+
+          autoencoder %>% compile(loss = 'mae', optimizer='adam')
+
+          autoencoder %>% keras::fit(
+            x = x,
+            y = x,
+            epochs = layer$method_options$epochs,
+            batch_size = layer$method_options$batch_size,
+            verbose = layer$method_options$verbose
+          )
+
+          x <- model_en %>% predict(x)
+
+          inputs <- layer_input(shape = c(ncol(x)), name='ae_input_layer')
+
+          x.sav <- x
+
+        }
+
+      }
+
+      score <- c()
+
+      for(k in 1:layer$method_options$nfolds) {
+
+        if(!layer$method_options$use_embedding) {
+          if(!is.null(ae.hidden))
+            x.val    <- x.sav[Folds[[k]],]
+          else
+            x.val    <- layer$x[Folds[[k]],]
+        }
+        else {
+          x_fact.val <- NULL
+          if(length(layer$fact_var)>0) {
+            x_fact.val <- list()
+            for(i in 1:length(layer$fact_var)) {
+              x_fact.val[[i]] <- layer$x_fact[[i]][Folds[[k]]] %>% as.integer()
+            }
+          }
+
+          x_no_fact.val <- NULL
+          if(length(layer$no_fact_var)>0)
+            x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
+        }
+
+        y.val    <- layer$y[Folds[[k]]]
+        sample.w.val <- weights.vec.n[Folds[[k]]]
+
+        if(layer$method_options$nfolds==1) {
+          if(!layer$method_options$use_embedding) {
+            x    <- x.val
+          }
+          else {
+            x_fact        <- x_fact.val
+            x_no_fact     <- x_no_fact.val
+          }
+          y    <- y.val
+          sample.w <- sample.w.val
+        }
+        else {
+
+          if(!layer$method_options$use_embedding) {
+            if(!is.null(ae.hidden))
+              x <- x.sav[-Folds[[k]],]
+            else
+              x <- layer$x[-Folds[[k]],]
+          }
+          else {
+            x_fact <- NULL
+            if(length(layer$fact_var)>0) {
+              x_fact <- list()
+              for(i in 1:length(layer$fact_var)) {
+                x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.integer()
+              }
+            }
+            x_no_fact <- NULL
+            if(length(layer$no_fact_var)>0)
+              x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
+          }
+
+          y <- layer$y[-Folds[[k]]]
+          sample.w <- weights.vec.n[-Folds[[k]]]
+
+        }
+
+        dnn_hidden <- c()
+
+        if(!is.null(layer$method_options$hidden))
+          dnn_hidden <- layer$method_options$hidden
+
+        if(!is.null(hyper_grid$dnn_hidden_1) && hyper_grid$dnn_hidden_1[j] > 0) dnn_hidden[1] <- hyper_grid$dnn_hidden_1[j]
+        if(!is.null(hyper_grid$dnn_hidden_2) && hyper_grid$dnn_hidden_2[j] > 0) dnn_hidden[2] <- hyper_grid$dnn_hidden_2[j]
+        if(!is.null(hyper_grid$dnn_hidden_3) && hyper_grid$dnn_hidden_3[j] > 0) dnn_hidden[3] <- hyper_grid$dnn_hidden_3[j]
+
+        if(length(dnn_hidden)==0) dnn_hidden <- NULL
+
+        dnn_dropout.hidden <- c()
+
+        if(!is.null(layer$method_options$dropout.hidden))
+          dnn_dropout.hidden <- layer$method_options$dropout.hidden
+        else {
+          if(!is.null(dnn_hidden))
+            dnn_dropout.hidden <- rep(0,length(dnn_hidden))
+        }
+
+        if(!is.null(hyper_grid$dnn_dropout.hidden_1) && hyper_grid$dnn_dropout.hidden_1[j] > 0) dnn_dropout.hidden[1] <- hyper_grid$dnn_dropout.hidden_1[j]
+        if(!is.null(hyper_grid$dnn_dropout.hidden_2) && hyper_grid$dnn_dropout.hidden_2[j] > 0) dnn_dropout.hidden[2] <- hyper_grid$dnn_dropout.hidden_2[j]
+        if(!is.null(hyper_grid$dnn_dropout.hidden_3) && hyper_grid$dnn_dropout.hidden_3[j] > 0) dnn_dropout.hidden[3] <- hyper_grid$dnn_dropout.hidden_3[j]
+
+        if(length(dnn_dropout.hidden)==0) dnn_dropout.hidden <- NULL
+
+        batch_size <- layer$method_options$batch_size
+        if(!is.null(hyper_grid$batch_size)) batch_size <- hyper_grid$batch_size[j]
+
+        def_inputs <- def_inputs_mlp(use_embedding=layer$method_options$use_embedding,
+                                     x=x,
+                                     no_fact_var=layer$no_fact_var,
+                                     fact_var=layer$fact_var,
+                                     x_fact=x_fact,
+                                     output_dim = layer$method_options$output_dim)
+
+        dnn_arch <- def_dnn_arch(inputs=def_inputs$inputs,
+                                 batch_normalization=layer$method_options$batch_normalization,
+                                 hidden=dnn_hidden,
+                                 activation.hidden=layer$method_options$activation.hidden,
+                                 dropout.hidden=dnn_dropout.hidden,
+                                 family_for_init=layer$method_options$family_for_init,
+                                 label=label,
+                                 data=data,
+                                 activation.output=layer$method_options$activation.output,
+                                 x=x,
+                                 use_bias=layer$method_options$use_bias,
+                                 weights.vec=weights.vec.n)
+
+        if(!layer$method_options$use_embedding) {
+          model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
+        }
+        else {
+          model <- keras_model(inputs = c(def_inputs$inputs_no_fact,
+                                          def_inputs$input_layer_emb),
+                               outputs = c(dnn_arch$output))
+        }
+
+        model %>% compile(
+          loss = layer$method_options$loss,
+          optimizer = layer$method_options$optimizer,
+          metrics = layer$method_options$metrics
+        )
+
+        if(layer$method_options$verbose == 1) print(summary(model))
+
+        keras::set_weights(model, init_weights[[j]])
+
+        earlystopping <- callback_early_stopping(
+          monitor = layer$method_options$monitor,
+          patience = layer$method_options$patience,
+          restore_best_weights = T)
+
+
+        if(!layer$method_options$use_embedding) {
+          x.inputs <- list(x)
+          x.inputs.val <- list(x.val)
+        }
+        else {
+          x.inputs <- list(x_no_fact,x_fact)
+          x.inputs[sapply(x.inputs, is.null)] <- NULL
+          x.inputs.val <- list(x_no_fact.val,x_fact.val)
+          x.inputs.val[sapply(x.inputs.val, is.null)] <- NULL
+        }
+
+        #print(layer$method_options$batch_size)
+
+        if(layer$method_options$nfolds > 1) {
+          history <- model %>%
+            keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+                       batch_size = batch_size,
+                       #validation_split = layer$method_options$validation_split,
+                       validation_data = list(x.inputs.val,y.val,sample.w.val),
+                       callbacks = list(earlystopping),
+                       verbose = layer$method_options$verbose)
+        }
+        else {
+          history <- model %>%
+            keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+                       batch_size = batch_size,
+                       validation_split = layer$method_options$validation_split,
+                       #validation_data = list(x.inputs.val,y.val,sample.w.val),
+                       callbacks = list(earlystopping),
+                       verbose = layer$method_options$verbose)
+        }
+
+        score[k] <- ifelse(layer$method_options$gridsearch_cv.min, -min(history$metrics[[2]]), max(history$metrics[[2]]))
+
+      }
+
+      mean_score <- mean(score)
+
+      if(ifelse(layer$method_options$gridsearch_cv.min, mean_score < best_score, mean_score > best_score)) {
+
+          best_score <- mean_score
+          best_j <- j
+
+          if(is.null(layer$method_options$ae.hidden) &
+             (!is.null(hyper_grid$ae_hidden_1) | !is.null(hyper_grid$ae_hidden_2) | !is.null(hyper_grid$ae_hidden_3))) {
+            layer$method_options$ae.hidden <- c()
+          }
+
+          if(!is.null(hyper_grid$ae_hidden_1)) layer$method_options$ae.hidden[1] <- hyper_grid$ae_hidden_1[j]
+          if(!is.null(hyper_grid$ae_hidden_2)) layer$method_options$ae.hidden[2] <- hyper_grid$ae_hidden_2[j]
+          if(!is.null(hyper_grid$ae_hidden_3)) layer$method_options$ae.hidden[3] <- hyper_grid$ae_hidden_3[j]
+
+          if(is.null(layer$method_options$hidden) &
+             ( (!is.null(hyper_grid$dnn_hidden_1) && hyper_grid$dnn_hidden_1[j] > 0) |
+               (!is.null(hyper_grid$dnn_hidden_2) && hyper_grid$dnn_hidden_2[j] > 0) |
+               (!is.null(hyper_grid$dnn_hidden_3) && hyper_grid$dnn_hidden_3[j] > 0)
+               )
+             ) {
+            layer$method_options$hidden <- c()
+          }
+
+          if(!is.null(hyper_grid$dnn_hidden_1) && hyper_grid$dnn_hidden_1[j] > 0) layer$method_options$hidden[1] <- hyper_grid$dnn_hidden_1[j]
+          if(!is.null(hyper_grid$dnn_hidden_2) && hyper_grid$dnn_hidden_2[j] > 0) layer$method_options$hidden[2] <- hyper_grid$dnn_hidden_2[j]
+          if(!is.null(hyper_grid$dnn_hidden_3) && hyper_grid$dnn_hidden_3[j] > 0) layer$method_options$hidden[3] <- hyper_grid$dnn_hidden_3[j]
+
+          if(is.null(layer$method_options$dropout.hidden) &
+             ( (!is.null(hyper_grid$dnn_dropout.hidden_1) && hyper_grid$dnn_dropout.hidden_1[j] > 0) |
+               (!is.null(hyper_grid$dnn_dropout.hidden_2) && hyper_grid$dnn_dropout.hidden_2[j] > 0) |
+               (!is.null(hyper_grid$dnn_dropout.hidden_3) && hyper_grid$dnn_dropout.hidden_3[j] > 0)
+               )
+             )
+            layer$method_options$dropout.hidden <- c()
+
+          if(!is.null(hyper_grid$dnn_dropout.hidden_1) && hyper_grid$dnn_dropout.hidden_1[j] > 0) layer$method_options$dropout.hidden[1] <- hyper_grid$dnn_dropout.hidden_1[j]
+          if(!is.null(hyper_grid$dnn_dropout.hidden_2) && hyper_grid$dnn_dropout.hidden_2[j] > 0) layer$method_options$dropout.hidden[2] <- hyper_grid$dnn_dropout.hidden_2[j]
+          if(!is.null(hyper_grid$dnn_dropout.hidden_3) && hyper_grid$dnn_dropout.hidden_3[j] > 0) layer$method_options$dropout.hidden[3] <- hyper_grid$dnn_dropout.hidden_3[j]
+
+          if(!is.null(hyper_grid$batch_size) && hyper_grid$batch_size[j] > 0)
+            layer$method_options$batch_size <- hyper_grid$batch_size[j]
+
+      }
+
+    }
+
+    layer$best_score <- best_score
+
+  }
+
+  else if(layer$method_options$bayesOpt) {
 
     Folds <- list()
     names <- c()
@@ -768,6 +1265,9 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           optimizer = layer$method_options$optimizer,
           metrics = layer$method_options$metrics
         )
+
+        if(k==1) weights.init <- keras::get_weights(model)
+        else keras::set_weights(model, weights.init)
 
         earlystopping <- callback_early_stopping(
           monitor = layer$method_options$monitor,
@@ -968,6 +1468,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     optimizer = layer$method_options$optimizer,
     metrics = layer$method_options$metrics
   )
+
+  if(layer$method_options$gridsearch_cv) keras::set_weights(model, init_weights[[best_j]])
 
   earlystopping <- callback_early_stopping(
     monitor = layer$method_options$monitor,
@@ -1230,7 +1732,516 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   y       <- data_baked %>% pull(as.name(label))
   layer$y <- y
 
-  if(layer$method_options$bayesOpt) {
+  if(layer$method_options$gridsearch_cv) {
+
+    Folds <- list()
+    names <- c()
+    folds <- caret::createFolds(y = y, k = layer$method_options$nfolds, list = F)
+    data_baked$folds <- folds
+
+    for(i in 1:layer$method_options$nfolds) {
+      #Folds[[i]] <- as.integer(seq(i,nrow(x),by = layer$method_options$nfolds))
+      Folds[[i]] <- which(data_baked$folds == i)
+      names[i] <- paste0('Fold',i)
+    }
+    names(Folds) <- names
+
+    if(!is.null(layer$method_options$hyper_grid)) {
+      hyper_grid <- layer$method_options$hyper_grid
+      hyper_grid <- hyper_grid %>%
+        filter(!(dnn_hidden_1 == 0 & ((dnn_hidden_2 != 0) | (dnn_hidden_3 != 0)))) %>%
+        filter(!(dnn_hidden_2 == 0 & dnn_hidden_3 != 0))
+    }
+    else {
+      hyper_grid <- expand.grid(
+        dnn_hidden_1 = seq(from = 10, to = 60, by = 10)
+        , dnn_hidden_2 = seq(from = 10, to = 60, by = 10)
+        , dnn_hidden_3 = seq(from = 10, to = 60, by = 10)
+      )
+    }
+
+
+    if(layer$method_options$verbose == 1) cat('Initializing the weights...\n')
+
+    init_weights <- list()
+
+    for(j in seq_len(nrow(hyper_grid))) {
+
+      # We only need to do this for 1 fold
+      k <- 1
+
+      if(!layer$method_options$use_embedding) {
+        x.val         <- layer$x[Folds[[k]],] %>% as.matrix()
+        x.glm.val     <- layer$x.glm[Folds[[k]],] %>% as.matrix()
+      }
+      else {
+
+        x_fact.val <- NULL
+        if(length(layer$fact_var)>0) {
+          x_fact.val <- list()
+          for(i in 1:length(layer$fact_var)) {
+            x_fact.val[[i]] <- layer$x_fact[[i]][Folds[[k]]] %>% as.integer()
+          }
+        }
+
+        x_no_fact.val <- NULL
+        if(length(layer$no_fact_var)>0)
+          x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
+
+        x_fact.glm.val <- NULL
+        if(length(layer$fact_var.glm)>0) {
+          x_fact.glm.val <- list()
+          for(i in 1:length(layer$fact_var.glm)) {
+            x_fact.glm.val[[i]] <- layer$x_fact.glm[[i]][Folds[[k]]] %>% as.integer()
+          }
+        }
+
+        x_no_fact.glm.val <- NULL
+        if(length(layer$no_fact_var.glm)>0)
+          x_no_fact.glm.val <- layer$x_no_fact.glm[Folds[[k]],] %>% as.matrix()
+
+      }
+
+      y.val        <- layer$y[Folds[[k]]]
+      sample.w.val <- weights.vec.n[Folds[[k]]]
+
+      if(layer$method_options$nfolds==1) {
+
+        if(!layer$method_options$use_embedding) {
+          x     <- x.val
+          x.glm <- x.glm.val
+        }
+        else {
+          x_fact        <- x_fact.val
+          x_no_fact     <- x_no_fact.val
+          x_fact.glm    <- x_fact.glm.val
+          x_no_fact.glm <- x_no_fact.glm.val
+        }
+
+        y <- y.val
+        sample.w <- sample.w.val
+
+      }
+      else {
+
+        if(!layer$method_options$use_embedding) {
+          x      <- layer$x[-Folds[[k]],]
+          x.glm  <- layer$x.glm[-Folds[[k]],]
+        }
+        else {
+          x_fact <- NULL
+          if(length(layer$fact_var)>0) {
+            x_fact <- list()
+            for(i in 1:length(layer$fact_var)) {
+              x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.integer()
+            }
+          }
+          x_no_fact <- NULL
+          if(length(layer$no_fact_var)>0)
+            x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
+
+          x_fact.glm <- NULL
+          if(length(layer$fact_var.glm)>0) {
+            x_fact.glm <- list()
+            for(i in 1:length(layer$fact_var.glm)) {
+              x_fact.glm[[i]] <- layer$x_fact.glm[[i]][-Folds[[k]]] %>% as.integer()
+            }
+          }
+          x_no_fact.glm <- NULL
+          if(length(layer$no_fact_var.glm)>0)
+            x_no_fact.glm <- layer$x_no_fact.glm[-Folds[[k]],] %>% as.matrix()
+        }
+
+        y <- layer$y[-Folds[[k]]]
+        sample.w <- weights.vec.n[-Folds[[k]]]
+
+      }
+
+      def_inputs <- def_inputs(use_embedding=layer$method_options$use_embedding,
+                               x=x,
+                               model.glm=model.glm,
+                               no_fact_var=layer$no_fact_var,
+                               no_fact_var.glm=layer$no_fact_var.glm,
+                               fact_var.glm=layer$fact_var.glm,
+                               fact_var=layer$fact_var,
+                               x_fact=x_fact,
+                               x_fact.glm=x_fact.glm)
+
+      # GLM Neural network
+
+      if(!layer$method_options$use_embedding) {
+        GLMNetwork.tmp <- def_inputs$inputs.glm %>%
+          layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
+                      weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
+                                   array(model.glm$coefficients[1],dim=c(1))))
+      }
+      else {
+
+        coef_no_fact.glm <- NULL
+        if(length(def_inputs$beta.no_fact_var.glm) > 1)
+          coef_no_fact.glm <- def_inputs$beta.no_fact_var.glm[2:length(def_inputs$beta.no_fact_var.glm)]
+
+        coef_fact_var.glm <- NULL
+        if(length(layer$fact_var.glm)>0)
+          coef_fact_var.glm <- rep(1,length(layer$fact_var.glm))
+
+        GLMNetwork.tmp <- def_inputs$inputs.glm %>%
+          layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
+                      weights=list(array(c(coef_no_fact.glm,coef_fact_var.glm),
+                                         dim=c(length(layer$fact_var.glm)+length(def_inputs$beta.no_fact_var.glm)-1,1)),
+                                   array(def_inputs$beta.no_fact_var.glm[1],dim=c(1))))
+      }
+
+      # Hyperparameters
+
+      dnn_hidden <- c()
+
+      if(!is.null(layer$method_options$hidden))
+        dnn_hidden <- layer$method_options$hidden
+
+      if(!is.null(hyper_grid$dnn_hidden_1) && hyper_grid$dnn_hidden_1[j] > 0) dnn_hidden[1] <- hyper_grid$dnn_hidden_1[j]
+      if(!is.null(hyper_grid$dnn_hidden_2) && hyper_grid$dnn_hidden_2[j] > 0) dnn_hidden[2] <- hyper_grid$dnn_hidden_2[j]
+      if(!is.null(hyper_grid$dnn_hidden_3) && hyper_grid$dnn_hidden_3[j] > 0) dnn_hidden[3] <- hyper_grid$dnn_hidden_3[j]
+
+      if(length(dnn_hidden)==0) dnn_hidden <- NULL
+
+      dnn_dropout.hidden <- c()
+
+      if(!is.null(layer$method_options$dropout.hidden))
+        dnn_dropout.hidden <- layer$method_options$dropout.hidden
+      else {
+        if(!is.null(dnn_hidden))
+          dnn_dropout.hidden <- rep(0,length(dnn_hidden))
+      }
+
+      if(!is.null(hyper_grid$dnn_dropout.hidden_1) && hyper_grid$dnn_dropout.hidden_1[j] > 0) dnn_dropout.hidden[1] <- hyper_grid$dnn_dropout.hidden_1[j]
+      if(!is.null(hyper_grid$dnn_dropout.hidden_2) && hyper_grid$dnn_dropout.hidden_2[j] > 0) dnn_dropout.hidden[2] <- hyper_grid$dnn_dropout.hidden_2[j]
+      if(!is.null(hyper_grid$dnn_dropout.hidden_3) && hyper_grid$dnn_dropout.hidden_3[j] > 0) dnn_dropout.hidden[3] <- hyper_grid$dnn_dropout.hidden_3[j]
+
+      if(length(dnn_dropout.hidden)==0) dnn_dropout.hidden <- NULL
+
+      # Neural network
+
+      NNetwork.tmp <- def_NN_arch(def_inputs$inputs,
+                                  layer$method_options$batch_normalization,
+                                  dnn_hidden,
+                                  layer$method_options$activation.hidden,
+                                  dnn_dropout.hidden,
+                                  layer$method_options$activation.output,
+                                  layer$method_options$use_bias)
+
+      # CANN
+
+      CANNoutput.tmp <- list(GLMNetwork.tmp, NNetwork.tmp) %>% layer_add() %>%
+        layer_dense(units = 1, activation = layer$method_options$activation.output.cann, trainable = !layer$method_options$fixed.cann,
+                    weights = switch(layer$method_options$fixed.cann + 1,NULL,list(array(c(1), dim=c(1,1)),
+                                                                                   array(0, dim=c(1)))),
+                    name = 'output_layer_CANN')
+
+      if(!layer$method_options$use_embedding)
+        CANN.tmp <- keras_model(inputs = c(def_inputs$inputs,
+                                           def_inputs$inputs.glm),
+                                outputs = c(CANNoutput.tmp), name = 'CANN.tmp')
+      else
+        CANN.tmp <- keras_model(inputs = c(def_inputs$inputs_no_fact.glm,
+                                           def_inputs$input_layer_emb.glm,
+                                           def_inputs$inputs_no_fact,
+                                           def_inputs$input_layer_emb),
+                                outputs = c(CANNoutput.tmp), name = 'CANN.tmp')
+
+      CANN.tmp %>% compile(
+        loss = layer$method_options$loss,
+        optimizer = layer$method_options$optimizer,
+        metrics = layer$method_options$metrics
+      )
+
+      init_weights[[j]] <- keras::get_weights(CANN.tmp)
+
+    }
+
+    if(layer$method_options$verbose == 1) cat('Starting hypergrid search...\n')
+
+    best_score <- ifelse(layer$method_options$gridsearch_cv.min, 10^6, -10^6)
+
+    for(j in seq_len(nrow(hyper_grid))) {
+
+      score <- c()
+
+      for(k in 1:layer$method_options$nfolds) {
+
+        if(layer$method_options$verbose == 1) cat(sprintf("\n j=%s k=%s \n",j,k))
+
+        if(!layer$method_options$use_embedding) {
+          x.val         <- layer$x[Folds[[k]],] %>% as.matrix()
+          x.glm.val     <- layer$x.glm[Folds[[k]],] %>% as.matrix()
+        }
+        else {
+
+          x_fact.val <- NULL
+          if(length(layer$fact_var)>0) {
+            x_fact.val <- list()
+            for(i in 1:length(layer$fact_var)) {
+              x_fact.val[[i]] <- layer$x_fact[[i]][Folds[[k]]] %>% as.integer()
+            }
+          }
+
+          x_no_fact.val <- NULL
+          if(length(layer$no_fact_var)>0)
+            x_no_fact.val  <- layer$x_no_fact[Folds[[k]],] %>% as.matrix()
+
+          x_fact.glm.val <- NULL
+          if(length(layer$fact_var.glm)>0) {
+            x_fact.glm.val <- list()
+            for(i in 1:length(layer$fact_var.glm)) {
+              x_fact.glm.val[[i]] <- layer$x_fact.glm[[i]][Folds[[k]]] %>% as.integer()
+            }
+          }
+
+          x_no_fact.glm.val <- NULL
+          if(length(layer$no_fact_var.glm)>0)
+            x_no_fact.glm.val <- layer$x_no_fact.glm[Folds[[k]],] %>% as.matrix()
+
+        }
+
+        y.val        <- layer$y[Folds[[k]]]
+        sample.w.val <- weights.vec.n[Folds[[k]]]
+
+        if(layer$method_options$nfolds==1) {
+
+          if(!layer$method_options$use_embedding) {
+            x     <- x.val
+            x.glm <- x.glm.val
+          }
+          else {
+            x_fact        <- x_fact.val
+            x_no_fact     <- x_no_fact.val
+            x_fact.glm    <- x_fact.glm.val
+            x_no_fact.glm <- x_no_fact.glm.val
+          }
+
+          y <- y.val
+          sample.w <- sample.w.val
+
+        }
+        else {
+
+          if(!layer$method_options$use_embedding) {
+            x      <- layer$x[-Folds[[k]],]
+            x.glm  <- layer$x.glm[-Folds[[k]],]
+          }
+          else {
+            x_fact <- NULL
+            if(length(layer$fact_var)>0) {
+              x_fact <- list()
+              for(i in 1:length(layer$fact_var)) {
+                x_fact[[i]] <- layer$x_fact[[i]][-Folds[[k]]] %>% as.integer()
+              }
+            }
+            x_no_fact <- NULL
+            if(length(layer$no_fact_var)>0)
+              x_no_fact <- layer$x_no_fact[-Folds[[k]],] %>% as.matrix()
+
+            x_fact.glm <- NULL
+            if(length(layer$fact_var.glm)>0) {
+              x_fact.glm <- list()
+              for(i in 1:length(layer$fact_var.glm)) {
+                x_fact.glm[[i]] <- layer$x_fact.glm[[i]][-Folds[[k]]] %>% as.integer()
+              }
+            }
+            x_no_fact.glm <- NULL
+            if(length(layer$no_fact_var.glm)>0)
+              x_no_fact.glm <- layer$x_no_fact.glm[-Folds[[k]],] %>% as.matrix()
+          }
+
+          y <- layer$y[-Folds[[k]]]
+          sample.w <- weights.vec.n[-Folds[[k]]]
+
+        }
+
+        def_inputs <- def_inputs(use_embedding=layer$method_options$use_embedding,
+                                 x=x,
+                                 model.glm=model.glm,
+                                 no_fact_var=layer$no_fact_var,
+                                 no_fact_var.glm=layer$no_fact_var.glm,
+                                 fact_var.glm=layer$fact_var.glm,
+                                 fact_var=layer$fact_var,
+                                 x_fact=x_fact,
+                                 x_fact.glm=x_fact.glm)
+
+        # GLM Neural network
+
+        if(!layer$method_options$use_embedding) {
+          GLMNetwork.tmp <- def_inputs$inputs.glm %>%
+            layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
+                        weights=list(array(model.glm$coefficients[2:length(model.glm$coefficients)], dim=c(length(model.glm$coefficients)-1,1)),
+                                     array(model.glm$coefficients[1],dim=c(1))))
+        }
+        else {
+
+          coef_no_fact.glm <- NULL
+          if(length(def_inputs$beta.no_fact_var.glm) > 1)
+            coef_no_fact.glm <- def_inputs$beta.no_fact_var.glm[2:length(def_inputs$beta.no_fact_var.glm)]
+
+          coef_fact_var.glm <- NULL
+          if(length(layer$fact_var.glm)>0)
+            coef_fact_var.glm <- rep(1,length(layer$fact_var.glm))
+
+          GLMNetwork.tmp <- def_inputs$inputs.glm %>%
+            layer_dense(units=1, activation='linear', name='output_layer_glm', trainable=FALSE,
+                        weights=list(array(c(coef_no_fact.glm,coef_fact_var.glm),
+                                           dim=c(length(layer$fact_var.glm)+length(def_inputs$beta.no_fact_var.glm)-1,1)),
+                                     array(def_inputs$beta.no_fact_var.glm[1],dim=c(1))))
+        }
+
+        # Hyperparameters
+
+        dnn_hidden <- c()
+
+        if(!is.null(layer$method_options$hidden))
+          dnn_hidden <- layer$method_options$hidden
+
+        if(!is.null(hyper_grid$dnn_hidden_1) && hyper_grid$dnn_hidden_1[j] > 0) dnn_hidden[1] <- hyper_grid$dnn_hidden_1[j]
+        if(!is.null(hyper_grid$dnn_hidden_2) && hyper_grid$dnn_hidden_2[j] > 0) dnn_hidden[2] <- hyper_grid$dnn_hidden_2[j]
+        if(!is.null(hyper_grid$dnn_hidden_3) && hyper_grid$dnn_hidden_3[j] > 0) dnn_hidden[3] <- hyper_grid$dnn_hidden_3[j]
+
+        if(length(dnn_hidden)==0) dnn_hidden <- NULL
+
+        dnn_dropout.hidden <- c()
+
+        if(!is.null(layer$method_options$dropout.hidden))
+          dnn_dropout.hidden <- layer$method_options$dropout.hidden
+        else {
+          if(!is.null(dnn_hidden))
+            dnn_dropout.hidden <- rep(0,length(dnn_hidden))
+        }
+
+        if(!is.null(hyper_grid$dnn_dropout.hidden_1) && hyper_grid$dnn_dropout.hidden_1[j] > 0) dnn_dropout.hidden[1] <- hyper_grid$dnn_dropout.hidden_1[j]
+        if(!is.null(hyper_grid$dnn_dropout.hidden_2) && hyper_grid$dnn_dropout.hidden_2[j] > 0) dnn_dropout.hidden[2] <- hyper_grid$dnn_dropout.hidden_2[j]
+        if(!is.null(hyper_grid$dnn_dropout.hidden_3) && hyper_grid$dnn_dropout.hidden_3[j] > 0) dnn_dropout.hidden[3] <- hyper_grid$dnn_dropout.hidden_3[j]
+
+        if(length(dnn_dropout.hidden)==0) dnn_dropout.hidden <- NULL
+
+        # Neural network
+
+        NNetwork.tmp <- def_NN_arch(def_inputs$inputs,
+                                    layer$method_options$batch_normalization,
+                                    dnn_hidden,
+                                    layer$method_options$activation.hidden,
+                                    dnn_dropout.hidden,
+                                    layer$method_options$activation.output,
+                                    layer$method_options$use_bias)
+
+        # CANN
+
+        CANNoutput.tmp <- list(GLMNetwork.tmp, NNetwork.tmp) %>% layer_add() %>%
+          layer_dense(units = 1, activation = layer$method_options$activation.output.cann, trainable = !layer$method_options$fixed.cann,
+                      weights = switch(layer$method_options$fixed.cann + 1,NULL,list(array(c(1), dim=c(1,1)),
+                                                                                     array(0, dim=c(1)))),
+                      name = 'output_layer_CANN')
+
+        if(!layer$method_options$use_embedding)
+          CANN.tmp <- keras_model(inputs = c(def_inputs$inputs,
+                                             def_inputs$inputs.glm),
+                                  outputs = c(CANNoutput.tmp), name = 'CANN.tmp')
+        else
+          CANN.tmp <- keras_model(inputs = c(def_inputs$inputs_no_fact.glm,
+                                             def_inputs$input_layer_emb.glm,
+                                             def_inputs$inputs_no_fact,
+                                             def_inputs$input_layer_emb),
+                                  outputs = c(CANNoutput.tmp), name = 'CANN.tmp')
+
+        CANN.tmp %>% compile(
+          loss = layer$method_options$loss,
+          optimizer = layer$method_options$optimizer,
+          metrics = layer$method_options$metrics
+        )
+
+        if(layer$method_options$verbose == 1) print(summary(CANN.tmp))
+
+        keras::set_weights(CANN.tmp, init_weights[[j]])
+
+        earlystopping <- callback_early_stopping(
+          monitor = layer$method_options$monitor,
+          patience = layer$method_options$patience,
+          restore_best_weights = T)
+
+        if(!layer$method_options$use_embedding) {
+          x.inputs <- list(x,x.glm)
+          x.inputs.val <- list(x.val,x.glm.val)
+        }
+        else {
+          x.inputs <- list(x_no_fact.glm,x_fact.glm,x_no_fact,x_fact)
+          x.inputs[sapply(x.inputs, is.null)] <- NULL
+          x.inputs.val <- list(x_no_fact.glm.val,x_fact.glm.val,x_no_fact.val,x_fact.val)
+          x.inputs.val[sapply(x.inputs.val, is.null)] <- NULL
+        }
+
+        if(layer$method_options$nfolds > 1) {
+          history.tmp <- CANN.tmp %>%
+            keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+                       batch_size = layer$method_options$batch_size,
+                       #validation_split = layer$method_options$validation_split,
+                       validation_data = list(x.inputs.val,y.val,sample.w.val),
+                       callbacks = list(earlystopping),
+                       verbose = layer$method_options$verbose)
+        }
+        else {
+          history.tmp <- CANN.tmp %>%
+            keras::fit(x=x.inputs, y=y, sample_weight = sample.w, epochs = layer$method_options$epochs,
+                       batch_size = layer$method_options$batch_size,
+                       validation_split = layer$method_options$validation_split,
+                       #validation_data = list(x.inputs.val,y.val,sample.w.val),
+                       callbacks = list(earlystopping),
+                       verbose = layer$method_options$verbose)
+        }
+
+        score[k] <- ifelse(layer$method_options$gridsearch_cv.min, -min(history.tmp$metrics[[2]]), max(history.tmp$metrics[[2]]))
+
+      }
+
+      mean_score <- mean(score)
+
+      if(ifelse(layer$method_options$gridsearch_cv.min, mean_score < best_score, mean_score > best_score)) {
+
+        best_score <- mean_score
+        best_j <- j
+
+        if(is.null(layer$method_options$hidden) &
+           ( (!is.null(hyper_grid$dnn_hidden_1) && hyper_grid$dnn_hidden_1[j] > 0) |
+             (!is.null(hyper_grid$dnn_hidden_2) && hyper_grid$dnn_hidden_2[j] > 0) |
+             (!is.null(hyper_grid$dnn_hidden_3) && hyper_grid$dnn_hidden_3[j] > 0)
+           )
+        ) {
+          layer$method_options$hidden <- c()
+        }
+
+        if(!is.null(hyper_grid$dnn_hidden_1) && hyper_grid$dnn_hidden_1[j] > 0) layer$method_options$hidden[1] <- hyper_grid$dnn_hidden_1[j]
+        if(!is.null(hyper_grid$dnn_hidden_2) && hyper_grid$dnn_hidden_2[j] > 0) layer$method_options$hidden[2] <- hyper_grid$dnn_hidden_2[j]
+        if(!is.null(hyper_grid$dnn_hidden_3) && hyper_grid$dnn_hidden_3[j] > 0) layer$method_options$hidden[3] <- hyper_grid$dnn_hidden_3[j]
+
+        if(is.null(layer$method_options$dropout.hidden) &
+           ( (!is.null(hyper_grid$dnn_dropout.hidden_1) && hyper_grid$dnn_dropout.hidden_1[j] > 0) |
+             (!is.null(hyper_grid$dnn_dropout.hidden_2) && hyper_grid$dnn_dropout.hidden_2[j] > 0) |
+             (!is.null(hyper_grid$dnn_dropout.hidden_3) && hyper_grid$dnn_dropout.hidden_3[j] > 0)
+           )
+        )
+          layer$method_options$dropout.hidden <- c()
+
+        if(!is.null(hyper_grid$dnn_dropout.hidden_1) && hyper_grid$dnn_dropout.hidden_1[j] > 0) layer$method_options$dropout.hidden[1] <- hyper_grid$dnn_dropout.hidden_1[j]
+        if(!is.null(hyper_grid$dnn_dropout.hidden_2) && hyper_grid$dnn_dropout.hidden_2[j] > 0) layer$method_options$dropout.hidden[2] <- hyper_grid$dnn_dropout.hidden_2[j]
+        if(!is.null(hyper_grid$dnn_dropout.hidden_3) && hyper_grid$dnn_dropout.hidden_3[j] > 0) layer$method_options$dropout.hidden[3] <- hyper_grid$dnn_dropout.hidden_3[j]
+
+        if(!is.null(hyper_grid$batch_size) && hyper_grid$batch_size[j] > 0)
+          layer$method_options$batch_size <- hyper_grid$batch_size[j]
+
+      }
+
+    }
+
+    layer$best_score <- best_score
+
+  }
+  else if(layer$method_options$bayesOpt) {
 
     Folds <- list()
     names <- c()
@@ -1631,6 +2642,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     optimizer = layer$method_options$optimizer,
     metrics = layer$method_options$metrics
   )
+
+  if(layer$method_options$gridsearch_cv) keras::set_weights(CANN, init_weights[[best_j]])
 
   earlystopping <- callback_early_stopping(
     monitor = layer$method_options$monitor,

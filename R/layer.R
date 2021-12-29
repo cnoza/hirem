@@ -276,7 +276,7 @@ layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             monitor = "loss", patience = 20, family_for_init = NULL, nfolds = 5, bias_regularization = TRUE,
                             bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4, bayesOpt_step = 1,
-                            filter = NULL, transformation = NULL) {
+                            filter = NULL, transformation = NULL, gridsearch_cv = F, gridsearch_cv.min = T, hyper_grid = NULL, one_hot = TRUE) {
 
   options <- c()
   options$step_log <- step_log
@@ -311,7 +311,10 @@ layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.
   options$output_dim <- output_dim
   options$embedding_var <- embedding_var
   options$bayesOpt_step <- bayesOpt_step
-
+  options$gridsearch_cv <- gridsearch_cv
+  options$gridsearch_cv.min <- gridsearch_cv.min
+  options$hyper_grid <- hyper_grid
+  options$one_hot <- one_hot
 
   if(is.null(options$ae.hidden)) {
     if(!is.null(options$ae.activation.hidden)) stop('If ae.hidden is NULL, so should be ae.activation.hidden.')
@@ -417,7 +420,7 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
                        fixed.cann = TRUE, batch_normalization = FALSE, monitor = 'loss', patience = 20, verbose = 0,
                        loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                        nfolds = 5, bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4, bayesOpt_step = 1,
-                       filter = NULL, transformation = NULL) {
+                       filter = NULL, transformation = NULL, gridsearch_cv = F, gridsearch_cv.min = T, hyper_grid = NULL) {
 
   options <- c()
   options$distribution <- distribution
@@ -453,6 +456,9 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$embedding_var <- embedding_var
   options$embedding_var.glm <- embedding_var.glm
   options$bayesOpt_step <- bayesOpt_step
+  options$gridsearch_cv <- gridsearch_cv
+  options$gridsearch_cv.min <- gridsearch_cv.min
+  options$hyper_grid <- hyper_grid
 
   if(is.null(options$hidden)) {
     if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')

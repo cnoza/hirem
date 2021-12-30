@@ -645,7 +645,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
             y = x,
             epochs = layer$method_options$epochs,
             batch_size = layer$method_options$batch_size,
-            verbose = layer$method_options$verbose
+            verbose = layer$method_options$verbose,
+            shuffle = layer$method_options$shuffle
           )
 
           x <- model_en %>% predict(x)
@@ -684,7 +685,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       }
 
       y.val    <- layer$y[Folds[[k]]]
-      sample.w.val <- weights.vec[Folds[[k]]]
+      sample.w.val <- weights.vec.n[Folds[[k]]]
 
       if(layer$method_options$nfolds==1) {
         if(!layer$method_options$use_embedding) {
@@ -719,7 +720,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y <- layer$y[-Folds[[k]]]
-        sample.w <- weights.vec[-Folds[[k]]]
+        sample.w <- weights.vec.n[-Folds[[k]]]
 
       }
 
@@ -770,7 +771,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                activation.output=layer$method_options$activation.output,
                                x=x,
                                use_bias=layer$method_options$use_bias,
-                               weights.vec=weights.vec)
+                               weights.vec=weights.vec.n)
 
       if(!layer$method_options$use_embedding) {
         model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -834,7 +835,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
             y = x,
             epochs = layer$method_options$epochs,
             batch_size = layer$method_options$batch_size,
-            verbose = layer$method_options$verbose
+            verbose = layer$method_options$verbose,
+            shuffle = layer$method_options$shuffle
           )
 
           x <- model_en %>% predict(x)
@@ -872,7 +874,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val    <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec[Folds[[k]]]
+        sample.w.val <- weights.vec.n[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
           if(!layer$method_options$use_embedding) {
@@ -907,7 +909,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec[-Folds[[k]]]
+          sample.w <- weights.vec.n[-Folds[[k]]]
 
         }
 
@@ -958,7 +960,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                  activation.output=layer$method_options$activation.output,
                                  x=x,
                                  use_bias=layer$method_options$use_bias,
-                                 weights.vec=weights.vec)
+                                 weights.vec=weights.vec.n)
 
         if(!layer$method_options$use_embedding) {
           model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -1005,6 +1007,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        #validation_split = layer$method_options$validation_split,
                        validation_data = list(x.inputs.val,y.val,sample.w.val),
                        callbacks = list(earlystopping),
+                       shuffle = layer$method_options$shuffle,
                        verbose = layer$method_options$verbose)
         }
         else {
@@ -1014,6 +1017,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        validation_split = layer$method_options$validation_split,
                        #validation_data = list(x.inputs.val,y.val,sample.w.val),
                        callbacks = list(earlystopping),
+                       shuffle = layer$method_options$shuffle,
                        verbose = layer$method_options$verbose)
         }
 
@@ -1125,7 +1129,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
             y = x,
             epochs = layer$method_options$epochs,
             batch_size = layer$method_options$batch_size,
-            verbose = layer$method_options$verbose
+            verbose = layer$method_options$verbose,
+            shuffle = layer$method_options$shuffle
           )
 
           x <- model_en %>% predict(x)
@@ -1163,7 +1168,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val    <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec[Folds[[k]]]
+        sample.w.val <- weights.vec.n[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
           if(!layer$method_options$use_embedding) {
@@ -1198,7 +1203,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec[-Folds[[k]]]
+          sample.w <- weights.vec.n[-Folds[[k]]]
 
         }
 
@@ -1249,7 +1254,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                  activation.output=layer$method_options$activation.output,
                                  x=x,
                                  use_bias=layer$method_options$use_bias,
-                                 weights.vec=weights.vec)
+                                 weights.vec=weights.vec.n)
 
         if(!layer$method_options$use_embedding) {
           model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -1294,6 +1299,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        #validation_split = layer$method_options$validation_split,
                        validation_data = list(x.inputs.val,y.val,sample.w.val),
                        callbacks = list(earlystopping),
+                       shuffle = layer$method_options$shuffle,
                        verbose = layer$method_options$verbose)
         }
         else {
@@ -1303,6 +1309,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        validation_split = layer$method_options$validation_split,
                        #validation_data = list(x.inputs.val,y.val,sample.w.val),
                        callbacks = list(earlystopping),
+                       shuffle = layer$method_options$shuffle,
                        verbose = layer$method_options$verbose)
         }
 
@@ -1395,7 +1402,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   y <- layer$y
-  sample.w <- weights.vec
+  sample.w <- weights.vec.n
 
   if(!is.null(layer$method_options$ae.hidden)) {
 
@@ -1420,7 +1427,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       y = x,
       epochs = layer$method_options$epochs,
       batch_size = layer$method_options$batch_size,
-      verbose = layer$method_options$verbose
+      verbose = layer$method_options$verbose,
+      shuffle = layer$method_options$shuffle
     )
 
     x <- model_en %>% predict(x)
@@ -1448,7 +1456,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                            activation.output=layer$method_options$activation.output,
                            x=x,
                            use_bias=layer$method_options$use_bias,
-                           weights.vec=weights.vec)
+                           weights.vec=weights.vec.n)
 
   if(!is.null(layer$method_options$family_for_init)) layer$glm.hom <- dnn_arch$glm.hom
 
@@ -1476,13 +1484,65 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     patience = layer$method_options$patience,
     restore_best_weights = T)
 
+  indVal <- caret::createDataPartition(y=y,p=layer$method_options$validation_split, list=FALSE)
+
+  if(!layer$method_options$use_embedding) {
+      x.val    <- x[indVal,]
+  }
+  else {
+    x_fact.val <- NULL
+    if(length(layer$fact_var)>0) {
+      x_fact.val <- list()
+      for(i in 1:length(layer$fact_var)) {
+        x_fact.val[[i]] <- layer$x_fact[[i]][indVal] %>% as.integer()
+      }
+    }
+
+    x_no_fact.val <- NULL
+    if(length(layer$no_fact_var)>0)
+      x_no_fact.val  <- layer$x_no_fact[indVal,] %>% as.matrix()
+  }
+
+  y.val    <- layer$y[indVal]
+  sample.w.val <- weights.vec.n[indVal]
+
+  if(!layer$method_options$use_embedding) {
+    x <- x[-indVal,]
+  }
+  else {
+    x_fact <- NULL
+    if(length(layer$fact_var)>0) {
+      x_fact <- list()
+      for(i in 1:length(layer$fact_var)) {
+        x_fact[[i]] <- layer$x_fact[[i]][-indVal] %>% as.integer()
+      }
+    }
+    x_no_fact <- NULL
+    if(length(layer$no_fact_var)>0)
+      x_no_fact <- layer$x_no_fact[-indVal,] %>% as.matrix()
+  }
+
+  y <- layer$y[-indVal]
+  sample.w <- weights.vec.n[-indVal]
+
   if(!layer$method_options$use_embedding) {
     x.inputs <- list(x)
+    x.inputs.val <- list(x.val)
   }
   else {
     x.inputs <- list(x_no_fact,x_fact)
     x.inputs[sapply(x.inputs, is.null)] <- NULL
+    x.inputs.val <- list(x_no_fact.val,x_fact.val)
+    x.inputs.val[sapply(x.inputs.val, is.null)] <- NULL
   }
+
+  # if(!layer$method_options$use_embedding) {
+  #   x.inputs <- list(x)
+  # }
+  # else {
+  #   x.inputs <- list(x_no_fact,x_fact)
+  #   x.inputs[sapply(x.inputs, is.null)] <- NULL
+  # }
 
   #now <- Sys.time()
   #fn <- paste0("./tmp/dnn_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
@@ -1492,9 +1552,11 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   layer$history <- model %>%
     keras::fit(x=x.inputs, y=y, sample_weight=sample.w, epochs = layer$method_options$epochs,
                batch_size = layer$method_options$batch_size,
-               validation_split = layer$method_options$validation_split,
+               validation_data = list(x.inputs.val,y.val,sample.w.val),
+               #validation_split = layer$method_options$validation_split,
                #callbacks = list(earlystopping, CBs),
                callbacks = list(earlystopping),
+               shuffle = layer$method_options$shuffle,
                verbose = layer$method_options$verbose)
 
   #load_model_weights_hdf5(model, fn)
@@ -1537,7 +1599,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     Zlearn    <- data.frame(zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
 
-    Zlearn$yy <- y
+    Zlearn$yy <- layer$y
 
     # We keep track of the pre-processed data for analysis purposes
     layer$Zlearn <- Zlearn
@@ -1553,10 +1615,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     else
       stop('Bias regularization is not supported for this distribution.')
 
-    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec.n)
     cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
     if(length(cov)>0) {
-      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec)
+      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec.n)
       layer$fit <- glm2
     }
     else layer$fit <- glm1
@@ -1579,6 +1641,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
                                            if(!layer$method_options$use_embedding) {
                                              x.tmp <- def_x$x
+                                             if(!is.null(layer$method_options$ae.hidden))
+                                               x.tmp <- model_en %>% predict(x.tmp)
                                              x.inputs.tmp <- list(x.tmp)
                                            }
                                            else {
@@ -1587,9 +1651,6 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                              x.inputs.tmp <- list(x_no_fact.tmp,x_fact.tmp)
                                              x.inputs.tmp[sapply(x.inputs.tmp, is.null)] <- NULL
                                            }
-
-                                           if(!is.null(layer$method_options$ae.hidden))
-                                             x.tmp <- model_en %>% predict(x.tmp)
 
                                            if(layer$method_options$bias_regularization) {
                                              Zlearn.tmp   <- data.frame(layer$zz %>% predict(x.inputs.tmp))
@@ -1602,10 +1663,31 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                         })
   }
 
-  if(layer$method_options$bias_regularization)
+  if(!layer$method_options$use_embedding) {
+    if(!is.null(layer$method_options$ae.hidden)) {
+      x <- data.frame(model_en %>% predict(def_x$x)) %>% as.matrix()
+    }
+    else {
+      x <- def_x$x
+    }
+    x.inputs <- list(x)
+  }
+  else {
+    x.inputs <- list(def_x$x_no_fact,def_x$x_fact)
+    x.inputs[sapply(x.inputs, is.null)] <- NULL
+  }
+
+  if(layer$method_options$bias_regularization) {
+    # Zlearn   <- data.frame(obj$zz %>% predict(x.inputs))
+    # names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
+    # pred <- predict(obj$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
     pred <- layer$fit$fitted.values
-  else
+  }
+  else {
     pred <- layer$fit %>% predict(x.inputs)
+  }
+
+  y <- layer$y
 
   if(layer$method_options$distribution == 'gaussian') {
     layer$sigma <- sd(pred - y)
@@ -1682,7 +1764,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
-  model.glm       <- glm(f.glm, data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec)
+  model.glm       <- glm(f.glm, data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec.n)
   layer$model.glm <- model.glm
 
   if(!layer$method_options$use_embedding) {
@@ -1803,7 +1885,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       }
 
       y.val        <- layer$y[Folds[[k]]]
-      sample.w.val <- weights.vec[Folds[[k]]]
+      sample.w.val <- weights.vec.n[Folds[[k]]]
 
       if(layer$method_options$nfolds==1) {
 
@@ -1853,7 +1935,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y <- layer$y[-Folds[[k]]]
-        sample.w <- weights.vec[-Folds[[k]]]
+        sample.w <- weights.vec.n[-Folds[[k]]]
 
       }
 
@@ -2004,7 +2086,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val        <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec[Folds[[k]]]
+        sample.w.val <- weights.vec.n[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
 
@@ -2054,7 +2136,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec[-Folds[[k]]]
+          sample.w <- weights.vec.n[-Folds[[k]]]
 
         }
 
@@ -2183,6 +2265,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        #validation_split = layer$method_options$validation_split,
                        validation_data = list(x.inputs.val,y.val,sample.w.val),
                        callbacks = list(earlystopping),
+                       shuffle = layer$method_options$shuffle,
                        verbose = layer$method_options$verbose)
         }
         else {
@@ -2192,6 +2275,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        validation_split = layer$method_options$validation_split,
                        #validation_data = list(x.inputs.val,y.val,sample.w.val),
                        callbacks = list(earlystopping),
+                       shuffle = layer$method_options$shuffle,
                        verbose = layer$method_options$verbose)
         }
 
@@ -2297,7 +2381,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val        <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec[Folds[[k]]]
+        sample.w.val <- weights.vec.n[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
 
@@ -2347,7 +2431,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec[-Folds[[k]]]
+          sample.w <- weights.vec.n[-Folds[[k]]]
 
         }
 
@@ -2475,6 +2559,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        #validation_split = layer$method_options$validation_split,
                        validation_data = list(x.inputs.val,y.val,sample.w.val),
                        callbacks = list(earlystopping),
+                       shuffle = layer$method_options$shuffle,
                        verbose = layer$method_options$verbose)
         }
         else {
@@ -2484,6 +2569,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        validation_split = layer$method_options$validation_split,
                        #validation_data = list(x.inputs.val,y.val,sample.w.val),
                        callbacks = list(earlystopping),
+                       shuffle = layer$method_options$shuffle,
                        verbose = layer$method_options$verbose)
         }
 
@@ -2569,7 +2655,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   y        <- layer$y
-  sample.w <- weights.vec
+  sample.w <- weights.vec.n
 
 
   def_inputs <- def_inputs(use_embedding=layer$method_options$use_embedding,
@@ -2650,13 +2736,92 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     patience = layer$method_options$patience,
     restore_best_weights = T)
 
+  indVal <- caret::createDataPartition(y=y,p=layer$method_options$validation_split, list=FALSE)
+
+  if(!layer$method_options$use_embedding) {
+    x.val         <- layer$x[indVal,] %>% as.matrix()
+    x.glm.val     <- layer$x.glm[indVal,] %>% as.matrix()
+  }
+  else {
+
+    x_fact.val <- NULL
+    if(length(layer$fact_var)>0) {
+      x_fact.val <- list()
+      for(i in 1:length(layer$fact_var)) {
+        x_fact.val[[i]] <- layer$x_fact[[i]][indVal] %>% as.integer()
+      }
+    }
+
+    x_no_fact.val <- NULL
+    if(length(layer$no_fact_var)>0)
+      x_no_fact.val  <- layer$x_no_fact[indVal,] %>% as.matrix()
+
+    x_fact.glm.val <- NULL
+    if(length(layer$fact_var.glm)>0) {
+      x_fact.glm.val <- list()
+      for(i in 1:length(layer$fact_var.glm)) {
+        x_fact.glm.val[[i]] <- layer$x_fact.glm[[i]][indVal] %>% as.integer()
+      }
+    }
+
+    x_no_fact.glm.val <- NULL
+    if(length(layer$no_fact_var.glm)>0)
+      x_no_fact.glm.val <- layer$x_no_fact.glm[indVal,] %>% as.matrix()
+
+  }
+
+  y.val        <- layer$y[indVal]
+  sample.w.val <- weights.vec.n[indVal]
+
+  if(!layer$method_options$use_embedding) {
+    x      <- layer$x[-indVal,]
+    x.glm  <- layer$x.glm[-indVal,]
+  }
+  else {
+    x_fact <- NULL
+    if(length(layer$fact_var)>0) {
+      x_fact <- list()
+      for(i in 1:length(layer$fact_var)) {
+        x_fact[[i]] <- layer$x_fact[[i]][-indVal] %>% as.integer()
+      }
+    }
+    x_no_fact <- NULL
+    if(length(layer$no_fact_var)>0)
+      x_no_fact <- layer$x_no_fact[-indVal,] %>% as.matrix()
+
+    x_fact.glm <- NULL
+    if(length(layer$fact_var.glm)>0) {
+      x_fact.glm <- list()
+      for(i in 1:length(layer$fact_var.glm)) {
+        x_fact.glm[[i]] <- layer$x_fact.glm[[i]][-indVal] %>% as.integer()
+      }
+    }
+    x_no_fact.glm <- NULL
+    if(length(layer$no_fact_var.glm)>0)
+      x_no_fact.glm <- layer$x_no_fact.glm[-indVal,] %>% as.matrix()
+  }
+
+  y <- layer$y[-indVal]
+  sample.w <- weights.vec.n[-indVal]
+
   if(!layer$method_options$use_embedding) {
     x.inputs <- list(x,x.glm)
+    x.inputs.val <- list(x.val,x.glm.val)
   }
   else {
     x.inputs <- list(x_no_fact.glm,x_fact.glm,x_no_fact,x_fact)
     x.inputs[sapply(x.inputs, is.null)] <- NULL
+    x.inputs.val <- list(x_no_fact.glm.val,x_fact.glm.val,x_no_fact.val,x_fact.val)
+    x.inputs.val[sapply(x.inputs.val, is.null)] <- NULL
   }
+
+  # if(!layer$method_options$use_embedding) {
+  #   x.inputs <- list(x,x.glm)
+  # }
+  # else {
+  #   x.inputs <- list(x_no_fact.glm,x_fact.glm,x_no_fact,x_fact)
+  #   x.inputs[sapply(x.inputs, is.null)] <- NULL
+  # }
 
   #now <- Sys.time()
   #fn <- paste0("./tmp/cann_best_weights_",format(now, "%Y%m%d_%H%M%S.hdf5"))
@@ -2666,9 +2831,11 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   layer$history <- CANN %>%
     keras::fit(x=x.inputs, y=y, sample_weight=sample.w, epochs = layer$method_options$epochs,
                batch_size = layer$method_options$batch_size,
-               validation_split = layer$method_options$validation_split,
+               validation_data = list(x.inputs.val,y.val,sample.w.val),
+               #validation_split = layer$method_options$validation_split,
                #callbacks = list(earlystopping,CBs),
                callbacks = list(earlystopping),
+               shuffle = layer$method_options$shuffle,
                verbose = layer$method_options$verbose)
 
   #load_model_weights_hdf5(CANN, fn)
@@ -2704,6 +2871,31 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     #glm.pred <- layer$model.glm$fitted.values
     glm.pred <- layer$model.glm$linear.predictors
 
+    if(!layer$method_options$use_embedding) {
+      x     <- layer$x
+      x.glm <- layer$x.glm
+    }
+    else {
+      x_fact        <-layer$x_fact
+      x_no_fact     <-layer$x_no_fact
+      x_fact.glm    <-layer$x_fact.glm
+      x_no_fact.glm <-layer$x_no_fact.glm
+      no_fact_var   <-layer$no_fact_var
+      no_fact_var.glm <- layer$no_fact_var.glm
+      fact_var.glm  <- layer$fact_var.glm
+      fact_var      <- layer$fact_var
+    }
+
+    y <- layer$y
+
+    if(!layer$method_options$use_embedding) {
+      x.inputs <- list(x,x.glm)
+    }
+    else {
+      x.inputs <- list(x_no_fact.glm,x_fact.glm,x_no_fact,x_fact)
+      x.inputs[sapply(x.inputs, is.null)] <- NULL
+    }
+
     Zlearn    <- data.frame(zz %>% predict(x.inputs))
     names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
 
@@ -2725,11 +2917,11 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     else
       stop('Bias regularization is not supported for this distribution.')
 
-    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-2)), data=Zlearn, family=fam, weights = weights.vec)
-    #glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-2)), data=Zlearn, family=fam, weights = weights.vec.n)
+    #glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec.n)
     cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
     if(length(cov)>0) {
-      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec)
+      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec.n)
       layer$fit <- glm2
     }
     else layer$fit <- glm1
@@ -2791,6 +2983,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     pred <- layer$fit$fitted.values
   else
     pred <- layer$fit %>% predict(x.inputs)
+
+  y <- layer$y
 
   if(layer$method_options$distribution == 'gaussian') {
     layer$sigma <- sd(pred - y)

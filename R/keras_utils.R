@@ -44,7 +44,10 @@ def_dnn_arch <- function(inputs,
                          activation.output,
                          x,
                          use_bias,
-                         weights.vec) {
+                         weights.vec,
+                         x_fact=NULL,
+                         x_no_fact=NULL,
+                         output_dim=1) {
 
   if(batch_normalization)
     output <- inputs %>% layer_batch_normalization()
@@ -78,9 +81,14 @@ def_dnn_arch <- function(inputs,
     f.hom <- paste0(label, '~ 1')
     glm.hom <- glm(as.formula(f.hom),data = data, family = family_for_init, weights = weights.vec)
 
+    if(!is.null(x_fact) | !is.null(x_no_fact))
+      dim_x <- length(x_fact)*output_dim + ifelse(is.null(x_no_fact),0,ncol(x_no_fact))
+    else
+      dim_x <- ncol(x)
+
     output <- output %>%
       layer_dense(units = 1, activation = activation.output,
-                  weights = list(array(0,dim=c(ifelse(!is.null(hidden),hidden[n],c(ncol(x))),1)),
+                  weights = list(array(0,dim=c(ifelse(!is.null(hidden),hidden[n],c(dim_x)),1)),
                                  array(glm.hom$coefficients[1], dim=c(1))),
                   use_bias = use_bias,
                   name = 'output_layer')

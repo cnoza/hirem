@@ -555,6 +555,9 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(ncol(data_baked) == 1)
     data_baked <- data_baked %>% mutate(intercept = 1)
 
+  x_fact <- NULL
+  x_no_fact <- NULL
+
   def_x <- def_x_mlp(layer$method_options$use_embedding,
                      layer$method_options$embedding_var,
                      f,
@@ -593,20 +596,30 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     if(!is.null(layer$method_options$hyper_grid)) {
       hyper_grid <- layer$method_options$hyper_grid
-      hyper_grid <- hyper_grid %>%
-        filter(!(dnn_hidden_1 == 0 & ((dnn_hidden_2 != 0) | (dnn_hidden_3 != 0)))) %>%
-        filter(!(dnn_hidden_2 == 0 & dnn_hidden_3 != 0))
+      if('dnn_hidden_1' %in% names(hyper_grid)) {
+        if('dnn_hidden_2' %in% names(hyper_grid)) {
+          if('dnn_hidden_3' %in% names(hyper_grid)) {
+            hyper_grid <- hyper_grid %>%
+              filter(!(dnn_hidden_1 == 0 & ((dnn_hidden_2 != 0) | (dnn_hidden_3 != 0)))) %>%
+              filter(!(dnn_hidden_2 == 0 & dnn_hidden_3 != 0))
+          }
+          else {
+            hyper_grid <- hyper_grid %>%
+              filter(!(dnn_hidden_1 == 0 & dnn_hidden_2 != 0))
+          }
+        }
+      }
     }
     else {
       hyper_grid <- expand.grid(
-        dnn_hidden_1 = seq(from = 10, to = 60, by = 10)
-      , dnn_hidden_2 = seq(from = 10, to = 60, by = 10)
-      , dnn_hidden_3 = seq(from = 10, to = 60, by = 10)
+        dnn_hidden_1 = seq(from = 0, to = 30, by = 10)
+      , dnn_hidden_2 = seq(from = 0, to = 30, by = 10)
+      , dnn_hidden_3 = seq(from = 0, to = 30, by = 10)
       )
     }
 
 
-    if(layer$method_options$verbose == 1) cat('Initializing the weights...')
+    if(layer$method_options$verbose == 1) cat('Initializing the weights...\n')
 
     init_weights <- list()
 
@@ -771,7 +784,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                activation.output=layer$method_options$activation.output,
                                x=x,
                                use_bias=layer$method_options$use_bias,
-                               weights.vec=weights.vec.n)
+                               weights.vec=weights.vec.n,
+                               x_fact = x_fact,
+                               x_no_fact = x_no_fact,
+                               output_dim = layer$method_options$output_dim)
 
       if(!layer$method_options$use_embedding) {
         model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -788,19 +804,17 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         metrics = layer$method_options$metrics
       )
 
-      if(layer$method_options$verbose == 1) print(summary(model))
+      if(layer$method_options$verbose > 1) print(summary(model))
 
       init_weights[[j]] <- keras::get_weights(model)
 
     }
 
-    if(layer$method_options$verbose == 1) cat('Starting hypergrid search...')
+    if(layer$method_options$verbose == 1) cat('Starting hypergrid search...\n')
 
     best_score <- ifelse(layer$method_options$gridsearch_cv.min, 10^6, -10^6)
 
     for(j in seq_len(nrow(hyper_grid))) {
-
-      if(layer$method_options$verbose == 1) print(hyper_grid[j,])
 
       if(!layer$method_options$use_embedding) {
 
@@ -960,7 +974,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                  activation.output=layer$method_options$activation.output,
                                  x=x,
                                  use_bias=layer$method_options$use_bias,
-                                 weights.vec=weights.vec.n)
+                                 weights.vec=weights.vec.n,
+                                 x_fact = x_fact,
+                                 x_no_fact = x_no_fact,
+                                 output_dim = layer$method_options$output_dim)
 
         if(!layer$method_options$use_embedding) {
           model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -1254,7 +1271,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                  activation.output=layer$method_options$activation.output,
                                  x=x,
                                  use_bias=layer$method_options$use_bias,
-                                 weights.vec=weights.vec.n)
+                                 weights.vec=weights.vec.n,
+                                 x_fact = x_fact,
+                                 x_no_fact = x_no_fact,
+                                 output_dim = layer$method_options$output_dim)
 
         if(!layer$method_options$use_embedding) {
           model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -1456,7 +1476,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                            activation.output=layer$method_options$activation.output,
                            x=x,
                            use_bias=layer$method_options$use_bias,
-                           weights.vec=weights.vec.n)
+                           weights.vec=weights.vec.n,
+                           x_fact = x_fact,
+                           x_no_fact = x_no_fact,
+                           output_dim = layer$method_options$output_dim)
 
   if(!is.null(layer$method_options$family_for_init)) layer$glm.hom <- dnn_arch$glm.hom
 

@@ -684,7 +684,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       }
 
       y.val    <- layer$y[Folds[[k]]]
-      sample.w.val <- weights.vec.n[Folds[[k]]]
+      sample.w.val <- weights.vec[Folds[[k]]]
 
       if(layer$method_options$nfolds==1) {
         if(!layer$method_options$use_embedding) {
@@ -719,7 +719,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y <- layer$y[-Folds[[k]]]
-        sample.w <- weights.vec.n[-Folds[[k]]]
+        sample.w <- weights.vec[-Folds[[k]]]
 
       }
 
@@ -770,7 +770,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                activation.output=layer$method_options$activation.output,
                                x=x,
                                use_bias=layer$method_options$use_bias,
-                               weights.vec=weights.vec.n)
+                               weights.vec=weights.vec)
 
       if(!layer$method_options$use_embedding) {
         model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -872,7 +872,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val    <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec.n[Folds[[k]]]
+        sample.w.val <- weights.vec[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
           if(!layer$method_options$use_embedding) {
@@ -907,7 +907,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec.n[-Folds[[k]]]
+          sample.w <- weights.vec[-Folds[[k]]]
 
         }
 
@@ -958,7 +958,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                  activation.output=layer$method_options$activation.output,
                                  x=x,
                                  use_bias=layer$method_options$use_bias,
-                                 weights.vec=weights.vec.n)
+                                 weights.vec=weights.vec)
 
         if(!layer$method_options$use_embedding) {
           model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -1163,7 +1163,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val    <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec.n[Folds[[k]]]
+        sample.w.val <- weights.vec[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
           if(!layer$method_options$use_embedding) {
@@ -1198,7 +1198,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec.n[-Folds[[k]]]
+          sample.w <- weights.vec[-Folds[[k]]]
 
         }
 
@@ -1249,7 +1249,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                  activation.output=layer$method_options$activation.output,
                                  x=x,
                                  use_bias=layer$method_options$use_bias,
-                                 weights.vec=weights.vec.n)
+                                 weights.vec=weights.vec)
 
         if(!layer$method_options$use_embedding) {
           model <- keras_model(inputs = def_inputs$inputs, outputs = c(dnn_arch$output))
@@ -1395,7 +1395,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   y <- layer$y
-  sample.w <- weights.vec.n
+  sample.w <- weights.vec
 
   if(!is.null(layer$method_options$ae.hidden)) {
 
@@ -1448,7 +1448,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                            activation.output=layer$method_options$activation.output,
                            x=x,
                            use_bias=layer$method_options$use_bias,
-                           weights.vec=weights.vec.n)
+                           weights.vec=weights.vec)
 
   if(!is.null(layer$method_options$family_for_init)) layer$glm.hom <- dnn_arch$glm.hom
 
@@ -1553,10 +1553,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     else
       stop('Bias regularization is not supported for this distribution.')
 
-    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec.n)
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
     cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
     if(length(cov)>0) {
-      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec.n)
+      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec)
       layer$fit <- glm2
     }
     else layer$fit <- glm1
@@ -1682,7 +1682,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(ncol(data_baked.glm) == 1)
     data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
 
-  model.glm       <- glm(f.glm, data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec.n)
+  model.glm       <- glm(f.glm, data = data_baked.glm, family = layer$method_options$family_for_glm, weights = weights.vec)
   layer$model.glm <- model.glm
 
   if(!layer$method_options$use_embedding) {
@@ -1803,7 +1803,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       }
 
       y.val        <- layer$y[Folds[[k]]]
-      sample.w.val <- weights.vec.n[Folds[[k]]]
+      sample.w.val <- weights.vec[Folds[[k]]]
 
       if(layer$method_options$nfolds==1) {
 
@@ -1853,7 +1853,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y <- layer$y[-Folds[[k]]]
-        sample.w <- weights.vec.n[-Folds[[k]]]
+        sample.w <- weights.vec[-Folds[[k]]]
 
       }
 
@@ -2004,7 +2004,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val        <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec.n[Folds[[k]]]
+        sample.w.val <- weights.vec[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
 
@@ -2054,7 +2054,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec.n[-Folds[[k]]]
+          sample.w <- weights.vec[-Folds[[k]]]
 
         }
 
@@ -2297,7 +2297,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         }
 
         y.val        <- layer$y[Folds[[k]]]
-        sample.w.val <- weights.vec.n[Folds[[k]]]
+        sample.w.val <- weights.vec[Folds[[k]]]
 
         if(layer$method_options$nfolds==1) {
 
@@ -2347,7 +2347,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
           }
 
           y <- layer$y[-Folds[[k]]]
-          sample.w <- weights.vec.n[-Folds[[k]]]
+          sample.w <- weights.vec[-Folds[[k]]]
 
         }
 
@@ -2569,7 +2569,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   y        <- layer$y
-  sample.w <- weights.vec.n
+  sample.w <- weights.vec
 
 
   def_inputs <- def_inputs(use_embedding=layer$method_options$use_embedding,
@@ -2725,11 +2725,11 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     else
       stop('Bias regularization is not supported for this distribution.')
 
-    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-2)), data=Zlearn, family=fam, weights = weights.vec.n)
-    #glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec.n)
+    glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-2)), data=Zlearn, family=fam, weights = weights.vec)
+    #glm1 <- glm(as.formula(glm.formula(ncol(Zlearn)-1)), data=Zlearn, family=fam, weights = weights.vec)
     cov <- names(glm1$coefficients[!sapply(glm1$coefficients,is.na)])
     if(length(cov)>0) {
-      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec.n)
+      glm2 <- glm(as.formula(glm.formula.2(cov)), data=Zlearn, family=fam, weights = weights.vec)
       layer$fit <- glm2
     }
     else layer$fit <- glm1

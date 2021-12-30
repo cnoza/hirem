@@ -1584,6 +1584,11 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   #load_model_weights_hdf5(model, fn)
 
+  if(is.null(layer$method_options$hidden) & layer$method_options$bias_regularization) {
+    cat('Bias regularization was activated but since there is no hidden layer, it will be deactivated for you.\n')
+    layer$method_options$bias_regularization <- FALSE
+  }
+
   if(!layer$method_options$bias_regularization) {
     layer$fit <- model
   }

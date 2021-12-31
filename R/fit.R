@@ -619,7 +619,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     }
 
 
-    if(layer$method_options$verbose == 1) cat('Initializing the weights...\n')
+    cat('_ Initializing the weights...\n')
 
     init_weights <- list()
 
@@ -804,17 +804,26 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         metrics = layer$method_options$metrics
       )
 
-      if(layer$method_options$verbose > 1) print(summary(model))
+      if(layer$method_options$verbose == 1) print(summary(model))
 
       init_weights[[j]] <- keras::get_weights(model)
 
     }
 
-    if(layer$method_options$verbose == 1) cat('Starting hypergrid search...\n')
+    cat('_ Starting hypergrid search...\n')
+
+    earlystopping <- callback_early_stopping(
+      monitor = layer$method_options$monitor,
+      patience = layer$method_options$patience,
+      restore_best_weights = T)
 
     best_score <- ifelse(layer$method_options$gridsearch_cv.min, 10^6, -10^6)
 
     for(j in seq_len(nrow(hyper_grid))) {
+
+      cat(sprintf("_ Now testing hyper_grid row with "))
+      cat(sprintf("%s=%s",names(hyper_grid),hyper_grid[j,]))
+      cat('\n')
 
       if(!layer$method_options$use_embedding) {
 
@@ -998,10 +1007,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
         keras::set_weights(model, init_weights[[j]])
 
-        earlystopping <- callback_early_stopping(
-          monitor = layer$method_options$monitor,
-          patience = layer$method_options$patience,
-          restore_best_weights = T)
+        # earlystopping <- callback_early_stopping(
+        #   monitor = layer$method_options$monitor,
+        #   patience = layer$method_options$patience,
+        #   restore_best_weights = T)
 
 
         if(!layer$method_options$use_embedding) {
@@ -1038,16 +1047,24 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        verbose = layer$method_options$verbose)
         }
 
-        score[k] <- ifelse(layer$method_options$gridsearch_cv.min, -min(history$metrics[[2]]), max(history$metrics[[2]]))
+        score[k] <- ifelse(layer$method_options$gridsearch_cv.min, min(history$metrics[[4]]), max(history$metrics[[4]]))
+
+        cat(sprintf('_ Score for fold %s is %s\n',k,score[k]))
 
       }
 
       mean_score <- mean(score)
+      cat(sprintf('_ Mean score for hyper_grid row %s is %s\n',j,mean_score))
+
 
       if(ifelse(layer$method_options$gridsearch_cv.min, mean_score < best_score, mean_score > best_score)) {
 
           best_score <- mean_score
           best_j <- j
+
+          cat(sprintf("_ Best score so far is %s for hyper_grid row with ", best_score))
+          cat(sprintf("%s=%s",names(hyper_grid),hyper_grid[best_j,]))
+          cat('\n')
 
           if(is.null(layer$method_options$ae.hidden) &
              (!is.null(hyper_grid$ae_hidden_1) | !is.null(hyper_grid$ae_hidden_2) | !is.null(hyper_grid$ae_hidden_3))) {
@@ -1089,6 +1106,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       }
 
     }
+
+    cat(sprintf("_ Overall best score is %s for hyper_grid row with ", best_score))
+    cat(sprintf("%s=%s",names(hyper_grid),hyper_grid[best_j,]))
+    cat('\n')
 
     layer$best_score <- best_score
 
@@ -1333,7 +1354,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        verbose = layer$method_options$verbose)
         }
 
-        score[k] <- ifelse(layer$method_options$bayesOpt.min, -min(history$metrics[[2]]), max(history$metrics[[2]]))
+        score[k] <- ifelse(layer$method_options$bayesOpt.min, -min(history$metrics[[4]]), max(history$metrics[[4]]))
 
       }
 
@@ -1585,7 +1606,7 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   #load_model_weights_hdf5(model, fn)
 
   if(is.null(layer$method_options$hidden) & layer$method_options$bias_regularization) {
-    cat('Bias regularization was activated but since there is no hidden layer, it will be deactivated for you.\n')
+    cat('_ Bias regularization was activated but since there is no hidden layer, it will be deactivated for you.\n')
     layer$method_options$bias_regularization <- FALSE
   }
 
@@ -1858,9 +1879,19 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     if(!is.null(layer$method_options$hyper_grid)) {
       hyper_grid <- layer$method_options$hyper_grid
-      hyper_grid <- hyper_grid %>%
-        filter(!(dnn_hidden_1 == 0 & ((dnn_hidden_2 != 0) | (dnn_hidden_3 != 0)))) %>%
-        filter(!(dnn_hidden_2 == 0 & dnn_hidden_3 != 0))
+      if('dnn_hidden_1' %in% names(hyper_grid)) {
+        if('dnn_hidden_2' %in% names(hyper_grid)) {
+          if('dnn_hidden_3' %in% names(hyper_grid)) {
+            hyper_grid <- hyper_grid %>%
+              filter(!(dnn_hidden_1 == 0 & ((dnn_hidden_2 != 0) | (dnn_hidden_3 != 0)))) %>%
+              filter(!(dnn_hidden_2 == 0 & dnn_hidden_3 != 0))
+          }
+          else {
+            hyper_grid <- hyper_grid %>%
+              filter(!(dnn_hidden_1 == 0 & dnn_hidden_2 != 0))
+          }
+        }
+      }
     }
     else {
       hyper_grid <- expand.grid(
@@ -1871,7 +1902,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     }
 
 
-    if(layer$method_options$verbose == 1) cat('Initializing the weights...\n')
+    cat('_ Initializing the weights...\n')
 
     init_weights <- list()
 
@@ -2069,17 +2100,24 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     }
 
-    if(layer$method_options$verbose == 1) cat('Starting hypergrid search...\n')
+    cat('_ Starting hypergrid search...\n')
+
+    earlystopping <- callback_early_stopping(
+      monitor = layer$method_options$monitor,
+      patience = layer$method_options$patience,
+      restore_best_weights = T)
 
     best_score <- ifelse(layer$method_options$gridsearch_cv.min, 10^6, -10^6)
 
     for(j in seq_len(nrow(hyper_grid))) {
 
+      cat(sprintf("_ Now testing hyper_grid row with "))
+      cat(sprintf("%s=%s",names(hyper_grid),hyper_grid[j,]))
+      cat('\n')
+
       score <- c()
 
       for(k in 1:layer$method_options$nfolds) {
-
-        if(layer$method_options$verbose == 1) cat(sprintf("\n j=%s k=%s \n",j,k))
 
         if(!layer$method_options$use_embedding) {
           x.val         <- layer$x[Folds[[k]],] %>% as.matrix()
@@ -2270,10 +2308,10 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
         keras::set_weights(CANN.tmp, init_weights[[j]])
 
-        earlystopping <- callback_early_stopping(
-          monitor = layer$method_options$monitor,
-          patience = layer$method_options$patience,
-          restore_best_weights = T)
+        # earlystopping <- callback_early_stopping(
+        #   monitor = layer$method_options$monitor,
+        #   patience = layer$method_options$patience,
+        #   restore_best_weights = T)
 
         if(!layer$method_options$use_embedding) {
           x.inputs <- list(x,x.glm)
@@ -2307,16 +2345,24 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        verbose = layer$method_options$verbose)
         }
 
-        score[k] <- ifelse(layer$method_options$gridsearch_cv.min, -min(history.tmp$metrics[[2]]), max(history.tmp$metrics[[2]]))
+        score[k] <- ifelse(layer$method_options$gridsearch_cv.min, min(history.tmp$metrics[[4]]), max(history.tmp$metrics[[4]]))
+
+        cat(sprintf('_ Score for fold %s is %s\n',k,score[k]))
 
       }
 
       mean_score <- mean(score)
 
+      cat(sprintf('_ Mean score for hyper_grid row %s is %s\n',j,mean_score))
+
       if(ifelse(layer$method_options$gridsearch_cv.min, mean_score < best_score, mean_score > best_score)) {
 
         best_score <- mean_score
         best_j <- j
+
+        cat(sprintf("_ Best score so far is %s for hyper_grid row with ", best_score))
+        cat(sprintf("%s=%s",names(hyper_grid),hyper_grid[best_j,]))
+        cat('\n')
 
         if(is.null(layer$method_options$hidden) &
            ( (!is.null(hyper_grid$dnn_hidden_1) && hyper_grid$dnn_hidden_1[j] > 0) |
@@ -2349,6 +2395,10 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       }
 
     }
+
+    cat(sprintf("_ Overall best score is %s for hyper_grid row with ", best_score))
+    cat(sprintf("%s=%s",names(hyper_grid),hyper_grid[best_j,]))
+    cat('\n')
 
     layer$best_score <- best_score
 
@@ -2601,7 +2651,7 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                        verbose = layer$method_options$verbose)
         }
 
-        score[k] <- ifelse(layer$method_options$bayesOpt.min, -min(history.tmp$metrics[[2]]), max(history.tmp$metrics[[2]]))
+        score[k] <- ifelse(layer$method_options$bayesOpt.min, -min(history.tmp$metrics[[4]]), max(history.tmp$metrics[[4]]))
 
       }
 

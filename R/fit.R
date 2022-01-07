@@ -182,6 +182,9 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     best_eval_metric = 10^6
 
+    mean_scores <- c()
+    best_nrounds <- c()
+
     for(i in seq_len(nrow(hyper_grid))) {
 
       params = list(
@@ -217,6 +220,9 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       min_eval_metric <- min(xval$evaluation_log[,4])
       min_eval_index <- as.numeric(which.min(as.matrix(xval$evaluation_log[,4])))
 
+      mean_scores[i] <- min_eval_metric
+      best_nrounds[i] <- min_eval_index
+
       if (min_eval_metric < best_eval_metric) {
         best_eval_metric = min_eval_metric
         best_eval_index = min_eval_index
@@ -227,6 +233,11 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     nrounds <- best_eval_index
     layer$best_score <- best_eval_metric
     params <- best_param
+
+    layer$hyper_grid <- hyper_grid
+    layer$hyper_grid$mean_scores <- mean_scores
+    layer$hyper_grid$best_nrounds <- best_nrounds
+    layer$hyper_grid <- layer$hyper_grid %>% arrange(mean_scores)
 
   }
   else if(layer$method_options$bayesOpt) {
@@ -537,6 +548,9 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(!is.null(weights.vec)) weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
   else weights.vec.n <- NULL
 
+  # for testing purposes...
+  weights.vec.n <- NULL
+
   layer$weights.vec.n <- weights.vec.n
 
   data_recipe <- recipe(f, data=data)
@@ -819,6 +833,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     best_score <- ifelse(layer$method_options$gridsearch_cv.min, 10^6, -10^6)
 
+    mean_scores <- c()
+
     for(j in seq_len(nrow(hyper_grid))) {
 
       cat(sprintf("_ Now testing hyper_grid row with "))
@@ -1056,6 +1072,8 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       mean_score <- mean(score)
       cat(sprintf('_ Mean score for hyper_grid row %s is %s\n',j,mean_score))
 
+      mean_scores[j] <- mean_score
+
 
       if(ifelse(layer$method_options$gridsearch_cv.min, mean_score < best_score, mean_score > best_score)) {
 
@@ -1112,6 +1130,9 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     cat('\n')
 
     layer$best_score <- best_score
+    layer$hyper_grid <- hyper_grid
+    layer$hyper_grid$mean_scores <- mean_scores
+    layer$hyper_grid <- layer$hyper_grid %>% arrange(mean_scores)
 
   }
 
@@ -1792,6 +1813,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(!is.null(weights.vec)) weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
   else weights.vec.n <- NULL
 
+  # for testing purposes...
+  weights.vec.n <- NULL
+
   data_recipe     <- recipe(f, data=data)
   data_recipe.glm <- recipe(f.glm, data=data)
 
@@ -2109,6 +2133,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
     best_score <- ifelse(layer$method_options$gridsearch_cv.min, 10^6, -10^6)
 
+    mean_scores <- c()
+
     for(j in seq_len(nrow(hyper_grid))) {
 
       cat(sprintf("_ Now testing hyper_grid row with "))
@@ -2353,6 +2379,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
       mean_score <- mean(score)
 
+      mean_scores[j] <- mean_score
+
       cat(sprintf('_ Mean score for hyper_grid row %s is %s\n',j,mean_score))
 
       if(ifelse(layer$method_options$gridsearch_cv.min, mean_score < best_score, mean_score > best_score)) {
@@ -2401,6 +2429,9 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     cat('\n')
 
     layer$best_score <- best_score
+    layer$hyper_grid <- hyper_grid
+    layer$hyper_grid$mean_scores <- mean_scores
+    layer$hyper_grid <- layer$hyper_grid %>% arrange(mean_scores)
 
   }
   else if(layer$method_options$bayesOpt) {

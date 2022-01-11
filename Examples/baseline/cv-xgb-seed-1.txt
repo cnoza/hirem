@@ -1,0 +1,29 @@
+settlement
+
+   eta max_depth min_child_weight subsample colsample_bynode gamma lambda alpha mean_scores best_nrounds
+1 1.00         1              100         1                1     0      1     0   0.6181440           13
+2 0.50         1              100         1                1     0      1     0   0.6181620           33
+3 0.05         1              100         1                1     0      1     0   0.6182302          332
+4 0.05         3              100         1                1     0      1     0   0.6184786           89
+5 0.50         3              100         1                1     0      1     0   0.6187458            6
+6 1.00         3              100         1                1     0      1     0   0.6189420            2
+
+payment
+
+   eta max_depth min_child_weight subsample colsample_bynode gamma lambda alpha mean_scores best_nrounds
+1 0.05         3              100         1                1     0      1     0   0.5631736          106
+2 0.50         3              100         1                1     0      1     0   0.5634826            7
+3 1.00         3              100         1                1     0      1     0   0.5639364            2
+4 0.50         1              100         1                1     0      1     0   0.5647754           29
+5 0.05         1              100         1                1     0      1     0   0.5648050          266
+6 1.00         1              100         1                1     0      1     0   0.5648132            6
+
+size
+
+   eta max_depth min_child_weight subsample colsample_bynode gamma lambda alpha mean_scores best_nrounds
+1 0.50         1              100         1                1     0      1     0    1.249802          160
+2 1.00         1              100         1                1     0      1     0    1.250636           73
+3 0.05         1              100         1                1     0      1     0    1.251374         1000
+4 0.50         3              100         1                1     0      1     0    1.258691           28
+5 0.05         3              100         1                1     0      1     0    1.259315          328
+6 1.00         3              100         1                1     0      1     0    1.272203           13

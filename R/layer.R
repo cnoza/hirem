@@ -125,7 +125,7 @@ layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, ver
                       eval_metric = 'rmse', eta = 0.05, nthread = 1, subsample = 1, colsample_bynode = 1, max_depth = 6, max_delta_step = 0, scale_pos_weight = 1,
                       min_child_weight = 100, gamma = 0, lambda = 1, alpha = 0, hyper_grid = NULL, gridsearch_cv = FALSE, nfolds = 5, tree_method = 'auto',
                       bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4,
-                      filter = NULL, transformation = NULL, select_trees = 'perf') {
+                      filter = NULL, transformation = NULL) {
 
   options <- c()
   options$nrounds <- nrounds

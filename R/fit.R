@@ -390,11 +390,6 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 
   }
 
-  if(layer$method_options$select_trees == 'last') {
-    nrounds <- layer$method_options$nrounds
-    layer$fit$niter <- NULL
-  }
-
   layer$fit <- xgb.train(
     data = data.xgb,
     nrounds = nrounds,

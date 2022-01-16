@@ -124,7 +124,7 @@ layer_gbm <- function(obj, name, distribution, n.trees = 500, interaction.depth 
 layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, verbose = 0, booster = 'gbtree', objective, stratified = T, grow_policy = 'depthwise',
                       eval_metric = 'rmse', eta = 0.05, nthread = 1, subsample = 1, colsample_bynode = 1, max_depth = 6, max_delta_step = 0, scale_pos_weight = 1,
                       min_child_weight = 100, gamma = 0, lambda = 1, alpha = 0, hyper_grid = NULL, gridsearch_cv = FALSE, nfolds = 5, tree_method = 'auto',
-                      bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4,
+                      bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4, random_trials = 0,
                       filter = NULL, transformation = NULL) {
 
   options <- c()
@@ -156,7 +156,7 @@ layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, ver
   options$bayesOpt_bounds <- bayesOpt_bounds
   options$bayesOpt_initPoints <- bayesOpt_initPoints
   options$scale_pos_weight <- scale_pos_weight
-  options$select_trees <- select_trees
+  options$random_trials <- random_trials
 
   if(options$gridsearch_cv & options$bayesOpt)
     stop('Those options, if TRUE, are mutually exclusive.')
@@ -276,7 +276,7 @@ layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.
                             loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                             monitor = "loss", patience = 20, family_for_init = NULL, nfolds = 5, bias_regularization = TRUE, shuffle = TRUE,
                             bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4, bayesOpt_step = 1,
-                            filter = NULL, transformation = NULL, gridsearch_cv = F, gridsearch_cv.min = T, hyper_grid = NULL, one_hot = TRUE) {
+                            filter = NULL, transformation = NULL, gridsearch_cv = F, gridsearch_cv.min = T, hyper_grid = NULL, random_trials = 0, one_hot = TRUE) {
 
   options <- c()
   options$step_log <- step_log
@@ -316,6 +316,7 @@ layer_dnn <- function(obj, name, distribution = 'gaussian', use_bias = TRUE, ae.
   options$hyper_grid <- hyper_grid
   options$one_hot <- one_hot
   options$shuffle <- shuffle
+  options$random_trials <- random_trials
 
   if(is.null(options$ae.hidden)) {
     if(!is.null(options$ae.activation.hidden)) stop('If ae.hidden is NULL, so should be ae.activation.hidden.')
@@ -421,7 +422,7 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
                        fixed.cann = TRUE, batch_normalization = FALSE, monitor = 'loss', patience = 20, verbose = 0, shuffle = TRUE,
                        loss = 'mse', optimizer = 'nadam', epochs = 20, batch_size = 1000, validation_split = .2, metrics = NULL,
                        nfolds = 5, bayesOpt = FALSE, bayesOpt_min = FALSE, bayesOpt_iters_n = 3, bayesOpt_bounds = NULL, bayesOpt_initPoints = 4, bayesOpt_step = 1,
-                       filter = NULL, transformation = NULL, gridsearch_cv = F, gridsearch_cv.min = T, hyper_grid = NULL) {
+                       filter = NULL, transformation = NULL, gridsearch_cv = F, gridsearch_cv.min = T, hyper_grid = NULL, random_trials = 0) {
 
   options <- c()
   options$distribution <- distribution
@@ -461,6 +462,7 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
   options$gridsearch_cv.min <- gridsearch_cv.min
   options$hyper_grid <- hyper_grid
   options$shuffle <- shuffle
+  options$random_trials <- random_trials
 
   if(is.null(options$hidden)) {
     if(!is.null(dropout.hidden)) stop('If hidden is NULL, so should be dropout.hidden.')

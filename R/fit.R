@@ -180,6 +180,11 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       )
     }
 
+    if(layer$method_options$random_trials > 0) {
+      i <- sample(1:dim(hyper_grid)[1],layer$method_options$random_trials)
+      hyper_grid <- hyper_grid[i,]
+    }
+
     best_eval_metric = 10^6
 
     mean_scores <- c()
@@ -204,7 +209,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , objective = layer$method_options$objective
         , eval_metric = layer$method_options$eval_metric
         , nthread = layer$method_options$nthread
-        , scale_pos_weight = layer$method_options$scale_pos_weight
+        #, scale_pos_weight = layer$method_options$scale_pos_weight
       )
 
       xval <- xgb.cv(
@@ -278,7 +283,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , objective = layer$method_options$objective
         , eval_metric = layer$method_options$eval_metric
         , nthread = layer$method_options$nthread
-        , scale_pos_weight = scale_pos_weight
+        #, scale_pos_weight = scale_pos_weight
       )
 
       xgbcv <- xgb.cv(
@@ -363,7 +368,7 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       lambda = ifelse('lambda' %in% bounds_names,getBestPars(optObj)$lambda,layer$method_options$lambda),
       alpha = ifelse('alpha' %in% bounds_names,getBestPars(optObj)$alpha,layer$method_options$alpha),
       nthread = ifelse('nthread' %in% bounds_names,getBestPars(optObj)$nthread,layer$method_options$nthread),
-      scale_pos_weight = ifelse('scale_pos_weight' %in% bounds_names,getBestPars(optObj)$scale_pos_weight,layer$method_options$scale_pos_weight)
+      #scale_pos_weight = ifelse('scale_pos_weight' %in% bounds_names,getBestPars(optObj)$scale_pos_weight,layer$method_options$scale_pos_weight)
     )
 
   }
@@ -627,6 +632,10 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       )
     }
 
+    if(layer$method_options$random_trials > 0) {
+      i <- sample(1:dim(hyper_grid)[1],layer$method_options$random_trials)
+      hyper_grid <- hyper_grid[i,]
+    }
 
     cat('_ Initializing the weights...\n')
 
@@ -775,6 +784,9 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       batch_size <- layer$method_options$batch_size
       if(!is.null(hyper_grid$batch_size)) batch_size <- hyper_grid$batch_size[j]
 
+      lr <- NULL
+      if(!is.null(hyper_grid$learning_rate) && hyper_grid$learning_rate[j] > 0) lr <- hyper_grid$learning_rate[j]
+
       def_inputs <- def_inputs_mlp(use_embedding=layer$method_options$use_embedding,
                                    x=x,
                                    no_fact_var=layer$no_fact_var,
@@ -807,9 +819,24 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                              outputs = c(dnn_arch$output))
       }
 
+      if(!is.null(lr)) {
+        if(layer$method_options$optimizer == 'nadam') {
+          optim <- optimizer_nadam(lr = lr)
+        }
+        else if(layer$method_options$optimizer == 'adam') {
+          optim <- optimizer_adam(lr = lr)
+        }
+        else {
+          optim <- layer$method_options$optimizer
+        }
+      }
+      else {
+        optim <- layer$method_options$optimizer
+      }
+
       model %>% compile(
         loss = layer$method_options$loss,
-        optimizer = layer$method_options$optimizer,
+        optimizer = optim,
         metrics = layer$method_options$metrics
       )
 
@@ -1920,6 +1947,10 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       )
     }
 
+    if(layer$method_options$random_trials > 0) {
+      i <- sample(1:dim(hyper_grid)[1],layer$method_options$random_trials)
+      hyper_grid <- hyper_grid[i,]
+    }
 
     cat('_ Initializing the weights...\n')
 

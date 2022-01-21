@@ -612,28 +612,27 @@ fit.layer_dnn <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     }
     names(Folds) <- names
 
-    if(!is.null(layer$method_options$hyper_grid)) {
-      hyper_grid <- layer$method_options$hyper_grid
-      if('dnn_hidden_1' %in% names(hyper_grid)) {
-        if('dnn_hidden_2' %in% names(hyper_grid)) {
-          if('dnn_hidden_3' %in% names(hyper_grid)) {
-            hyper_grid <- hyper_grid %>%
-              filter(!(dnn_hidden_1 == 0 & ((dnn_hidden_2 != 0) | (dnn_hidden_3 != 0)))) %>%
-              filter(!(dnn_hidden_2 == 0 & dnn_hidden_3 != 0))
-          }
-          else {
-            hyper_grid <- hyper_grid %>%
-              filter(!(dnn_hidden_1 == 0 & dnn_hidden_2 != 0))
-          }
-        }
-      }
-    }
-    else {
+    hyper_grid <- layer$method_options$hyper_grid
+    if(is.null(hyper_grid)) {
       hyper_grid <- expand.grid(
         dnn_hidden_1 = seq(from = 0, to = 30, by = 10)
       , dnn_hidden_2 = seq(from = 0, to = 30, by = 10)
       , dnn_hidden_3 = seq(from = 0, to = 30, by = 10)
       )
+    }
+
+    if('dnn_hidden_1' %in% names(hyper_grid)) {
+      if('dnn_hidden_2' %in% names(hyper_grid)) {
+        if('dnn_hidden_3' %in% names(hyper_grid)) {
+          hyper_grid <- hyper_grid %>%
+            filter(!(dnn_hidden_1 == 0 & ((dnn_hidden_2 != 0) | (dnn_hidden_3 != 0)))) %>%
+            filter(!(dnn_hidden_2 == 0 & dnn_hidden_3 != 0))
+        }
+        else {
+          hyper_grid <- hyper_grid %>%
+            filter(!(dnn_hidden_1 == 0 & dnn_hidden_2 != 0))
+        }
+      }
     }
 
     if(layer$method_options$random_trials > 0) {

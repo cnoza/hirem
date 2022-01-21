@@ -232,6 +232,8 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         best_eval_metric = min_eval_metric
         best_eval_index = min_eval_index
         best_param = params
+        best_xval = xval
+        best_ntreelimit = xval$best_ntreelimit
       }
     }
 
@@ -243,6 +245,8 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     layer$hyper_grid$mean_scores <- mean_scores
     layer$hyper_grid$best_nrounds <- best_nrounds
     layer$hyper_grid <- layer$hyper_grid %>% arrange(mean_scores)
+    layer$best_xval <- best_xval
+    layer$best_ntreelimit <- best_ntreelimit
 
   }
   else if(layer$method_options$bayesOpt) {
@@ -414,16 +418,16 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                        function(x) {
                                          contrasts.arg <- lapply(data.frame(x[, sapply(x, is.factor)]),contrasts,contrasts = FALSE)
                                          names(contrasts.arg) <- colnames(x %>% select_if(is.factor))
-                                         if(!is.null(obj$weights)) {
-                                           weights.vec <- obj$weights[x[[obj$weight.var]]]
-                                           weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
-                                           newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
-                                                                  info = list('label' = as.matrix(x[,label]),'weight' = as.matrix(weights.vec.n)))
-                                         }
-                                         else {
+                                         #if(!is.null(obj$weights)) {
+                                         #  weights.vec <- obj$weights[x[[obj$weight.var]]]
+                                         #  weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
+                                         #  newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
+                                         #                         info = list('label' = as.matrix(x[,label]),'weight' = as.matrix(weights.vec.n)))
+                                         #}
+                                         #else {
                                            newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
                                                                   info = list('label' = as.matrix(x[,label])))
-                                         }
+                                         #}
                                          sum(x[[layer$name]])/sum(predict(layer$fit, ntreelimit = layer$fit$niter, newdata = newdata,type = 'response'))
                                          }
                                        )

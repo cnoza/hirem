@@ -178,39 +178,32 @@ model_gbm <- hirem::fit(model_gbm,
 
 We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`).
 
-To tune the hyperparameters, one can activate a cross-validation by setting the `nfolds` parameter to the desired integer in the `layer_xgb` function. Optionally, one can provide a `hyper_grid` parameter or use a predefined one. The hyperparameters performing the best will then be retained automatically. Alternatively, one can activate a Bayesian optimization approach as shown below:
+Hyper parameters have been tuned in a previous stage.
 
 ```{r}
-# Bounds specification for Bayesian optimization
-bounds <- list(
-  eta = c(0.05,1),
-  max_depth = c(1L,6L)
-)
+# Results of hierarchical model calibration
+
+
+hyper_grid_se <- expand.grid(eta = 1, max_depth = 1, min_child_weight = 100, subsample = c(.7,.75,.8,.85,.9,.95,1), colsample_bynode = 1, gamma = 0, lambda = 1, alpha = 0)
+hyper_grid_pa <- expand.grid(eta = .5, max_depth = 3, min_child_weight = 100, subsample = c(.7,.75,.8,.85,.9,.95,1), colsample_bynode = 1, gamma = 0, lambda = 1, alpha = 0)
+hyper_grid_si <- expand.grid(eta = .05, max_depth = 1, min_child_weight = 100, subsample = c(.7,.75,.8), colsample_bynode = 1, gamma = 0, lambda = 1, alpha = 0)
 
 # Model specifications
 model_xgb <- hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_xgb('settlement', objective = 'binary:logistic',
-            eval_metric = 'logloss',
-            bayesOpt = F, #bayesOpt_min = T, bayesOpt_iters_n = 5, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10,
-            eta = 1, max_depth = 1,
-            grow_policy = 'lossguide',
-            nfolds = 5,
+            eval_metric = 'logloss', grow_policy = 'lossguide',
+            nfolds = 5, gridsearch_cv = T, hyper_grid = hyper_grid_se, 
             verbose = F) %>%
   layer_xgb('payment', objective = 'binary:logistic',
-            eval_metric = 'logloss',
-            bayesOpt = F, #bayesOpt_min = T, bayesOpt_iters_n = 5, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10,
-            eta = 1, max_depth = 3,
-            grow_policy = 'lossguide',
-            nfolds = 5,
+            eval_metric = 'logloss', grow_policy = 'lossguide', 
+            nfolds = 5, gridsearch_cv = T, hyper_grid = hyper_grid_pa, 
             verbose = F) %>%
-  layer_xgb('size', objective = 'reg:gamma',
-            eval_metric = 'gamma-deviance',
-            bayesOpt = F, #bayesOpt_min = T, bayesOpt_iters_n = 5, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10,
-            eta = 1, max_depth = 1,
-            grow_policy = 'lossguide',
-            nfolds = 5,
-            verbose = F,
+  layer_xgb('size', objective = 'reg:gamma', 
+            eval_metric = 'gamma-deviance', grow_policy = 'lossguide', 
+            nfolds = 5, gridsearch_cv = T, hyper_grid = hyper_grid_si, 
+            early_stopping_rounds = 10, nrounds = 725,
+            verbose = F, 
             filter = function(data){data$payment == 1})
 ```
 
@@ -230,34 +223,11 @@ model_xgb <- hirem::fit(model_xgb,
                         size = paste0('size ~ ', paste0(c(covariates_xgb,'settlement'), collapse = ' + ')))
 ```
 
-One can retrieve the best hyperparameters found by the Bayesian optimization as follows:
+We can obtain the cross-validation results as follows:
 ```{r}
-# For settlement
-optObj <- model_xgb$layers$settlement$optObj
-getBestPars(optObj)
-
-# For payment
-optObj <- model_xgb$layers$payment$optObj
-getBestPars(optObj)
-
-# For size
-optObj <- model_xgb$layers$size$optObj
-getBestPars(optObj)
-```
-
-The optimal number of rounds can be retrieved as follows:
-```{r}
-# For settlement (for example)
-optObj <- model_xgb$layers$settlement$optObj
-best_index <- as.numeric(which.max(optObj$scoreSummary$Score))
-nrounds <- optObj$scoreSummary$nrounds[best_index]
-print(nrounds)
-```
-
-To obtain all hyperparameters used for training, one can procede as follows:
-```{r}
-# For settlement (for example)
-print(model_xgb$layers$settlement$best_params)
+if(!is.null(model_xgb$layers$settlement$hyper_grid)) model_xgb$layers$settlement$hyper_grid
+if(!is.null(model_xgb$layers$payment$hyper_grid)) model_xgb$layers$payment$hyper_grid
+if(!is.null(model_xgb$layers$size$hyper_grid)) model_xgb$layers$size$hyper_grid
 ```
 
 ### Hierarchical Deep feed-forward Neural Network
@@ -275,72 +245,54 @@ metric_gamma_deviance_keras <- keras::custom_metric("gamma_deviance_keras", func
 })
 ```
 
-We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`). 
+We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`). The parameters were tuned in an earlier stage by means of a 5-fold cross-validation.
 
 ```{r message=FALSE, warning=FALSE}
-# Bounds specification for Bayesian optimization
+
 bounds <- list(
-  dnn_hidden_1 = c(20L,60L),
-  dnn_hidden_2 = c(20L,60L),
-  dnn_hidden_3 = c(20L,60L)
-  #batch_size = c(1L,10L)
+  dnn_hidden_1 = c(2L,7L),
+  dnn_hidden_2 = c(2L,7L),
+  dnn_hidden_3 = c(2L,7L)
 )
 
 # Model specifications
 model_dnn <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_dnn('settlement', distribution = 'bernoulli',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
-            #hidden = c(20,50,30),
-            use_embedding = F, #output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T, 
-            step_log = F,
-            step_normalize = F,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_step = 10,
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
             validation_split = .3,
             activation.output = 'sigmoid',
             batch_normalization = F,
-            verbose = 0,
             family_for_init = binomial(), # default link = logit
             epochs = 100,
             batch_size = 1000,
             monitor = 'val_binary_crossentropy',
             patience = 20) %>%
   layer_dnn('payment', distribution = 'bernoulli',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
-            #hidden = c(20,20,20),
-            use_embedding = F, #output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T,
-            step_log = F,
-            step_normalize = F,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_step = 10,
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
             validation_split = .3,
             activation.output = 'sigmoid',
-            batch_normalization = F,
-            verbose = 0,
             family_for_init = binomial(), # default link = logit
             epochs = 100,
             batch_size = 1000,
             monitor = 'val_binary_crossentropy',
             patience = 20) %>%
   layer_dnn('size', distribution = 'gamma',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
-            #hidden = c(60,30,30),
-            use_embedding = F, #output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T, 
-            step_log = F,
-            step_normalize = F,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_step = 10,
             loss = gamma_deviance_keras,
             metrics = metric_gamma_deviance_keras,
             optimizer = optimizer_nadam(),
-            verbose = 0,
             validation_split = .3,
             activation.output = 'exponential',
-            batch_normalization = F,
             family_for_init = Gamma(link=log), # default link = inverse
             epochs = 100,
             batch_size = 1000,
@@ -364,91 +316,87 @@ model_dnn <- hirem::fit(model_dnn,
 
 ```
 
-The bias regularization being activated, the neural network architecture can be recovered as follows:
+We can obtain the cross-validation results as follows:
 ```{r}
-# Settlement
-model_dnn$layers$settlement$fit.biased
-```
-```{r}
-# Payment
-model_dnn$layers$payment$fit.biased
+if(!is.null(model_dnn$layers$settlement$hyper_grid)) model_dnn$layers$settlement$hyper_grid
+if(!is.null(model_dnn$layers$payment$hyper_grid)) model_dnn$layers$payment$hyper_grid
+if(!is.null(model_dnn$layers$size$hyper_grid)) model_dnn$layers$size$hyper_grid
 ```
 
+We show the model retained:
 ```{r}
-# Size
-model_dnn$layers$size$fit.biased
+if(!is.null(model_dnn$layers$settlement$fit.biased)) model_dnn$layers$settlement$fit.biased
+if(!is.null(model_dnn$layers$payment$fit.biased)) model_dnn$layers$payment$fit.biased
+if(!is.null(model_dnn$layers$size$fit.biased)) model_dnn$layers$size$fit.biased
 ```
 
 ### Hierarchical Combined Actuarial Neural Network
 
-We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`).
+We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`). The parameters were tuned in an earlier stage by means of a 5-fold cross-validation.
 
 ```{r message=FALSE, warning=FALSE}
-# Bounds specification for Bayesian optimization
+
 bounds <- list(
-  dnn_hidden_1 = c(20L,60L),
-  dnn_hidden_2 = c(20L,60L),
-  dnn_hidden_3 = c(20L,60L)
-) 
+  dnn_hidden_1 = c(2L,6L),
+  dnn_hidden_2 = c(2L,6L),
+  dnn_hidden_3 = c(2L,6L)
+)
 
 # Model specifications
 model_cann <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_cann('settlement', distribution = 'bernoulli',
-               formula.glm = formula_settle_glm, bias_regularization = T,
-               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
-               #hidden = c(20,20,50),
-               use_embedding = F, #embedding_var = c('rep.month', 'rep.year.fact'),
-               family_for_glm = binomial(),
-               loss = 'binary_crossentropy',
-               metrics = 'binary_crossentropy',
-               optimizer = optimizer_nadam(),
-               validation_split = .3,
-               activation.output = 'linear',
-               activation.output.cann = 'sigmoid',
-               fixed.cann = T,
-               monitor = 'val_binary_crossentropy',
-               patience = 20,
-               epochs = 100,
-               batch_size = 1000) %>%
+             bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_step = 10,
+             formula.glm = formula_settle_glm, 
+             bias_regularization = T,
+             family_for_glm = binomial(),
+             loss = 'binary_crossentropy',
+             metrics = 'binary_crossentropy',
+             optimizer = optimizer_nadam(),
+             validation_split = .3,
+             activation.output = 'linear',
+             activation.output.cann = 'sigmoid',
+             fixed.cann = T,
+             monitor = 'val_binary_crossentropy',
+             patience = 20,
+             epochs = 100,
+             batch_size = 1000) %>%
   layer_cann('payment', distribution = 'bernoulli',
-               formula.glm = formula_pay_glm, bias_regularization = T,
-               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
-               #hidden = c(25,30,25),
-               use_embedding = F, #embedding_var = c('rep.month', 'rep.year.fact'),
-               family_for_glm = binomial(),
-               loss = 'binary_crossentropy',
-               metrics = 'binary_crossentropy',
-               optimizer = optimizer_nadam(),
-               validation_split = .3,
-               activation.output = 'linear',
-               activation.output.cann = 'sigmoid',
-               fixed.cann = T,
-               monitor = 'val_binary_crossentropy',
-               patience = 20,
-               epochs = 100,
-               batch_size = 1000) %>%
+             bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_step = 10,
+             formula.glm = formula_pay_glm, 
+             bias_regularization = T,
+             family_for_glm = binomial(),
+             loss = 'binary_crossentropy',
+             metrics = 'binary_crossentropy',
+             optimizer = optimizer_nadam(),
+             validation_split = .3,
+             activation.output = 'linear',
+             activation.output.cann = 'sigmoid',
+             fixed.cann = T,
+             monitor = 'val_binary_crossentropy',
+             patience = 20,
+             epochs = 100,
+             batch_size = 1000) %>%
   layer_cann('size', distribution = 'gamma',
-               formula.glm = formula_size_glm, bias_regularization = T,
-               bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_initPoints = 10, nfolds = 1,
-               #hidden = c(45,45,20),
-               use_embedding = F, #embedding_var = c('rep.month', 'rep.year.fact'),
-               family_for_glm = Gamma(link=log),
-               loss = gamma_deviance_keras,
-               metrics = metric_gamma_deviance_keras,
-               optimizer = optimizer_nadam(),
-               validation_split = .3,
-               activation.output = 'linear',
-               activation.output.cann = 'exponential',
-               fixed.cann = T,
-               monitor = 'val_gamma_deviance_keras',
-               patience = 20,
-               epochs = 100, 
-               batch_size = 1000,
-               filter = function(data){data$payment == 1})
+             bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds, bayesOpt_step = 10,
+             formula.glm = formula_size_glm, 
+             bias_regularization = T,
+             family_for_glm = Gamma(link=log),
+             loss = gamma_deviance_keras,
+             metrics = metric_gamma_deviance_keras,
+             optimizer = optimizer_nadam(),
+             validation_split = .3,
+             activation.output = 'linear',
+             activation.output.cann = 'exponential',
+             fixed.cann = T,
+             monitor = 'val_gamma_deviance_keras',
+             patience = 20,
+             epochs = 100, 
+             batch_size = 1000,
+             filter = function(data){data$payment == 1})
 ```
 
-We now fit the hierarchical CANN on the observed portfolio of simulated claims. Notice that `dev.year.fact` is removed from the list of covariates to prevent an issue in the calibration process (loss function is `nan`).
+We now fit the hierarchical CANN on the observed portfolio of simulated claims.
 
 ```{r}
 #Covariates
@@ -461,21 +409,21 @@ model_cann <- hirem::fit(model_cann,
                  payment = paste0('payment ~ ', paste0(c(covariates_cann, 'settlement'), collapse = ' + ')),
                  size = paste0('size ~ ', paste0(c(covariates_cann,'settlement'), collapse = ' + ')))
 ```
+
+We can obtain the cross-validation results as follows:
+```{r}
+if(!is.null(model_cann$layers$settlement$hyper_grid)) model_cann$layers$settlement$hyper_grid
+if(!is.null(model_cann$layers$payment$hyper_grid)) model_cann$layers$payment$hyper_grid
+if(!is.null(model_cann$layers$size$hyper_grid)) model_cann$layers$size$hyper_grid
+```
+
 We show the model retained:
 ```{r}
-# Settlement
-model_cann$layers$settlement$fit.biased
+if(!is.null(model_cann$layers$settlement$fit.biased)) model_cann$layers$settlement$fit.biased
+if(!is.null(model_cann$layers$payment$fit.biased)) model_cann$layers$payment$fit.biased
+if(!is.null(model_cann$layers$size$fit.biased)) model_cann$layers$size$fit.biased
 ```
 
-```{r}
-# Payment
-model_cann$layers$payment$fit.biased
-```
-
-```{r}
-# Size
-model_cann$layers$size$fit.biased
-```
 
 ## Predicting the future development of claims in the hierarchical reserving models
 In the next step, we predict the future development of claims. We do this by simulating 50 different paths for each open claim in the year of the evaluation date and by averaging the results afterwards. In this prediction strategy, the hierarchical structure of the reserving model is preserved and the development of claims are simulated in chronological order.
@@ -629,3 +577,4 @@ c('Actual' = obs_size_total, 'Chain-Ladder' = cl_size_total, 'Hierarchical GLM' 
 ## References
 
 <div id="refs"></div>
+

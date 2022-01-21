@@ -7,4 +7,5 @@ hirem.Rcheck/
 hirem*.tar.gz
 hirem*.tgz
 Examples/simulation/
+Examples/baseline/tmp/
 *.hdf5

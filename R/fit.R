@@ -121,6 +121,7 @@ fit.layer_gbm <- function(layer, obj, formula, training = FALSE, fold = NULL) {
 }
 
 #' @importFrom xgboost xgb.DMatrix xgb.cv xgb.train
+#' @importFrom recipes recipe step_dummy bake prep all_nominal all_numeric all_outcomes
 #' @import Matrix
 #' @import ParBayesianOptimization
 #' @export
@@ -139,28 +140,44 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   }
 
   data <- data[layer$filter(data), ]
-  f <- as.formula(paste0(formula,'-1'))
+  #f <- as.formula(paste0(formula,'-1'))
+  f <- as.formula(formula)
   label <- as.character(terms(f)[[2]])
 
   if(!is.null(layer$transformation)) {
     data[,label] <- layer$transformation$transform(data[,label])
   }
 
-  contrasts.arg <- lapply(data.frame(data[, sapply(data, is.factor)]),contrasts,contrasts = FALSE)
-  names(contrasts.arg) <- colnames(data %>% select_if(is.factor))
-  layer$data.model.matrix <- sparse.model.matrix(f,data=data,contrasts.arg = contrasts.arg)
+  data_recipe <- recipe(as.formula(formula), data=data)
+  data_recipe <- data_recipe %>% step_dummy(all_nominal(), one_hot = TRUE)
+  data_recipe <- data_recipe %>% prep()
+  layer$data_recipe <- data_recipe
+
+  data_baked <- bake(data_recipe, new_data = data)
+  x <- select(data_baked,-as.name(label)) %>% as.matrix()
+  data.xgb <- xgb.DMatrix(data = x, info = list('label' = as.matrix(data[,label])))
 
   if(!is.null(obj$weights)) {
     weights.vec <- obj$weights[data[[obj$weight.var]]]
     weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
-    data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
-                            info = list('label' = as.matrix(data[,label]),
-                                        'weight' = as.matrix(weights.vec.n)))
+    xgboost::setinfo(data.xgb,'weight',weights.vec.n)
   }
-  else {
-    data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
-                            info = list('label' = as.matrix(data[,label])))
-  }
+
+  #contrasts.arg <- lapply(data.frame(data[, sapply(data, is.factor)]),contrasts,contrasts = FALSE)
+  #names(contrasts.arg) <- colnames(data %>% select_if(is.factor))
+  #layer$data.model.matrix <- sparse.model.matrix(f,data=data,contrasts.arg = contrasts.arg)
+
+  # if(!is.null(obj$weights)) {
+  #   weights.vec <- obj$weights[data[[obj$weight.var]]]
+  #   weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
+  #   data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
+  #                           info = list('label' = as.matrix(data[,label]),
+  #                                       'weight' = as.matrix(weights.vec.n)))
+  # }
+  # else {
+  #   data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
+  #                           info = list('label' = as.matrix(data[,label])))
+  # }
 
   if(layer$method_options$gridsearch_cv) {
 
@@ -416,8 +433,8 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(!is.null(obj$balance.var)){
     layer$balance.correction <- sapply(data %>% split(data[[obj$balance.var]]),
                                        function(x) {
-                                         contrasts.arg <- lapply(data.frame(x[, sapply(x, is.factor)]),contrasts,contrasts = FALSE)
-                                         names(contrasts.arg) <- colnames(x %>% select_if(is.factor))
+                                         #contrasts.arg <- lapply(data.frame(x[, sapply(x, is.factor)]),contrasts,contrasts = FALSE)
+                                         #names(contrasts.arg) <- colnames(x %>% select_if(is.factor))
                                          #if(!is.null(obj$weights)) {
                                          #  weights.vec <- obj$weights[x[[obj$weight.var]]]
                                          #  weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
@@ -425,8 +442,13 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                          #                         info = list('label' = as.matrix(x[,label]),'weight' = as.matrix(weights.vec.n)))
                                          #}
                                          #else {
-                                           newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
-                                                                  info = list('label' = as.matrix(x[,label])))
+
+                                         data_baked <- bake(data_recipe, new_data = x)
+                                         nd <- select(data_baked,-as.name(label)) %>% as.matrix()
+                                         newdata <- xgb.DMatrix(data = nd, info = list('label' = as.matrix(x[,label])))
+
+                                         #newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
+                                         #                         info = list('label' = as.matrix(x[,label])))
                                          #}
                                          sum(x[[layer$name]])/sum(predict(layer$fit, ntreelimit = layer$fit$niter, newdata = newdata,type = 'response'))
                                          }
@@ -453,69 +475,6 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   return(layer)
 }
 
-#' @importFrom h2o h2o.init h2o.no_progress as.h2o h2o.deeplearning h2o.predict
-#' @export
-fit.layer_dnn_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat(sprintf("Fitting layer_dnn for %s...\n", layer$name))
-
-  layer$formula <- formula
-
-  data <- obj$data_training
-  if(!training) {
-    data <- obj$data_observed
-  }
-
-  if(!is.null(fold)) {
-    data <- data %>% filter(cv_fold != fold)
-  }
-
-  data <- data[layer$filter(data), ]
-
-  f <- as.formula(formula)
-  label <- as.character(terms(f)[[2]])
-
-  if(!is.null(layer$transformation)) {
-    data[,label] <- layer$transformation$transform(data[,label])
-  }
-
-  h2o.init()
-  h2o.no_progress()
-
-  data.h2o <- as.h2o(data)
-  layer$fit <- h2o.deeplearning(x = attr(terms(f),"term.labels"),
-                                y = label,
-                                training_frame = data.h2o,
-                                distribution = layer$method_options$distribution,
-                                hidden = layer$method_options$hidden,
-                                nfolds = layer$method_options$nfolds,
-                                epochs = layer$method_options$epochs,
-                                train_samples_per_iteration = layer$method_options$train_samples_per_iteration,
-                                reproducible = layer$method_options$reproducible,
-                                activation = layer$method_options$activation,
-                                single_node_mode = layer$method_options$single_node_mode,
-                                balance_classes = layer$method_options$balance_classes,
-                                force_load_balance = layer$method_options$force_load_balance,
-                                seed = layer$method_options$seed,
-                                tweedie_power = layer$method_options$tweedie_power,
-                                score_training_samples = layer$method_options$score_training_samples,
-                                score_validation_samples = layer$method_options$score_validation_samples,
-                                stopping_rounds = layer$method_options$stopping_rounds,
-                                input_dropout_ratio = layer$method_options$input_dropout_ratio,
-                                hidden_dropout_ratios = layer$method_options$hidden_dropout_ratios)
-
-  if(layer$method_options$distribution == 'gaussian') {
-    layer$sigma <- sd(h2o.predict(layer$fit, data.h2o) - data[,label])
-  }
-
-  if(layer$method_options$distribution == 'gamma') {
-    shape <- hirem_gamma_shape(data[,label], h2o.predict(layer$fit, data.h2o))
-    layer$shape <- shape$shape
-    layer$shape.se <- shape$se
-  }
-
-
-  return(layer)
-}
 
 #' @import tensorflow
 #' @import keras
@@ -3142,54 +3101,6 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   return(layer)
 }
 
-#' @export
-fit.layer_aml_h2o <- function(layer, obj, formula, training = FALSE, fold = NULL) {
-  cat("Fitting layer_aml_h2o ...\n")
-  layer$formula <- formula
-
-  data <- obj$data_training
-  if(!training) {
-    data <- obj$data_observed
-  }
-
-  if(!is.null(fold)) {
-    data <- data %>% filter(cv_fold != fold)
-  }
-
-  data <- data[layer$filter(data), ]
-
-  f <- as.formula(formula)
-  label <- as.character(terms(f)[[2]])
-
-  if(!is.null(layer$transformation)) {
-    data[,label] <- layer$transformation$transform(data[,label])
-  }
-
-  h2o.init()
-  h2o.no_progress()
-
-  data.h2o <- as.h2o(data)
-  layer$fit <- h2o.automl(x = attr(terms(f),"term.labels"),
-                          y = label,
-                          training_frame = data.h2o,
-                          max_models = layer$method_options$max_models)
-
-  lb <- layer$fit@leaderboard
-  print(lb, n = nrow(lb))
-
-  if(layer$method_options$distribution == 'gaussian') {
-    layer$sigma <- sd(h2o.predict(layer$fit, data.h2o) - data[,label])
-  }
-
-  if(layer$method_options$distribution == 'gamma') {
-    shape <- hirem_gamma_shape(data[,label], h2o.predict(layer$fit, data.h2o))
-    layer$shape <- shape$shape
-    layer$shape.se <- shape$se
-  }
-
-
-  return(layer)
-}
 
 #' Fitting layers in a hierarchical reserving model
 #'

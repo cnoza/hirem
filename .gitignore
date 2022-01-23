@@ -3,6 +3,7 @@ inst/doc
 .Rhistory
 .RData
 .Ruserdata
+.RDataTmp
 hirem.Rcheck/
 hirem*.tar.gz
 hirem*.tgz

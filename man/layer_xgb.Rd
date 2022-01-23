@@ -9,10 +9,10 @@ layer_xgb(
   name,
   nrounds = 1000,
   early_stopping_rounds = 20,
-  verbose = F,
+  verbose = 0,
   booster = "gbtree",
   objective,
-  stratified = F,
+  stratified = T,
   grow_policy = "depthwise",
   eval_metric = "rmse",
   eta = 0.05,
@@ -35,6 +35,7 @@ layer_xgb(
   bayesOpt_iters_n = 3,
   bayesOpt_bounds = NULL,
   bayesOpt_initPoints = 4,
+  random_trials = 0,
   filter = NULL,
   transformation = NULL
 )

@@ -2,7 +2,7 @@
 % Please edit documentation in R/layer.R
 \name{layer_dnn}
 \alias{layer_dnn}
-\title{Layer estimated using a multi-layer perceptron model with Keras}
+\title{Layer estimated using a deep feed-forward neural network model with Keras}
 \usage{
 layer_dnn(
   obj,
@@ -33,13 +33,20 @@ layer_dnn(
   family_for_init = NULL,
   nfolds = 5,
   bias_regularization = TRUE,
+  shuffle = TRUE,
   bayesOpt = FALSE,
   bayesOpt_min = FALSE,
   bayesOpt_iters_n = 3,
   bayesOpt_bounds = NULL,
   bayesOpt_initPoints = 4,
+  bayesOpt_step = 1,
   filter = NULL,
-  transformation = NULL
+  transformation = NULL,
+  gridsearch_cv = F,
+  gridsearch_cv.min = T,
+  hyper_grid = NULL,
+  random_trials = 0,
+  one_hot = TRUE
 )
 }
 \arguments{

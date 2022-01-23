@@ -27,6 +27,7 @@ layer_cann(
   monitor = "loss",
   patience = 20,
   verbose = 0,
+  shuffle = TRUE,
   loss = "mse",
   optimizer = "nadam",
   epochs = 20,
@@ -39,8 +40,13 @@ layer_cann(
   bayesOpt_iters_n = 3,
   bayesOpt_bounds = NULL,
   bayesOpt_initPoints = 4,
+  bayesOpt_step = 1,
   filter = NULL,
-  transformation = NULL
+  transformation = NULL,
+  gridsearch_cv = F,
+  gridsearch_cv.min = T,
+  hyper_grid = NULL,
+  random_trials = 0
 )
 }
 \arguments{

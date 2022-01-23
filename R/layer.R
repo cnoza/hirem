@@ -164,73 +164,8 @@ layer_xgb <- function(obj, name, nrounds = 1000, early_stopping_rounds = 20, ver
   hirem_layer(obj, name, 'xgb', 'layer_xgb', options, filter, transformation)
 }
 
-#' Layer estimated using a multi-layer perceptron model (h2o)
-#'
-#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{deeplearning} function of the \code{\link[h2o]{h2o}} package.
-#'
-#' @param obj The hierarchical reserving model
-#' @param name Character, name of the layer. This name should match the variable name in the data set
-#' @param distribution The distribution used for the simulation. Default is gaussian.
-#' @param hidden The hidden layer architecture passed to \code{h2o}. Default is c(10,10).
-#' @param epochs The epochs argument passed to \code{h2o}. Default is 1000
-#' @param train_samples_per_iteration The train_samples_per_iteration argument passed to \code{h2o}. Default is -1
-#' @param reproducible The reproducible argument passed to \code{h2o}. Default is True.
-#' @param activation The activation function (same for all layers) passed to \code{h2o}. Default is "Tanh".
-#' @param single_node_mode The single_node_mode argument passed to \code{h2o}. Default is FALSE,
-#' @param balance_classes The balance_classes argument passed to \code{h2o}. Default is FALSE,
-#' @param force_load_balance The force_load_balance argument passed to \code{h2o}. Default is FALSE,
-#' @param seed The seed argument passed to \code{h2o}.
-#' @param tweedie_power The tweedie_power argument passed to \code{h2o}. Only used if distribution is "tweedie".
-#' @param score_training_samples The score_training_samples argument passed to \code{h2o}. Default is 0,
-#' @param score_validation_samples The score_validation_samples argument passed to \code{h2o}. Default is 0,
-#' @param stopping_rounds The stopping_rounds argument passed to \code{h2o}. Default is 0
-#' @param input_dropout_ratio The input_dropout_ratio argument passed to \code{h2o}. Default is 0.1
-#' @param hidden_dropout_ratios The input_dropout_ratio argument passed to \code{h2o}. Default is 0.5
-#' @param stopping_rounds The stopping_rounds argument passed to \code{h2o}. Default is 0
-#' @param filter Function with \itemize{
-#'   \item input: Data set with same structure as the data passed to \code{hirem}
-#'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
-#'         FALSE indicates that this layer is zero for the current record.
-#'  }
-#' @param transformation Object of class \code{hirem_transformation} specifying the transformation
-#' applied before modelling this layer.
-#' @export
-layer_dnn_h2o <- function(obj, name, distribution = "gaussian", hidden = c(10,10), epochs = 1000, train_samples_per_iteration = -1,
-                     reproducible = T, activation = "Tanh", nfolds = NULL,
-                     single_node_mode = FALSE,
-                     balance_classes = FALSE,
-                     force_load_balance = FALSE,
-                     seed = NULL,
-                     tweedie_power = 1.5,
-                     score_training_samples = 0,
-                     score_validation_samples = 0,
-                     input_dropout_ratio = 0.1,
-                     hidden_dropout_ratios = 0.5,
-                     stopping_rounds = 0, filter = NULL, transformation = NULL) {
 
-  options <- c()
-  options$distribution <- distribution
-  options$hidden <- hidden
-  options$epochs <- epochs
-  options$nfolds <- nfolds
-  options$train_samples_per_iteration <- train_samples_per_iteration
-  options$reproducible <- reproducible
-  options$activation <- activation
-  options$single_node_mode <- single_node_mode
-  options$balance_classes <- balance_classes
-  options$force_load_balance <- force_load_balance
-  options$seed <- seed
-  options$tweedie_power <- tweedie_power
-  options$score_training_samples <- score_training_samples
-  options$score_validation_samples <- score_validation_samples
-  options$stopping_rounds <- stopping_rounds
-  options$input_dropout_ratio <- input_dropout_ratio
-  options$hidden_dropout_ratios <- hidden_dropout_ratios
-
-  hirem_layer(obj, name, 'dnn_h2o', 'layer_dnn_h2o', options, filter, transformation)
-}
-
-#' Layer estimated using a multi-layer perceptron model with Keras
+#' Layer estimated using a deep feed-forward neural network model with Keras
 #'
 #' Adds a new layer to the hierarchical reserving model. This layer will be estimated using the \code{\link[keras]{keras}} package.
 #'
@@ -519,30 +454,6 @@ layer_cann <- function(obj, name, distribution = 'gaussian', family_for_glm = Ga
 
   hirem_layer(obj, name, 'cann', 'layer_cann', options, filter, transformation)
 
-}
-
-#' Layer estimated using AutoML (H2O)
-#'
-#' Adds a new layer to the hierarchical reserving model. This layer will be estimated using AutoML from the \code{h2o} package.
-#'
-#' @param obj The hierarchical reserving model
-#' @param name Character, name of the layer. This name should match the variable name in the data set
-#' @param filter Function with \itemize{
-#'   \item input: Data set with same structure as the data passed to \code{hirem}
-#'   \item output: TRUE/FALSE vector with same length as the number of rows in the input data set.\cr
-#'         FALSE indicates that this layer is zero for the current record.
-#'  }
-#' @param transformation Object of class \code{hirem_transformation} specifying the transformation
-#' applied before modelling this layer.
-#' @export
-layer_aml_h2o <- function(obj, name, distribution = 'gaussian',
-                      max_models = 5, filter = NULL, transformation = NULL) {
-
-  options <- c()
-  options$max_models <- max_models
-  options$distribution <- distribution
-
-  hirem_layer(obj, name, 'aml_h2o', 'layer_aml_h2o', options, filter, transformation)
 }
 
 #' @export

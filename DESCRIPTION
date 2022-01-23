@@ -22,7 +22,6 @@ Imports:
 	  purrr,
 	  Matrix,
 	  xgboost,
-	  h2o,
 	  keras,
 	  tensorflow,
 	  recipes,

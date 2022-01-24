@@ -64,7 +64,7 @@ xgb_size_total <- c()
 dnn_size_total <- c()
 cann_size_total <- c()
 
-max_sim <- 2
+max_sim <- 100
 
 for(seed in 1:max_sim) {
 
@@ -399,7 +399,7 @@ for(seed in 1:max_sim) {
 results <- data.frame(
   seeds,
   obs_open_total, obs_pay_total, obs_size_total,
-  cl_open, cl_pay, cl_size,
+  cl_open_total, obs_pay_total, cl_size_total,
   glm_open_total, glm_pay_total, glm_size_total,
   gbm_open_total, gbm_pay_total, gbm_size_total,
   xgb_open_total, xgb_pay_total, xgb_size_total,

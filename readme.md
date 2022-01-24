@@ -22,11 +22,6 @@ The new layers implemented in this fork are:
 * `layer_dnn`: Estimates a layer using an deep feed-forward neural network model (`keras` package)
 * `layer_cann`: Estimates a layer using a Combined Actuarial Neural Network (CANN) model (`keras` package)
 
-Other layers for which first developments were made are:
-
-* `layer_dnn_h2o`: Estimates a layer using an deep feed-forward neural network model (`h2o` package)
-* `layer_aml_h2o`: Estimates a layer using AutoML (`h2o` package)
-
 ## Installation
 To install this fork of the `hirem` package from GitHub you will need `devtools`:
 
@@ -62,7 +57,6 @@ model <- fit(model,
 Examples of tested models can be found in the following files:  
 
 * [Use of an Extreme Gradient Boosting model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-Extreme-Gradient-Boosting-models-as-layer-in-hirem.html)
-* [Use of a MultiLayer Perceptron model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-MultiLayer-Perceptron-model-as-layer-in-hirem.html)
+* [Use of a deep feed-forward neural network model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-MultiLayer-Perceptron-model-as-layer-in-hirem.html)
 * [Use of CANN model as layer in `hirem`](https://htmlpreview.github.io?https://github.com/cnoza/hirem/blob/master/Examples/Use-of-a-CANN-model-as-layer-in-hirem.html)
-* [Other tested models](https://github.com/cnoza/hirem/blob/master/tests/testing.R)
 

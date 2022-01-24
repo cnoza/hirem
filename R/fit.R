@@ -163,22 +163,6 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
     xgboost::setinfo(data.xgb,'weight',weights.vec.n)
   }
 
-  #contrasts.arg <- lapply(data.frame(data[, sapply(data, is.factor)]),contrasts,contrasts = FALSE)
-  #names(contrasts.arg) <- colnames(data %>% select_if(is.factor))
-  #layer$data.model.matrix <- sparse.model.matrix(f,data=data,contrasts.arg = contrasts.arg)
-
-  # if(!is.null(obj$weights)) {
-  #   weights.vec <- obj$weights[data[[obj$weight.var]]]
-  #   weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
-  #   data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
-  #                           info = list('label' = as.matrix(data[,label]),
-  #                                       'weight' = as.matrix(weights.vec.n)))
-  # }
-  # else {
-  #   data.xgb <- xgb.DMatrix(data = as.matrix(layer$data.model.matrix),
-  #                           info = list('label' = as.matrix(data[,label])))
-  # }
-
   if(layer$method_options$gridsearch_cv) {
 
     if(!is.null(layer$method_options$hyper_grid)) {
@@ -433,23 +417,9 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
   if(!is.null(obj$balance.var)){
     layer$balance.correction <- sapply(data %>% split(data[[obj$balance.var]]),
                                        function(x) {
-                                         #contrasts.arg <- lapply(data.frame(x[, sapply(x, is.factor)]),contrasts,contrasts = FALSE)
-                                         #names(contrasts.arg) <- colnames(x %>% select_if(is.factor))
-                                         #if(!is.null(obj$weights)) {
-                                         #  weights.vec <- obj$weights[x[[obj$weight.var]]]
-                                         #  weights.vec.n <- weights.vec*length(weights.vec)/sum(weights.vec)
-                                         #  newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
-                                         #                         info = list('label' = as.matrix(x[,label]),'weight' = as.matrix(weights.vec.n)))
-                                         #}
-                                         #else {
-
                                          data_baked <- bake(data_recipe, new_data = x)
                                          nd <- select(data_baked,-as.name(label)) %>% as.matrix()
                                          newdata <- xgb.DMatrix(data = nd, info = list('label' = as.matrix(x[,label])))
-
-                                         #newdata <- xgb.DMatrix(data = as.matrix(sparse.model.matrix(f,data=x,contrasts.arg = contrasts.arg)),
-                                         #                         info = list('label' = as.matrix(x[,label])))
-                                         #}
                                          sum(x[[layer$name]])/sum(predict(layer$fit, ntreelimit = layer$fit$niter, newdata = newdata,type = 'response'))
                                          }
                                        )

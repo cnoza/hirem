@@ -1,0 +1,123 @@
+---
+title: "Model comparison (baseline scenario)"
+author: "Christophe Nozaradan"
+date: "January 2022"
+output: html_document
+---
+
+```{css, echo=FALSE}
+.main-container {
+  max-width: 1200px; 
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+options(dplyr.summarise.inform = FALSE)
+options(warn = -1)
+```
+
+We first extract the data from the simulation results stored in HTML output.
+
+```{r}
+library(dplyr)
+library(rvest)
+
+files <- list.files(path = ".",pattern = ".html")
+
+settlements <- list()
+payments <- list()
+sizes <- list()
+
+for(i in seq_along(files)) {
+
+  page <- read_html(files[i])
+
+  # settlement
+
+  settlements[i] <- page %>% html_node(xpath = '//*[@id="evaluating-the-predictive-performance-of-the-chain-ladder-model-and-the-hierarchical-glm-and-gbm"]/pre[2]/code/text()') %>% html_text()
+  settlements[i] <- regmatches(settlements[[i]], gregexpr("[[:digit:]]+.[[:digit:]]+", settlements[[i]]))
+
+  # payment
+
+  payments[i] <- page %>% html_node(xpath = '//*[@id="evaluating-the-predictive-performance-of-the-chain-ladder-model-and-the-hierarchical-glm-and-gbm"]/pre[4]/code/text()') %>% html_text()
+  payments[i] <- regmatches(payments[i], gregexpr("[[:digit:]]+.[[:digit:]]+", payments[i]))
+
+  # size
+
+  sizes[i] <- page %>% html_node(xpath = '//*[@id="evaluating-the-predictive-performance-of-the-chain-ladder-model-and-the-hierarchical-glm-and-gbm"]/pre[6]/code/text()') %>% html_text()
+  sizes[i] <- regmatches(sizes[i], gregexpr("[[:digit:]]+.[[:digit:]]+", sizes[i]))
+
+}
+
+df.settle <- as.data.frame(do.call(rbind, settlements))
+names(df.settle) <- c('Actual','CL','HGLM','HGBM','HXGB','HDNN','HCANN')
+
+df.pay <- as.data.frame(do.call(rbind, payments))
+names(df.pay) <- c('Actual','CL','HGLM','HGBM','HXGB','HDNN','HCANN')
+
+df.size <- as.data.frame(do.call(rbind, sizes))
+names(df.size) <- c('Actual','CL','HGLM','HGBM','HXGB','HDNN','HCANN')
+```
+
+We then compute the average relative error for settlement, payment and size:
+```{r}
+df.settle <- df.settle %>% mutate(error.cl=abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hglm=abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hgbm=abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hxgb=abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hdnn=abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hcann=abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+settl.error.cl <- sum(df.settle$error.cl)/100
+settl.error.hglm <- sum(df.settle$error.hglm)/100
+settl.error.hgbm <- sum(df.settle$error.hgbm)/100
+settl.error.hxgb <- sum(df.settle$error.hxgb)/100
+settl.error.hdnn <- sum(df.settle$error.hdnn)/100
+settl.error.hcann <- sum(df.settle$error.hcann)/100
+
+# Print Results
+c('Chain-Ladder' = settl.error.cl, 'Hierarchical GLM' = settl.error.hglm, 'Hierarchical GBM' = settl.error.hgbm, 'Hierarchical XGB' = settl.error.hxgb, 'Hierarchical DNN' = settl.error.hdnn, 'Hierarchical CANN' = settl.error.hcann)
+
+```
+
+```{r}
+df.pay <- df.pay %>% mutate(error.cl=abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hglm=abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hgbm=abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hxgb=abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hdnn=abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hcann=abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+payment.error.cl <- sum(df.pay$error.cl)/100
+payment.error.hglm <- sum(df.pay$error.hglm)/100
+payment.error.hgbm <- sum(df.pay$error.hgbm)/100
+payment.error.hxgb <- sum(df.pay$error.hxgb)/100
+payment.error.hdnn <- sum(df.pay$error.hdnn)/100
+payment.error.hcann <- sum(df.pay$error.hcann)/100
+
+# Print Results
+c('Chain-Ladder' = payment.error.cl, 'Hierarchical GLM' = payment.error.hglm, 'Hierarchical GBM' = payment.error.hgbm, 'Hierarchical XGB' = payment.error.hxgb, 'Hierarchical DNN' = payment.error.hdnn, 'Hierarchical CANN' = payment.error.hcann)
+
+```
+
+```{r}
+df.size <- df.size %>% mutate(error.cl=abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hglm=abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hgbm=abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hxgb=abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hdnn=abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hcann=abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+size.error.cl <- sum(df.size$error.cl)/100
+size.error.hglm <- sum(df.size$error.hglm)/100
+size.error.hgbm <- sum(df.size$error.hgbm)/100
+size.error.hxgb <- sum(df.size$error.hxgb)/100
+size.error.hdnn <- sum(df.size$error.hdnn)/100
+size.error.hcann <- sum(df.size$error.hcann)/100
+
+# Print Results
+c('Chain-Ladder' = size.error.cl, 'Hierarchical GLM' = size.error.hglm, 'Hierarchical GBM' = size.error.hgbm, 'Hierarchical XGB' = size.error.hxgb, 'Hierarchical DNN' = size.error.hdnn, 'Hierarchical CANN' = size.error.hcann)
+
+```
+

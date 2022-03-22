@@ -78,14 +78,14 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
         , tree_method = layer$method_options$tree_method
         , grow_policy = layer$method_options$grow_policy
         , eval_metric = layer$method_options$eval_metric
-        , eta = hyper_grid$eta[i]
-        , max_depth = hyper_grid$max_depth[i]
-        , min_child_weight = hyper_grid$min_child_weight[i]
-        , subsample = hyper_grid$subsample[i]
-        , colsample_bynode = hyper_grid$colsample_bynode[i]
-        , gamma = hyper_grid$gamma[i]
-        , lambda = hyper_grid$lambda[i]
-        , alpha = hyper_grid$alpha[i]
+        , eta = ifelse(!is.null(hyper_grid$eta[i]),hyper_grid$eta[i],layer$method_options$eta)
+        , max_depth = ifelse(!is.null(hyper_grid$max_depth[i]),hyper_grid$max_depth[i],layer$method_options$max_depth)
+        , min_child_weight = ifelse(!is.null(hyper_grid$min_child_weight[i]),hyper_grid$min_child_weight[i],layer$method_options$min_child_weight)
+        , subsample = ifelse(!is.null(hyper_grid$subsample[i]),hyper_grid$subsample[i],layer$method_options$subsample)
+        , colsample_bynode = ifelse(!is.null(hyper_grid$colsample_bynode[i]),hyper_grid$colsample_bynode[i],layer$method_options$colsample_bynode)
+        , gamma = ifelse(!is.null(hyper_grid$gamma[i]),hyper_grid$gamma[i],layer$method_options$gamma)
+        , lambda = ifelse(!is.null(hyper_grid$lambda[i]),hyper_grid$lambda[i],layer$method_options$lambda)
+        , alpha = ifelse(!is.null(hyper_grid$alpha[i]),hyper_grid$alpha[i],layer$method_options$alpha)
         , max_delta_step = layer$method_options$max_delta_step
         , objective = layer$method_options$objective
         , eval_metric = layer$method_options$eval_metric
@@ -252,8 +252,8 @@ fit.layer_xgb <- function(layer, obj, formula, training = FALSE, fold = NULL) {
       gamma = ifelse('gamma' %in% bounds_names,getBestPars(optObj)$gamma,layer$method_options$gamma),
       lambda = ifelse('lambda' %in% bounds_names,getBestPars(optObj)$lambda,layer$method_options$lambda),
       alpha = ifelse('alpha' %in% bounds_names,getBestPars(optObj)$alpha,layer$method_options$alpha),
-      nthread = ifelse('nthread' %in% bounds_names,getBestPars(optObj)$nthread,layer$method_options$nthread),
-      #scale_pos_weight = ifelse('scale_pos_weight' %in% bounds_names,getBestPars(optObj)$scale_pos_weight,layer$method_options$scale_pos_weight)
+      nthread = ifelse('nthread' %in% bounds_names,getBestPars(optObj)$nthread,layer$method_options$nthread)
+      #,scale_pos_weight = ifelse('scale_pos_weight' %in% bounds_names,getBestPars(optObj)$scale_pos_weight,layer$method_options$scale_pos_weight)
     )
 
   }

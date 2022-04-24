@@ -161,3 +161,73 @@ df.settle.error %>%
     xlab("")
 ```
 
+```{r}
+df.pay.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.pay$error.cl, df.pay$error.hglm, df.pay$error.hgbm, 
+          df.pay$error.hxgb, df.pay$error.hdnn, df.pay$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+df.pay.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Mean error boxplots for payment") +
+    xlab("")
+```
+
+```{r}
+df.pay.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Mean error violinplots for payment") +
+    xlab("")
+```
+
+
+```{r}
+df.size.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.size$error.cl, df.size$error.hglm, df.size$error.hgbm, 
+          df.size$error.hxgb, df.size$error.hdnn, df.size$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+df.size.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Mean error boxplots for size") +
+    xlab("")
+```
+
+```{r}
+df.size.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Mean error violinplots for size") +
+    xlab("")
+```

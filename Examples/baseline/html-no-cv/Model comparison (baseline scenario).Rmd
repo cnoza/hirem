@@ -135,30 +135,31 @@ df.settle.error <- data.frame(
 library(hrbrthemes)
 library(ggplot2)
 library(viridis)
-df.settle.error %>%
+boxplot.settle <- df.settle.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
     geom_boxplot() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
       plot.title = element_text(size=11)
     ) +
-    ggtitle("Mean error boxplots for settlement") +
-    xlab("")
-
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (settlement)")
 ```
 
 ```{r}
-df.settle.error %>%
+violin.settle <- df.settle.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
     geom_violin() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
       plot.title = element_text(size=11)
     ) +
-    ggtitle("Mean error violinplots for settlement") +
-    xlab("")
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (settlement)")
 ```
 
 ```{r}
@@ -171,29 +172,31 @@ df.pay.error <- data.frame(
 library(hrbrthemes)
 library(ggplot2)
 library(viridis)
-df.pay.error %>%
+boxplot.pay <- df.pay.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
     geom_boxplot() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
       plot.title = element_text(size=11)
     ) +
-    ggtitle("Mean error boxplots for payment") +
-    xlab("")
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (payment)")
 ```
 
 ```{r}
-df.pay.error %>%
+violin.pay <- df.pay.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
     geom_violin() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
       plot.title = element_text(size=11)
     ) +
-    ggtitle("Mean error violinplots for payment") +
-    xlab("")
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (payment)")
 ```
 
 
@@ -207,27 +210,39 @@ df.size.error <- data.frame(
 library(hrbrthemes)
 library(ggplot2)
 library(viridis)
-df.size.error %>%
+boxplot.size <- df.size.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
     geom_boxplot() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
       plot.title = element_text(size=11)
     ) +
-    ggtitle("Mean error boxplots for size") +
-    xlab("")
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (size)")
 ```
 
 ```{r}
-df.size.error %>%
+violin.size <- df.size.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
     geom_violin() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
       plot.title = element_text(size=11)
     ) +
-    ggtitle("Mean error violinplots for size") +
-    xlab("")
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (size)")
 ```
+```{r, fig.width=12, fig.height=4}
+library(gridExtra)
+grid.arrange(boxplot.settle,boxplot.pay,boxplot.size,ncol=3)
+```
+
+```{r, fig.width=12, fig.height=4}
+library(gridExtra)
+grid.arrange(violin.settle,violin.pay,violin.size,ncol=3)
+```
+

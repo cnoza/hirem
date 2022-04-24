@@ -125,3 +125,39 @@ c('Chain-Ladder' = size.error.cl, 'Hierarchical GLM' = size.error.hglm, 'Hierarc
 
 ```
 
+```{r}
+df.settle.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.settle$error.cl, df.settle$error.hglm, df.settle$error.hgbm, 
+          df.settle$error.hxgb, df.settle$error.hdnn, df.settle$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+df.settle.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Mean error boxplots for settlement") +
+    xlab("")
+
+```
+
+```{r}
+df.settle.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Mean error violinplots for settlement") +
+    xlab("")
+```
+

@@ -63,7 +63,7 @@ names(df.size) <- c('Actual','CL','HGLM','HGBM','HXGB','HDNN','HCANN')
 ```
 
 ## Comparison
-We then compute the average relative error for settlement, payment and size:
+We then compute the average absolute error for settlement, payment and size:
 ```{r}
 df.settle <- df.settle %>% mutate(error.cl=abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
 df.settle <- df.settle %>% mutate(error.hglm=abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
@@ -112,6 +112,189 @@ df.size <- df.size %>% mutate(error.hgbm=abs(as.numeric(Actual)-as.numeric(HGBM)
 df.size <- df.size %>% mutate(error.hxgb=abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
 df.size <- df.size %>% mutate(error.hdnn=abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
 df.size <- df.size %>% mutate(error.hcann=abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+size.error.cl <- df.size %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
+size.error.hglm <- df.size %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
+size.error.hgbm <- df.size %>% summarize(av.error=mean(error.hgbm)) %>% pull(av.error)
+size.error.hxgb <- df.size %>% summarize(av.error=mean(error.hxgb)) %>% pull(av.error)
+size.error.hdnn <- df.size %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
+size.error.hcann <- df.size %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
+
+# Print Results
+c('Chain-Ladder' = size.error.cl, 'Hierarchical GLM' = size.error.hglm, 'Hierarchical GBM' = size.error.hgbm, 'Hierarchical XGB' = size.error.hxgb, 'Hierarchical DNN' = size.error.hdnn, 'Hierarchical CANN' = size.error.hcann)
+
+```
+
+```{r}
+df.settle.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.settle$error.cl, df.settle$error.hglm, df.settle$error.hgbm, 
+          df.settle$error.hxgb, df.settle$error.hdnn, df.settle$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+boxplot.settle <- df.settle.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (settlement)")
+```
+
+```{r}
+violin.settle <- df.settle.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (settlement)")
+```
+
+```{r}
+df.pay.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.pay$error.cl, df.pay$error.hglm, df.pay$error.hgbm, 
+          df.pay$error.hxgb, df.pay$error.hdnn, df.pay$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+boxplot.pay <- df.pay.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (payment)")
+```
+
+```{r}
+violin.pay <- df.pay.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (payment)")
+```
+
+
+```{r}
+df.size.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.size$error.cl, df.size$error.hglm, df.size$error.hgbm, 
+          df.size$error.hxgb, df.size$error.hdnn, df.size$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+boxplot.size <- df.size.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (size)")
+```
+
+```{r}
+violin.size <- df.size.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (size)")
+```
+```{r, fig.width=12, fig.height=4}
+library(gridExtra)
+grid.arrange(boxplot.settle,boxplot.pay,boxplot.size,ncol=3)
+```
+
+```{r, fig.width=12, fig.height=4}
+library(gridExtra)
+grid.arrange(violin.settle,violin.pay,violin.size,ncol=3)
+```
+
+We then compute the average relative error for settlement, payment and size:
+```{r}
+df.settle <- df.settle %>% mutate(error.cl=(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hglm=(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hgbm=(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hxgb=(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hdnn=(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hcann=(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+settl.error.cl <- df.settle %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
+settl.error.hglm <- df.settle %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
+settl.error.hgbm <- df.settle %>% summarize(av.error=mean(error.hgbm)) %>% pull(av.error)
+settl.error.hxgb <- df.settle %>% summarize(av.error=mean(error.hxgb)) %>% pull(av.error)
+settl.error.hdnn <- df.settle %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
+settl.error.hcann <- df.settle %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
+
+# Print Results
+c('Chain-Ladder' = settl.error.cl, 'Hierarchical GLM' = settl.error.hglm, 'Hierarchical GBM' = settl.error.hgbm, 'Hierarchical XGB' = settl.error.hxgb, 'Hierarchical DNN' = settl.error.hdnn, 'Hierarchical CANN' = settl.error.hcann)
+
+```
+
+```{r}
+df.pay <- df.pay %>% mutate(error.cl=(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hglm=(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hgbm=(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hxgb=(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hdnn=(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hcann=(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+payment.error.cl <- df.pay %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
+payment.error.hglm <- df.pay %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
+payment.error.hgbm <- df.pay %>% summarize(av.error=mean(error.hgbm)) %>% pull(av.error)
+payment.error.hxgb <- df.pay %>% summarize(av.error=mean(error.hxgb)) %>% pull(av.error)
+payment.error.hdnn <- df.pay %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
+payment.error.hcann <- df.pay %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
+
+# Print Results
+c('Chain-Ladder' = payment.error.cl, 'Hierarchical GLM' = payment.error.hglm, 'Hierarchical GBM' = payment.error.hgbm, 'Hierarchical XGB' = payment.error.hxgb, 'Hierarchical DNN' = payment.error.hdnn, 'Hierarchical CANN' = payment.error.hcann)
+
+```
+
+```{r}
+#
+df.size <- df.size %>% mutate(error.cl=(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hglm=(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hgbm=(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hxgb=(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hdnn=(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hcann=(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
 
 size.error.cl <- df.size %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
 size.error.hglm <- df.size %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
@@ -245,4 +428,3 @@ grid.arrange(boxplot.settle,boxplot.pay,boxplot.size,ncol=3)
 library(gridExtra)
 grid.arrange(violin.settle,violin.pay,violin.size,ncol=3)
 ```
-

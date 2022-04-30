@@ -429,141 +429,11 @@ library(gridExtra)
 grid.arrange(violin.settle,violin.pay,violin.size,ncol=3)
 ```
 
-We now generate partial dependence plots. For this, we consider the case of a portfolio generated with seed 1. All models were trained based on the "Baseline with seed param.Rmd" file before executing the code below. 
+We now generate partial dependence plots. For this, we consider a portfolio generated with seed 1. All models were trained based on the "Baseline with seed param.Rmd" file before executing the code below. 
 
 We obtain the following for the "type" covariate. 
 
 ```{r}
-par_dep <- function(object, data, grid) {
-  # Initialize a vector to save the effect
-  pd_effect <- rep(0, nrow(grid))
-  # Iterate over the grid values to calculate the effect
-  for (i in seq_len(length(pd_effect))) {
-    if(object$method == "glm") {
-      pd_effect[i] <-
-        data %>%
-        dplyr::mutate(!! names(grid) := grid[i, ]) %>%
-        predict(object$fit, newdata = ., type = 'response') %>%
-        mean()
-    }
-    else if(object$method == "gbm") {
-      pd_effect[i] <-
-        data %>%
-        dplyr::mutate(!! names(grid) := grid[i, ]) %>%
-        predict(object$fit, newdata = ., n.trees = object$fit$n.trees, type = 'response') %>%
-        mean()
-    }
-    else if(object$method == "xgb") {
-      data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
-      f <- as.formula(object$formula)
-      label <- as.character(terms(f)[[2]])
-      data_baked <- bake(object$data_recipe, new_data = data)
-      newdata <- select(data_baked,-as.name(label)) %>% as.matrix()
-      newdata.xgb <- xgb.DMatrix(data = newdata, info = list('label' = as.matrix(data[,label])))
-      response <- predict(object$fit, ntreelimit = object$fit$niter, newdata = newdata.xgb, type = 'response')
-      pd_effect[i] <- mean(response)
-    }
-    else if(object$method == "dnn") {
-      data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
-      f <- as.formula(object$formula)
-      label <- as.character(terms(f)[[2]])
-
-      data_baked <- bake(object$data_recipe, new_data = data)
-      if(ncol(data_baked) == 1)
-        data_baked <- data_baked %>% mutate(intercept = 1)
-
-      x <- select(data_baked,-as.name(label)) %>% as.matrix()
-
-      def_x <- def_x_mlp(object$method_options$use_embedding,
-                         object$method_options$embedding_var,
-                         f,
-                         data,
-                         data_baked,
-                         object$data_recipe,
-                         label)
-
-      if(!object$method_options$use_embedding) {
-        x.inputs <- list(def_x$x)
-      }
-      else {
-        x.inputs <- list(def_x$x_no_fact,def_x$x_fact)
-        x.inputs[sapply(x.inputs, is.null)] <- NULL
-      }
-
-      if(!is.null(object$method_options$ae.hidden)) {
-        x <- data.frame(object$model_en %>% predict(x)) %>% as.matrix()
-      }
-
-      if(!object$method_options$bias_regularization) {
-        response <- predict(object$fit, x.inputs)
-      }
-      else {
-        Zlearn   <- data.frame(object$zz %>% predict(x.inputs))
-        names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
-        response <- predict(object$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
-      }
-      pd_effect[i] <- mean(response)
-    }
-    else if(object$method == "cann") {
-      data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
-      f <- as.formula(object$formula)
-      label <- as.character(terms(f)[[2]])
-
-      if(!is.null(object$method_options$formula.glm))
-        f.glm <- as.formula(object$method_options$formula.glm)
-      else
-        f.glm <- f
-
-      data_baked_for_glm <- bake(object$data_recipe.glm.no_dummy, new_data = data)
-      glm.pred <- predict(object$model.glm, newdata = data_baked_for_glm)
-
-      data_baked <- bake(object$data_recipe, new_data = data)
-      if(ncol(data_baked) == 1)
-        data_baked <- data_baked %>% mutate(intercept = 1)
-
-      data_baked.glm <- bake(object$data_recipe.glm, new_data = data)
-      if(ncol(data_baked.glm) == 1)
-        data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
-
-      x     <- select(data_baked,-as.name(label)) %>% as.matrix()
-      x.glm <- select(data_baked.glm,-as.name(label)) %>% as.matrix()
-
-      def_x <- def_x(object$method_options$use_embedding,
-                     object$method_options$embedding_var,
-                     object$method_options$embedding_var.glm,
-                     f,
-                     f.glm,
-                     data,
-                     data_baked,
-                     data_baked.glm,
-                     object$data_recipe,
-                     object$data_recipe.glm,
-                     label)
-
-      if(!object$method_options$use_embedding) {
-        x.inputs <- list(def_x$x,def_x$x.glm)
-      }
-      else {
-        x.inputs <- list(def_x$x_no_fact.glm,def_x$x_fact.glm,def_x$x_no_fact,def_x$x_fact)
-        x.inputs[sapply(x.inputs, is.null)] <- NULL
-      }
-
-      if(!object$method_options$bias_regularization) {
-        response <- predict(object$fit, x.inputs)
-      }
-      else {
-        Zlearn   <- data.frame(object$zz %>% predict(x.inputs))
-        names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
-        Zlearn$glm.pred <- glm.pred
-        response <- predict(object$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
-      }
-      pd_effect[i] <- mean(response)
-    }
-  }
-  return(pd_effect)
-}
-#'
-
 df.train <- reserving_data %>% dplyr::filter(calendar.year <= 9, open == 1)
 #df.train_sample <- df.train[sample(seq_len(nrow(df.train)), size = 10000), ]
 
@@ -626,4 +496,69 @@ pd_type_size <- grid_type_size %>% reshape2::melt(id.vars = 'type',
 ```{r, fig.width=12, fig.height=3}
 library(gridExtra)
 grid.arrange(pd_type_settle,pd_type_payment,pd_type_size,ncol=3)
+```
+
+We obtain the following for the "dev.year.fact" covariate.
+
+```{r}
+# Partial dependence plots for "dev.year.fact" covariate
+
+grid_dev.year_init <- data.frame('dev.year.fact' = as.factor(levels(df.train$dev.year.fact)))
+
+# Response variable: settlement
+
+grid_dev.year_settle <- grid_dev.year_init %>%
+  dplyr::mutate(HGML = model_glm$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init))
+
+# PDPlot
+
+pd_dev.year_settle <- grid_dev.year_settle %>% reshape2::melt(id.vars = 'dev.year.fact',
+                              value.name = 'pd_settlement',
+                              variable.name = 'method') %>%
+  ggplot(aes(x = dev.year.fact, y = pd_settlement)) + theme_bw() +
+  geom_line(aes(group = method, colour = method))
+
+# Response variable: payment
+
+grid_dev.year_payment <- grid_dev.year_init %>%
+  dplyr::mutate(HGML = model_glm$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init))
+
+# PDPlot
+
+pd_dev.year_payment <- grid_dev.year_payment %>% reshape2::melt(id.vars = 'dev.year.fact',
+                             value.name = 'pd_payment',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = dev.year.fact, y = pd_payment)) + theme_bw() +
+  geom_line(aes(group = method, colour = method))
+
+# Response variable: size
+
+grid_dev.year_size <- grid_dev.year_init %>%
+  dplyr::mutate(HGML = model_glm$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init))
+
+# PDPlot
+
+pd_dev.year_size <- grid_dev.year_size %>% reshape2::melt(id.vars = 'dev.year.fact',
+                             value.name = 'pd_size',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = dev.year.fact, y = pd_size)) + theme_bw() +
+  geom_line(aes(group = method, colour = method))
+
+```
+
+```{r, fig.width=12, fig.height=3}
+library(gridExtra)
+grid.arrange(pd_dev.year_settle,pd_dev.year_payment,pd_dev.year_size,ncol=3)
 ```

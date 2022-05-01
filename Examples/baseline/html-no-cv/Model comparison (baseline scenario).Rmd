@@ -456,7 +456,7 @@ pd_type_settle <- grid_type_settle %>% reshape2::melt(id.vars = 'type',
                               value.name = 'pd_settlement',
                               variable.name = 'method') %>%
   ggplot(aes(x = type, y = pd_settlement)) + theme_bw() +
-  geom_line(aes(group = method, colour = method))
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
 
 # Response variable: payment
 
@@ -473,7 +473,7 @@ pd_type_payment <- grid_type_payment %>% reshape2::melt(id.vars = 'type',
                              value.name = 'pd_payment',
                              variable.name = 'method') %>%
   ggplot(aes(x = type, y = pd_payment)) + theme_bw() +
-  geom_line(aes(group = method, colour = method))
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
 
 # Response variable: size
 
@@ -493,9 +493,10 @@ pd_type_size <- grid_type_size %>% reshape2::melt(id.vars = 'type',
   geom_line(aes(group = method, colour = method))
 
 ```
+
 ```{r, fig.width=12, fig.height=3}
 library(gridExtra)
-grid.arrange(pd_type_settle,pd_type_payment,pd_type_size,ncol=3)
+grid.arrange(pd_type_settle,pd_type_payment,pd_type_size,ncol=3,widths = c(3,3,3.9))
 ```
 
 We obtain the following for the "dev.year.fact" covariate.
@@ -508,7 +509,7 @@ grid_dev.year_init <- data.frame('dev.year.fact' = as.factor(levels(df.train$dev
 # Response variable: settlement
 
 grid_dev.year_settle <- grid_dev.year_init %>%
-  dplyr::mutate(HGML = model_glm$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HGLM = model_glm$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
   dplyr::mutate(HGBM = model_gbm$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
   dplyr::mutate(HXGB = model_xgb$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
   dplyr::mutate(HDNN = model_dnn$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
@@ -520,12 +521,12 @@ pd_dev.year_settle <- grid_dev.year_settle %>% reshape2::melt(id.vars = 'dev.yea
                               value.name = 'pd_settlement',
                               variable.name = 'method') %>%
   ggplot(aes(x = dev.year.fact, y = pd_settlement)) + theme_bw() +
-  geom_line(aes(group = method, colour = method))
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
 
 # Response variable: payment
 
 grid_dev.year_payment <- grid_dev.year_init %>%
-  dplyr::mutate(HGML = model_glm$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HGLM = model_glm$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
   dplyr::mutate(HGBM = model_gbm$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
   dplyr::mutate(HXGB = model_xgb$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
   dplyr::mutate(HDNN = model_dnn$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
@@ -537,12 +538,12 @@ pd_dev.year_payment <- grid_dev.year_payment %>% reshape2::melt(id.vars = 'dev.y
                              value.name = 'pd_payment',
                              variable.name = 'method') %>%
   ggplot(aes(x = dev.year.fact, y = pd_payment)) + theme_bw() +
-  geom_line(aes(group = method, colour = method))
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
 
 # Response variable: size
 
 grid_dev.year_size <- grid_dev.year_init %>%
-  dplyr::mutate(HGML = model_glm$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HGLM = model_glm$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
   dplyr::mutate(HGBM = model_gbm$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
   dplyr::mutate(HXGB = model_xgb$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
   dplyr::mutate(HDNN = model_dnn$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
@@ -560,5 +561,68 @@ pd_dev.year_size <- grid_dev.year_size %>% reshape2::melt(id.vars = 'dev.year.fa
 
 ```{r, fig.width=12, fig.height=3}
 library(gridExtra)
-grid.arrange(pd_dev.year_settle,pd_dev.year_payment,pd_dev.year_size,ncol=3)
+grid.arrange(pd_dev.year_settle,pd_dev.year_payment,pd_dev.year_size,ncol=3,widths = c(3,3,3.9))
+```
+
+```{r}
+# Partial dependence plots for "rep.month" covariate
+
+grid_rep.month_init <- data.frame('rep.month' = factor(levels(df.train$rep.month),levels=levels(df.train$rep.month)))
+
+# Response variable: settlement
+
+grid_rep.month_settle <- grid_rep.month_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init))
+
+# PDPlot
+
+pd_rep.month_settle <- grid_rep.month_settle %>% reshape2::melt(id.vars = 'rep.month',
+                              value.name = 'pd_settlement',
+                              variable.name = 'method') %>%
+  ggplot(aes(x = rep.month, y = pd_settlement)) + theme_bw() +
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
+
+# Response variable: payment
+
+grid_rep.month_payment <- grid_rep.month_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init))
+
+# PDPlot
+
+pd_rep.month_payment <- grid_rep.month_payment %>% reshape2::melt(id.vars = 'rep.month',
+                             value.name = 'pd_payment',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = rep.month, y = pd_payment)) + theme_bw() +
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
+
+# Response variable: size
+
+grid_rep.month_size <- grid_rep.month_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init))
+
+# PDPlot
+
+pd_rep.month_size <- grid_rep.month_size %>% reshape2::melt(id.vars = 'rep.month',
+                             value.name = 'pd_size',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = rep.month, y = pd_size)) + theme_bw() +
+  geom_line(aes(group = method, colour = method))
+
+```
+
+```{r, fig.width=12, fig.height=3}
+library(gridExtra)
+grid.arrange(pd_rep.month_settle,pd_rep.month_payment,pd_rep.month_size,ncol=3,widths = c(3,3,3.9))
 ```

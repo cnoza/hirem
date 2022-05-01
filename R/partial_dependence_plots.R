@@ -1,3 +1,13 @@
+#' Marginal effects of a predictor on a hierarchical model layer.
+#'
+#' This function can be used to obtain the marginal effects of a predictor on the layer of a hierarchical model.
+#' Compatible with layers defined as a GLM, GBM, XGB, DNN or CANN model.
+#' The returned data frame can serve as input to draw partial dependence plots (see examples in the package repository).
+#'
+#' @param object The hierarchical reserving model layer
+#' @param data The input data set
+#' @param grid A data frame with the values of the predictor for which marginal effects are to be computed
+#'
 #' @export
 par_dep <- function(object, data, grid) {
   # Initialize a vector to save the effect

@@ -65,12 +65,12 @@ names(df.size) <- c('Actual','CL','HGLM','HGBM','HXGB','HDNN','HCANN')
 ## Comparison
 We then compute the average absolute error for settlement, payment and size:
 ```{r}
-df.settle <- df.settle %>% mutate(error.cl=abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hglm=abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hgbm=abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hxgb=abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hdnn=abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hcann=abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.cl=100*abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hglm=100*abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hgbm=100*abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hxgb=100*abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hdnn=100*abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hcann=100*abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
 
 settl.error.cl <- df.settle %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
 settl.error.hglm <- df.settle %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
@@ -80,17 +80,17 @@ settl.error.hdnn <- df.settle %>% summarize(av.error=mean(error.hdnn)) %>% pull(
 settl.error.hcann <- df.settle %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
 
 # Print Results
-c('Chain-Ladder' = settl.error.cl, 'Hierarchical GLM' = settl.error.hglm, 'Hierarchical GBM' = settl.error.hgbm, 'Hierarchical XGB' = settl.error.hxgb, 'Hierarchical DNN' = settl.error.hdnn, 'Hierarchical CANN' = settl.error.hcann)
+c('Chain-Ladder' = settl.error.cl, 'Hierarchical GLM' = settl.error.hglm, 'Hierarchical GBM' = settl.error.hgbm, 'Hierarchical XGB' = settl.error.hxgb, 'Hierarchical DNN' = settl.error.hdnn, 'Hierarchical CANN' = settl.error.hcann) %>% round(digits=3)
 
 ```
 
 ```{r}
-df.pay <- df.pay %>% mutate(error.cl=abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hglm=abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hgbm=abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hxgb=abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hdnn=abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hcann=abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.cl=100*abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hglm=100*abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hgbm=100*abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hxgb=100*abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hdnn=100*abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hcann=100*abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
 
 payment.error.cl <- df.pay %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
 payment.error.hglm <- df.pay %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
@@ -100,18 +100,18 @@ payment.error.hdnn <- df.pay %>% summarize(av.error=mean(error.hdnn)) %>% pull(a
 payment.error.hcann <- df.pay %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
 
 # Print Results
-c('Chain-Ladder' = payment.error.cl, 'Hierarchical GLM' = payment.error.hglm, 'Hierarchical GBM' = payment.error.hgbm, 'Hierarchical XGB' = payment.error.hxgb, 'Hierarchical DNN' = payment.error.hdnn, 'Hierarchical CANN' = payment.error.hcann)
+c('Chain-Ladder' = payment.error.cl, 'Hierarchical GLM' = payment.error.hglm, 'Hierarchical GBM' = payment.error.hgbm, 'Hierarchical XGB' = payment.error.hxgb, 'Hierarchical DNN' = payment.error.hdnn, 'Hierarchical CANN' = payment.error.hcann) %>% round(digits = 3)
 
 ```
 
 ```{r}
 #
-df.size <- df.size %>% mutate(error.cl=abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hglm=abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hgbm=abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hxgb=abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hdnn=abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hcann=abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.cl=100*abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hglm=100*abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hgbm=100*abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hxgb=100*abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hdnn=100*abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hcann=100*abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
 
 size.error.cl <- df.size %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
 size.error.hglm <- df.size %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
@@ -121,7 +121,7 @@ size.error.hdnn <- df.size %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.
 size.error.hcann <- df.size %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
 
 # Print Results
-c('Chain-Ladder' = size.error.cl, 'Hierarchical GLM' = size.error.hglm, 'Hierarchical GBM' = size.error.hgbm, 'Hierarchical XGB' = size.error.hxgb, 'Hierarchical DNN' = size.error.hdnn, 'Hierarchical CANN' = size.error.hcann)
+c('Chain-Ladder' = size.error.cl, 'Hierarchical GLM' = size.error.hglm, 'Hierarchical GBM' = size.error.hgbm, 'Hierarchical XGB' = size.error.hxgb, 'Hierarchical DNN' = size.error.hdnn, 'Hierarchical CANN' = size.error.hcann) %>% round(digits = 3)
 
 ```
 
@@ -145,7 +145,7 @@ boxplot.settle <- df.settle.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Absolute error (settlement)")
+    ylab("Absolute error (settlement) in %")
 ```
 
 ```{r}
@@ -159,7 +159,7 @@ violin.settle <- df.settle.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Absolute error (settlement)")
+    ylab("Absolute error (settlement) in %")
 ```
 
 ```{r}
@@ -182,7 +182,7 @@ boxplot.pay <- df.pay.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Absolute error (payment)")
+    ylab("Absolute error (payment) in %")
 ```
 
 ```{r}
@@ -196,7 +196,7 @@ violin.pay <- df.pay.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Absolute error (payment)")
+    ylab("Absolute error (payment) in %")
 ```
 
 
@@ -220,7 +220,7 @@ boxplot.size <- df.size.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Absolute error (size)")
+    ylab("Absolute error (size) in %")
 ```
 
 ```{r}
@@ -234,8 +234,9 @@ violin.size <- df.size.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Absolute error (size)")
+    ylab("Absolute error (size) in %")
 ```
+
 ```{r, fig.width=12, fig.height=4}
 library(gridExtra)
 grid.arrange(boxplot.settle,boxplot.pay,boxplot.size,ncol=3)
@@ -248,12 +249,12 @@ grid.arrange(violin.settle,violin.pay,violin.size,ncol=3)
 
 We then compute the average relative error for settlement, payment and size:
 ```{r}
-df.settle <- df.settle %>% mutate(error.cl=(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hglm=(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hgbm=(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hxgb=(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hdnn=(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
-df.settle <- df.settle %>% mutate(error.hcann=(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.cl=100*(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hglm=100*(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hgbm=100*(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hxgb=100*(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hdnn=100*(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hcann=100*(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
 
 settl.error.cl <- df.settle %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
 settl.error.hglm <- df.settle %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
@@ -262,18 +263,18 @@ settl.error.hxgb <- df.settle %>% summarize(av.error=mean(error.hxgb)) %>% pull(
 settl.error.hdnn <- df.settle %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
 settl.error.hcann <- df.settle %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
 
-# Print Results
-c('Chain-Ladder' = settl.error.cl, 'Hierarchical GLM' = settl.error.hglm, 'Hierarchical GBM' = settl.error.hgbm, 'Hierarchical XGB' = settl.error.hxgb, 'Hierarchical DNN' = settl.error.hdnn, 'Hierarchical CANN' = settl.error.hcann)
+# Print Results (in %)
+c('Chain-Ladder' = settl.error.cl, 'Hierarchical GLM' = settl.error.hglm, 'Hierarchical GBM' = settl.error.hgbm, 'Hierarchical XGB' = settl.error.hxgb, 'Hierarchical DNN' = settl.error.hdnn, 'Hierarchical CANN' = settl.error.hcann) %>% round(digits=3)
 
 ```
 
 ```{r}
-df.pay <- df.pay %>% mutate(error.cl=(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hglm=(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hgbm=(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hxgb=(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hdnn=(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
-df.pay <- df.pay %>% mutate(error.hcann=(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.cl=100*(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hglm=100*(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hgbm=100*(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hxgb=100*(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hdnn=100*(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hcann=100*(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
 
 payment.error.cl <- df.pay %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
 payment.error.hglm <- df.pay %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
@@ -283,18 +284,18 @@ payment.error.hdnn <- df.pay %>% summarize(av.error=mean(error.hdnn)) %>% pull(a
 payment.error.hcann <- df.pay %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
 
 # Print Results
-c('Chain-Ladder' = payment.error.cl, 'Hierarchical GLM' = payment.error.hglm, 'Hierarchical GBM' = payment.error.hgbm, 'Hierarchical XGB' = payment.error.hxgb, 'Hierarchical DNN' = payment.error.hdnn, 'Hierarchical CANN' = payment.error.hcann)
+c('Chain-Ladder' = payment.error.cl, 'Hierarchical GLM' = payment.error.hglm, 'Hierarchical GBM' = payment.error.hgbm, 'Hierarchical XGB' = payment.error.hxgb, 'Hierarchical DNN' = payment.error.hdnn, 'Hierarchical CANN' = payment.error.hcann) %>% round(digits=3)
 
 ```
 
 ```{r}
 #
-df.size <- df.size %>% mutate(error.cl=(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hglm=(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hgbm=(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hxgb=(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hdnn=(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
-df.size <- df.size %>% mutate(error.hcann=(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.cl=100*(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hglm=100*(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hgbm=100*(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hxgb=100*(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hdnn=100*(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hcann=100*(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
 
 size.error.cl <- df.size %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
 size.error.hglm <- df.size %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
@@ -304,7 +305,7 @@ size.error.hdnn <- df.size %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.
 size.error.hcann <- df.size %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
 
 # Print Results
-c('Chain-Ladder' = size.error.cl, 'Hierarchical GLM' = size.error.hglm, 'Hierarchical GBM' = size.error.hgbm, 'Hierarchical XGB' = size.error.hxgb, 'Hierarchical DNN' = size.error.hdnn, 'Hierarchical CANN' = size.error.hcann)
+c('Chain-Ladder' = size.error.cl, 'Hierarchical GLM' = size.error.hglm, 'Hierarchical GBM' = size.error.hgbm, 'Hierarchical XGB' = size.error.hxgb, 'Hierarchical DNN' = size.error.hdnn, 'Hierarchical CANN' = size.error.hcann) %>% round(digits=3)
 
 ```
 
@@ -328,7 +329,7 @@ boxplot.settle <- df.settle.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Relative error (settlement)")
+    ylab("Relative error (settlement) in %")
 ```
 
 ```{r}
@@ -342,7 +343,7 @@ violin.settle <- df.settle.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Relative error (settlement)")
+    ylab("Relative error (settlement) in %")
 ```
 
 ```{r}
@@ -365,7 +366,7 @@ boxplot.pay <- df.pay.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Relative error (payment)")
+    ylab("Relative error (payment) in %")
 ```
 
 ```{r}
@@ -379,7 +380,7 @@ violin.pay <- df.pay.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Relative error (payment)")
+    ylab("Relative error (payment) in %")
 ```
 
 
@@ -403,7 +404,7 @@ boxplot.size <- df.size.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Relative error (size)")
+    ylab("Relative error (size) in %")
 ```
 
 ```{r}
@@ -417,8 +418,9 @@ violin.size <- df.size.error %>%
     ) +
     ggtitle("") +
     xlab("") +
-    ylab("Relative error (size)")
+    ylab("Relative error (size) in %")
 ```
+
 ```{r, fig.width=12, fig.height=4}
 library(gridExtra)
 grid.arrange(boxplot.settle,boxplot.pay,boxplot.size,ncol=3)

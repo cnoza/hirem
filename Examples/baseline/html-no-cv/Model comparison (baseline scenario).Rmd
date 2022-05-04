@@ -435,10 +435,13 @@ We now generate partial dependence plots. For this, we consider a portfolio gene
 
 ```{r}
 par_dep <- function(object, data, grid) {
+  # We backup the data
+  data_sav <- data
   # Initialize a vector to save the effect
   pd_effect <- rep(0, nrow(grid))
   # Iterate over the grid values to calculate the effect
   for (i in seq_len(length(pd_effect))) {
+    data <- data_sav
     if(object$method == "glm") {
       data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
       data$monthDev12 <- as.character(data$rep.month)
@@ -450,9 +453,9 @@ par_dep <- function(object, data, grid) {
         mean()
     }
     else if(object$method == "gbm") {
+      data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
       pd_effect[i] <-
         data %>%
-        dplyr::mutate(!! names(grid) := grid[i, ]) %>%
         predict(object$fit, newdata = ., n.trees = object$fit$n.trees, type = 'response') %>%
         mean()
     }
@@ -709,6 +712,7 @@ grid.arrange(pd_dev.year_settle,pd_dev.year_payment,pd_dev.year_size,ncol=3,widt
 # Partial dependence plots for "rep.month" covariate
 
 grid_rep.month_init <- data.frame('rep.month' = factor(levels(df.train$rep.month),levels=levels(df.train$rep.month)))
+
 
 # Response variable: settlement
 

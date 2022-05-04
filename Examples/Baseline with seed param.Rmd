@@ -174,6 +174,24 @@ model_gbm <- hirem::fit(model_gbm,
                  size = paste0('size ~ 1 + ', paste0(c(covariates_gbm,'settlement'), collapse = ' + ')))
 ```
 
+```{r}
+# Variable importance
+summary(model_gbm$layers$settlement$fit)
+
+```
+
+```{r}
+# Variable importance
+summary(model_gbm$layers$payment$fit)
+
+```
+
+```{r}
+# Variable importance
+summary(model_gbm$layers$size$fit)
+
+```
+
 ### Hierarchical XGB
 
 We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`).
@@ -223,6 +241,24 @@ We can obtain the cross-validation results as follows:
 if(!is.null(model_xgb$layers$settlement$hyper_grid)) model_xgb$layers$settlement$hyper_grid
 if(!is.null(model_xgb$layers$payment$hyper_grid)) model_xgb$layers$payment$hyper_grid
 if(!is.null(model_xgb$layers$size$hyper_grid)) model_xgb$layers$size$hyper_grid
+```
+
+```{r}
+# Variable importance
+xgb.importance(colnames(model_xgb$layers$settlement$fit), model = model_xgb$layers$settlement$fit)
+
+```
+
+```{r}
+# Variable importance
+xgb.importance(colnames(model_xgb$layers$payement$fit), model = model_xgb$layers$payment$fit)
+
+```
+
+```{r}
+# Variable importance
+xgb.importance(colnames(model_xgb$layers$size$fit), model = model_xgb$layers$size$fit)
+
 ```
 
 ### Hierarchical Deep feed-forward Neural Network

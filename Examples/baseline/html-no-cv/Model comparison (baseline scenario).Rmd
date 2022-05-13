@@ -137,7 +137,7 @@ library(ggplot2)
 library(viridis)
 boxplot.settle <- df.settle.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
-    geom_boxplot() +
+    geom_boxplot() + theme_bw() +
     scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
@@ -174,7 +174,7 @@ library(ggplot2)
 library(viridis)
 boxplot.pay <- df.pay.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
-    geom_boxplot() +
+    geom_boxplot() + theme_bw() +
     scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
@@ -212,7 +212,7 @@ library(ggplot2)
 library(viridis)
 boxplot.size <- df.size.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
-    geom_boxplot() +
+    geom_boxplot() + theme_bw() +
     scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
@@ -321,7 +321,7 @@ library(ggplot2)
 library(viridis)
 boxplot.settle <- df.settle.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
-    geom_boxplot() +
+    geom_boxplot() + theme_bw() +
     scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
@@ -358,7 +358,7 @@ library(ggplot2)
 library(viridis)
 boxplot.pay <- df.pay.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
-    geom_boxplot() +
+    geom_boxplot() + theme_bw() +
     scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
@@ -396,7 +396,7 @@ library(ggplot2)
 library(viridis)
 boxplot.size <- df.size.error %>%
   ggplot( aes(x=name, y=value, fill=name)) +
-    geom_boxplot() +
+    geom_boxplot() + theme_bw() +
     scale_fill_viridis(discrete = TRUE, alpha=0.6) +
     theme(
       legend.position="none",
@@ -771,3 +771,38 @@ pd_rep.month_size <- grid_rep.month_size %>% reshape2::melt(id.vars = 'rep.month
 library(gridExtra)
 grid.arrange(pd_rep.month_settle,pd_rep.month_payment,pd_rep.month_size,ncol=3,widths = c(3,3,3.9))
 ```
+
+```{r, fig.width=10, fig.height=3}
+KULbg <- "#116e8a"
+
+plot.avg.freq <- function(df,x,xlab) {
+  g1 <- df %>% group_by_(as.name(x)) %>% summarize(n = n()) %>% 
+    mutate(rel.freq = n / sum(n))
+  g2 <- g1 %>% 
+    ggplot(data=., aes(x=g1[[x]], y=rel.freq)) + theme_bw() +
+    geom_bar(position = 'dodge', stat='identity',fill=KULbg) + 
+    #geom_text(aes(label=round(rel.freq, digits = 3)), position=position_dodge(width=0.9), vjust=-0.25) +
+    labs(x=xlab,y="Proportion")
+  (g2)
+}
+
+df <- observed_data
+f1 <- plot.avg.freq(df,"type","Type")
+f2 <- plot.avg.freq(df,"rep.month","Reporting month")
+f3 <- plot.avg.freq(df,"occ.month","Occurence month")
+f6 <- plot.avg.freq(df,"occ.year","Occurence year")
+f4 <- plot.avg.freq(df,"rep.delay","Reporting delay")
+f5 <- plot.avg.freq(df,"rep.year","Reporting year")
+
+library(gridExtra)
+
+#grid.arrange(f1,f2,f3,f4,f5,f6,ncol=3)
+grid.arrange(f1,f2,f3,ncol=3)
+
+```
+```{r}
+h1 <- ggplot(data = df %>% filter(payment == 1 ), aes(size)) + 
+      geom_density(adjust = 3, col = KULbg, fill = KULbg) + 
+      xlim(0, 1e4) + ylab("Distribution") + xlab("size") + theme_bw()
+```
+

@@ -10,7 +10,7 @@ settlement
 
 payment
 
- eta max_depth min_child_weight subsample colsample_bynode gamma lambda alpha mean_scores best_nrounds
+   eta max_depth min_child_weight subsample colsample_bynode gamma lambda alpha mean_scores best_nrounds
 1 0.05         3              100         1                1     0      1     0   0.5630166          146
 2 0.50         3              100         1                1     0      1     0   0.5634752            6
 3 1.00         3              100         1                1     0      1     0   0.5639366            3
@@ -20,7 +20,7 @@ payment
 
 size
 
-eta max_depth min_child_weight subsample colsample_bynode gamma lambda alpha mean_scores best_nrounds
+   eta max_depth min_child_weight subsample colsample_bynode gamma lambda alpha mean_scores best_nrounds
 1 1.00         1              100         1                1     0      1     0    1.234707           46
 2 0.05         1              100         1                1     0      1     0    1.236349         1000
 3 0.50         1              100         1                1     0      1     0    1.236501          126

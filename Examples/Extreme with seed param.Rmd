@@ -285,7 +285,7 @@ model_dnn <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_dnn('settlement', distribution = 'bernoulli',
             bias_regularization = T, 
-            hidden = c(40,30,40),
+            hidden = c(40,30,20),
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
@@ -298,7 +298,7 @@ model_dnn <-  hirem(reserving_data) %>%
             patience = 20) %>%
   layer_dnn('payment', distribution = 'bernoulli',
             bias_regularization = T,
-            hidden = c(30,40,20),
+            hidden = c(40,30,20),
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
@@ -311,7 +311,7 @@ model_dnn <-  hirem(reserving_data) %>%
             patience = 20) %>%
   layer_dnn('size', distribution = 'gamma',
             bias_regularization = T, 
-            hidden = c(50,40,60),
+            hidden = c(40,30,20),
             loss = gamma_deviance_keras,
             metrics = metric_gamma_deviance_keras,
             optimizer = optimizer_nadam(),
@@ -364,7 +364,7 @@ We first define the model specifications of each layer. We only train the reserv
 model_cann <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_cann('settlement', distribution = 'bernoulli',
-             hidden = c(50,50,50),
+             hidden = c(40,30,20),
              formula.glm = formula_settle_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),
@@ -380,7 +380,7 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('payment', distribution = 'bernoulli',
-             hidden = c(30,30,50),
+             hidden = c(40,30,20),
              formula.glm = formula_pay_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),
@@ -396,7 +396,7 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('size', distribution = 'gamma',
-             hidden = c(40,20,20),
+             hidden = c(40,30,20),
              formula.glm = formula_size_glm, 
              bias_regularization = T,
              family_for_glm = Gamma(link=log),

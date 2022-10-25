@@ -1,6 +1,6 @@
 #####################################################################
 #### Authors Melantha Wang & Mario Wuthrich
-#### Date 28/05/2022  
+#### Date 28/05/2022
 #### Auxiliary functions for claim re-openings
 #####################################################################
 
@@ -12,7 +12,7 @@
 # > Re-opening within 12 months after closing, with exponential decay after closing.
 # > The re-opening may (with probability 0.2) or may not (with probability 0.8) occur with a payment:
 #   - If the re-opening occurs with a payment, we will simulate a payment, and close the claim 1 month after that.
-#   - If the re-opening occurs without a payment, we will assume at most 1 payment within 6 months of reopening, and an immediate closure (i.e. same month) after or with the payment. 
+#   - If the re-opening occurs without a payment, we will assume at most 1 payment within 6 months of reopening, and an immediate closure (i.e. same month) after or with the payment.
 
 # First we do some labelling on our current data:
 ClaimsPaid_new <- ClaimsPaid %>%
@@ -29,7 +29,7 @@ ClaimsPaid_new <- ClaimsPaid %>%
 # Add rows for claims that closed after a final payment (PayInd = 0, OpenInd = 0)
 late_Id <- Id[DelayPlus > 0] # get the Ids for such claims
 late_closure_rows <- data.frame(
-  Id = late_Id, 
+  Id = late_Id,
   PayId = NA,
   RepMonth = claims[claims$Id %in% late_Id, "RepMonth"],
   SetMonth = claims[claims$Id %in% late_Id, "SetMonth"],
@@ -41,7 +41,7 @@ late_closure_rows <- data.frame(
 )
 
 # Simulate reopenings
-# Step 1: Randomly select a subset of claims that will reopen after the first 
+# Step 1: Randomly select a subset of claims that will reopen after the first
 # recorded claim closure
 sim_reopen <- function(Ultimate) {
   if (Ultimate > 20000) {
@@ -55,7 +55,7 @@ reopen_Id <- claims$Id[as.logical(sim_reopen(claims$Ultimate))]
 
 # Record reopen rows (to be concatenated with ClaimsPaid)
 reopen_rows <- data.frame(
-  Id = reopen_Id, 
+  Id = reopen_Id,
   RepMonth = claims[claims$Id %in% reopen_Id, "RepMonth"],
   SetMonth = claims[claims$Id %in% reopen_Id, "SetMonth"],
   # EventMonth to be simulated in step 2.1
@@ -102,7 +102,7 @@ reopen_rows$PayId <- ifelse(
 reopen_wp_Id <- reopen_rows[reopen_rows$PayInd == 1, "Id"]
 if (length(reopen_wp_Id) > 0) {
   reopen_closure_rows <- data.frame(
-    Id = reopen_wp_Id, 
+    Id = reopen_wp_Id,
     PayId = NA,
     RepMonth = claims[claims$Id %in% reopen_wp_Id, "RepMonth"],
     SetMonth = claims[claims$Id %in% reopen_wp_Id, "SetMonth"],
@@ -164,7 +164,7 @@ reopen_new_info <- reopen_closure_rows %>%
   dplyr::mutate(
     SetDelMonths_new = SetMonth_new - RepMonth,
     Ultimate_new = Ultimate + Paid + reopen_rows$Paid,
-    PayCount_new = claims[claims$Id %in% reopen_Id, "PayCount"] + 
+    PayCount_new = claims[claims$Id %in% reopen_Id, "PayCount"] +
       as.numeric(Ultimate_new > Ultimate)) %>%
   dplyr::select(Id, Ultimate_new, SetMonth_new, SetDelMonths_new, PayCount_new)
 # keep the first settlement dates

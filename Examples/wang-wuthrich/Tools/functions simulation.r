@@ -246,11 +246,11 @@ data.generation.type <- function(type, exposure, seed){
   if (type==4) {Ultimate <- claims.type4(n_vector, claims_$Age)}
   if (type==5) {Ultimate <- claims.type5(n_vector, unlist(acc_time))}
   if (type==6) {
-     UltimateA <- unlist(claim_size(frequency_vector = n_vector, simfun = claims.type6A))
-     UltimateB <- unlist(claim_size(frequency_vector = n_vector, simfun = claims.type6B))
-     # replace weekend values by type 6B
-     UltimateA[which(claims_$AccWeekday %in% c("Sat", "Sun"))] <- UltimateB[which(claims_$AccWeekday %in% c("Sat", "Sun"))]
-     Ultimate <- to_SynthETIC(UltimateA, n_vector)
+    UltimateA <- unlist(claim_size(frequency_vector = n_vector, simfun = claims.type6A))
+    UltimateB <- unlist(claim_size(frequency_vector = n_vector, simfun = claims.type6B))
+    # replace weekend values by type 6B
+    UltimateA[which(claims_$AccWeekday %in% c("Sat", "Sun"))] <- UltimateB[which(claims_$AccWeekday %in% c("Sat", "Sun"))]
+    Ultimate <- to_SynthETIC(UltimateA, n_vector)
   }
 
   ### reporting delay
@@ -329,7 +329,8 @@ data.generation.type <- function(type, exposure, seed){
   claims[claims$Id %in% selected_clms, "Ultimate"] <- 0
   claims[claims$Id %in% selected_clms, "PayCount"] <- 0
   # remove those zero-claims from the ClaimsPaid data
-  ClaimsPaid <- ClaimsPaid[!(ClaimsPaid$Id %in% selected_clms), ]
+  # Below line commented to keep zero-claims in the dataset
+  #ClaimsPaid <- ClaimsPaid[!(ClaimsPaid$Id %in% selected_clms), ]
 
   ### adding recovery payments (either last or second last payment)
   Id <- claims[claims$PayCount > 2, "Id"]
@@ -399,8 +400,38 @@ data.generation <- function(seed, future_info = FALSE){
       claims <- data_list$claims
       paid   <- data_list$paid
       reopen <- data_list$reopen
+
+      ### Code added to remove duplicate claim Id's ###
+      ### Begin ###
+      claims <- dplyr::arrange(claims, RepDate)
+      Id_map <- data.frame(Id = claims$Id, Id_new = c(1:nrow(claims)))
+      claims <- merge(Id_map, claims, by = "Id", all.y = T) %>%
+        dplyr::select(-Id) %>% # remove old Id
+        dplyr::rename(Id = Id_new) %>%
+        dplyr::arrange(Id)
+      paid <- merge(Id_map, paid, by = "Id", all.y = T) %>%
+        dplyr::select(-Id) %>% # remove old Id
+        dplyr::rename(Id = Id_new) %>%
+        dplyr::arrange(Id, EventId)
+      ### End ###
+
     } else {
       data_list <- data.generation.type(type, exposure[type], seeds[type])
+
+      ### Code added to remove duplicate claim Id's ###
+      ### Begin ###
+      data_list$claims <- dplyr::arrange(data_list$claims, RepDate)
+      Id_map <- data.frame(Id = data_list$claims$Id, Id_new = c(1:nrow(data_list$claims)))
+      data_list$claims <- merge(Id_map, data_list$claims, by = "Id", all.y = T) %>%
+        dplyr::select(-Id) %>% # remove old Id
+        dplyr::rename(Id = Id_new) %>%
+        dplyr::arrange(Id)
+      data_list$paid <- merge(Id_map, data_list$paid, by = "Id", all.y = T) %>%
+        dplyr::select(-Id) %>% # remove old Id
+        dplyr::rename(Id = Id_new) %>%
+        dplyr::arrange(Id, EventId)
+      ### End ###
+
       # get individual data components
       data_list$claims$Id <- data_list$claims$Id + nrow(claims)
       data_list$paid$Id <- data_list$paid$Id + nrow(claims)
@@ -408,6 +439,8 @@ data.generation <- function(seed, future_info = FALSE){
       claims <- rbind(claims, data_list$claims)
       paid   <- rbind(paid, data_list$paid)
       reopen <- rbind(reopen, data_list$reopen)
+
+
     }
   }
 
@@ -487,4 +520,3 @@ data.generation <- function(seed, future_info = FALSE){
     full_claims = full_claims, full_paid = full_paid, reopen = reopen
   )
 }
-

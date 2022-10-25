@@ -12,7 +12,7 @@ options(dplyr.summarise.inform = FALSE)
 ```
 
 ## Introduction
-This document implements hierarchical reserving models based on the extended hirem package. The input data is generated using the simulation engine from Wang and Wuthric:
+This document implements hierarchical reserving models based on the extended hirem package. The input data is generated using the simulation engine from Wang and Wuthrich, described the following paper:
 
 Wang, Melantha and Wuthrich, Mario V., Individual Claims Generator for Claims Reserving Studies: Data Simulation.R (June 3, 2022). Available at SSRN: https://ssrn.com/abstract=4127073 or http://dx.doi.org/10.2139/ssrn.4127073
 
@@ -45,6 +45,7 @@ library(locfit)
 library(dplyr)
 library(actuar)
 library(tidyr)
+library(lubridate)
 
 ref_claim <- 1          # currency is 1
 time_unit <- 1          # we consider yearly claims development
@@ -74,34 +75,29 @@ paid <- claims_list[[2]]
 #full_paid <- claims_list[[4]]
 #reopen <- claims_list[[5]]
 
-reserving_data <- merge(paid, claims, by="Id")
+reserving_data <- merge(paid, claims, by="Id", all.x = T, all.y = T)
 
 # Case: time_unit = 1 (yearly development periods)
 reserving_data <- reserving_data %>%
-  mutate(calendar.year = floor(EventMonth/12)+1,
-         rep.year = floor(RepMonth/12)+1,
+  mutate(calendar.year = EventMonth,
+         rep.year = RepMonth,
          dev.year = calendar.year - rep.year + 1,
-         settlement.year = floor(SetMonth/12)+1,
-         payment = PayInd,
+         settlement.year = SetMonth,
+         payment = as.numeric(Paid>0),
          settlement = as.numeric(dev.year == settlement.year),
          open = 1,
-         size = Paid) %>%
+         size = Paid,
+         type = Type,
+         rep.month = month(ymd(RepDate))) %>%
   arrange(Id, EventId) %>%
-  select(-EventMonth, -RepMonth, -OpenInd, -PayInd, -SetMonth, -Paid)
+  select(-EventMonth, -RepMonth, -SetMonth, -Paid, -Type)
 
-# Case: time_unit = 1/12 (monthly development periods)
-# reserving_data <- reserving_data %>% 
-#   # We discard IBNR claims
-#   filter(Status != 'IBNR') %>%
-#   mutate(calender.year = floor(EventMonth/12)+1,
-#          rep.year = floor(RepMonth/12)+1,
-#          dev.year = floor((EventMonth-RepMonth)/12)+1,
-#          settlement.year = floor(SetMonth/12)+1,
-#          payment = PayInd,
-#          settlement = as.numeric(dev.year == settlement.year)) %>%
-#   arrange(Id, EventId)
+reserving_data$dev.year.fact <- factor(reserving_data$dev.year, levels = 1:years)
+reserving_data$rep.year.fact <- factor(reserving_data$rep.year, levels = 1:years)
 
-reserving_data$dev.year.fact <- factor(reserving_data$dev.year, levels = 1:17)
+reserving_data$monthDev12 <- as.character(reserving_data$rep.month)
+reserving_data$monthDev12[reserving_data$dev.year > 3] <- 'dev.year > 3'
+reserving_data$devYearMonth <- factor(paste(reserving_data$dev.year, reserving_data$monthDev12, sep = '-'))
 
 str(reserving_data)
 
@@ -203,7 +199,7 @@ We now fit the hierarchical GBM on the observed portfolio of simulated claims.
 
 ```{r}
 # Covariates
-covariates_gbm <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'rep.delay', 'calendar.year')
+covariates_gbm <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'calendar.year')
 
 # Fitting the hierarchical GBM
 model_gbm <- hirem::fit(model_gbm,
@@ -238,22 +234,22 @@ model_xgb <- hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_xgb('settlement', objective = 'binary:logistic',
             eval_metric = 'logloss',
-            bayesOpt = F, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-            gridsearch_cv=T, hyper_grid = hyper_grid,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+            #gridsearch_cv=T, hyper_grid = hyper_grid,
             grow_policy = 'lossguide',
             nfolds = 5,
             verbose = F ) %>%
   layer_xgb('payment', objective = 'binary:logistic',
             eval_metric = 'logloss',
-            bayesOpt = F, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-            gridsearch_cv=T, hyper_grid = hyper_grid,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+            #gridsearch_cv=T, hyper_grid = hyper_grid,
             grow_policy = 'lossguide',
             nfolds = 5,
             verbose = F) %>%
   layer_xgb('size', objective = 'reg:gamma',
             eval_metric = 'gamma-deviance',
-            bayesOpt = F, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-            gridsearch_cv=T, hyper_grid = hyper_grid,
+            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
+            #gridsearch_cv=T, hyper_grid = hyper_grid,
             grow_policy = 'lossguide',
             nfolds = 5,
             verbose = F,
@@ -264,7 +260,7 @@ We now fit the hierarchical XGB on the observed portfolio of simulated claims.
 
 ```{r}
 # Covariates
-covariates_xgb <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'rep.delay', 'calendar.year')
+covariates_xgb <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'Age', 'calendar.year')
 
 # Fitting the hierarchical XGB
 model_xgb <- hirem::fit(model_xgb,
@@ -313,9 +309,10 @@ model_dnn <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_dnn('settlement', distribution = 'bernoulli',
             bayesOpt = F, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
-            gridsearch_cv=T, hyper_grid=hyper_grid,
+            gridsearch_cv=F, hyper_grid=hyper_grid,
             use_embedding = F, #output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T, 
+            hidden = c(40,30,40),
             step_log = F,
             step_normalize = F,
             loss = 'binary_crossentropy',
@@ -332,7 +329,8 @@ model_dnn <-  hirem(reserving_data) %>%
             patience = 20) %>%
   layer_dnn('payment', distribution = 'bernoulli',
             bayesOpt = F, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
-            gridsearch_cv=T, hyper_grid=hyper_grid,
+            gridsearch_cv=F, hyper_grid=hyper_grid,
+            hidden = c(40,30,20),
             use_embedding = F, #output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T,
             step_log = F,
@@ -351,7 +349,8 @@ model_dnn <-  hirem(reserving_data) %>%
             patience = 20) %>%
   layer_dnn('size', distribution = 'gamma',
             bayesOpt = F, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
-            gridsearch_cv=T, hyper_grid=hyper_grid,
+            gridsearch_cv=F, hyper_grid=hyper_grid,
+            hidden = c(40,30,20),
             use_embedding = F, #output_dim = 1, embedding_var = c('rep.month', 'rep.year.fact'),
             bias_regularization = T, 
             step_log = F,
@@ -375,7 +374,7 @@ We now fit the hierarchical DNN on the observed portfolio of simulated claims.
 
 ```{r message=FALSE, warning=FALSE}
 # Covariates
-covariates_dnn <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'rep.delay', 'calendar.year')
+covariates_dnn <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'calendar.year')
 
 # Fitting the hierarchical MLP
 model_dnn <- hirem::fit(model_dnn,
@@ -515,13 +514,8 @@ We define an update function applied to the data for the simulation of each subs
 # Update function
 update <- function(data) {
   data$dev.year <- data$dev.year + 1
-  data$dev.year.fact <- factor(data$dev.year, levels = 1:9)
-  
+  data$dev.year.fact <- factor(data$dev.year, levels = 1:years)
   data$calendar.year <- data$calendar.year + 1
-  
-  data$monthDev12[data$dev.year > 3] <- 'dev.year > 3'
-  data$devYearMonth <- factor(paste(data$dev.year, data$monthDev12, sep = '-'))
-  
   data
 }
 

@@ -329,8 +329,7 @@ data.generation.type <- function(type, exposure, seed){
   claims[claims$Id %in% selected_clms, "Ultimate"] <- 0
   claims[claims$Id %in% selected_clms, "PayCount"] <- 0
   # remove those zero-claims from the ClaimsPaid data
-  # Below line commented to keep zero-claims in the dataset
-  #ClaimsPaid <- ClaimsPaid[!(ClaimsPaid$Id %in% selected_clms), ]
+  ClaimsPaid <- ClaimsPaid[!(ClaimsPaid$Id %in% selected_clms), ]
 
   ### adding recovery payments (either last or second last payment)
   Id <- claims[claims$PayCount > 2, "Id"]

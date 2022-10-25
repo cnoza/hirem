@@ -99,6 +99,9 @@ reserving_data$monthDev12 <- as.character(reserving_data$rep.month)
 reserving_data$monthDev12[reserving_data$dev.year > 3] <- 'dev.year > 3'
 reserving_data$devYearMonth <- factor(paste(reserving_data$dev.year, reserving_data$monthDev12, sep = '-'))
 
+# We remove recoveries for the moment
+reserving_data <- reserving_data %>% filter(size > 0)
+
 str(reserving_data)
 
 ```

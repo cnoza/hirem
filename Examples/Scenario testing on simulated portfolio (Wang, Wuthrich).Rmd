@@ -52,7 +52,7 @@ ref_claim <- 1          # currency is 1
 time_unit <- 1/12       # we consider monthly claims development
 set_parameters(ref_claim=ref_claim, time_unit=time_unit)
 
-years <- 24               # number of occurrence years
+years <- 17               # number of occurrence years
 I <- years/time_unit      # number of development periods
 
 source("./wang-wuthrich/Tools/functions simulation.R")
@@ -130,12 +130,12 @@ str(reserving_data)
 
 ```
  
-Next, we set the evaluation date to December 31, 2020. The observed portfolio then consists of the claims that are reported before this evaluation date, i.e. with calendar year before year 9.  The prediction data set consists of the remaining claims, namely the claims reported after calendar year 9.
+Next, we set the evaluation date to .... The observed portfolio then consists of the claims that are reported before this evaluation date, i.e. with calendar year before year 9.  The prediction data set consists of the remaining claims, namely the claims reported after calendar year 9.
 
 ```{r}
 # Observed and prediction data set
-observed_data   <- reserving_data %>% filter(calendar.year <= 11)
-prediction_data <- reserving_data %>% filter(calendar.year > 11)
+observed_data   <- reserving_data %>% filter(calendar.year <= 10)
+prediction_data <- reserving_data %>% filter(calendar.year > 10)
 ```
 
 ## Calibration of the hierarhical reserving models
@@ -153,7 +153,7 @@ denominator <- tail(rev(cumsum(reported_claims)), -1)
 numerator <- head(cumsum(rev(reported_claims)), -1)
 weight <- c(10^(-6), numerator / denominator)
 
-names(weight) <- paste0('dev.year',1:11)
+names(weight) <- paste0('dev.year',1:10)
 weight
 ```
 
@@ -166,7 +166,7 @@ We define the model specifications of each layer. We only train the reserving mo
 ```{r}
 # Model specifications hierarchical GLM
 model_glm  <- hirem(reserving_data) %>%
-  split_data(observed = function(df) df %>% filter(calendar.year <= 11, open == 1)) %>%
+  split_data(observed = function(df) df %>% filter(calendar.year <= 10, open == 1)) %>%
   layer_glm(name = 'settlement', 'family' = binomial(link = cloglog)) %>%
   layer_glm(name = 'payment', 'family' = binomial(link = logit)) %>%
   layer_glm(name = 'size', 'family' = Gamma(link = 'log'), 
@@ -561,31 +561,31 @@ nsim <- 50 # Instead of 100 (original value), to avoid memory issues
 simul_glm <- simulate(model_glm,
                       nsim = nsim,
                       filter = function(data){dplyr::filter(data, dev.year <= 10, settlement == 0)},
-                      data = model_glm$data_observed %>% dplyr::filter(calendar.year == 11),
+                      data = model_glm$data_observed %>% dplyr::filter(calendar.year == 10),
                       balance.correction = TRUE)
 
 simul_gbm <- simulate(model_gbm,
                       nsim = nsim,
                       filter = function(data){dplyr::filter(data, dev.year <= 10, settlement == 0)},
-                      data = model_gbm$data_observed %>% dplyr::filter(calendar.year == 11),
+                      data = model_gbm$data_observed %>% dplyr::filter(calendar.year == 10),
                       balance.correction = TRUE)
 
 simul_xgb <- simulate(model_xgb,
                       nsim = nsim,
                       filter = function(data){dplyr::filter(data, dev.year <= 10, settlement == 0)},
-                      data = model_xgb$data_observed %>% dplyr::filter(calendar.year == 11),
+                      data = model_xgb$data_observed %>% dplyr::filter(calendar.year == 10),
                       balance.correction = TRUE)
 
 simul_dnn <- simulate(model_dnn,
                       nsim = nsim,
                       filter = function(data){dplyr::filter(data, dev.year <= 10, settlement == 0)},
-                      data = model_dnn$data_observed %>% dplyr::filter(calendar.year == 11),
+                      data = model_dnn$data_observed %>% dplyr::filter(calendar.year == 10),
                       balance.correction = TRUE)
 
 simul_cann <- simulate(model_cann,
                       nsim = nsim,
                       filter = function(data){dplyr::filter(data, dev.year <= 10, settlement == 0)},
-                      data = model_cann$data_observed %>% dplyr::filter(calendar.year == 11),
+                      data = model_cann$data_observed %>% dplyr::filter(calendar.year == 10),
                       balance.correction = TRUE)
 
 ```
@@ -606,13 +606,13 @@ triangle_size    <- construct_triangle(data = observed_data, group.var1 = 'rep.y
 
 # Number of open claims in the year following the evaluation date
 settle.evalyear <- observed_data %>% 
-  filter(open == 1, calendar.year == 9) %>%
+  filter(open == 1, calendar.year == 10) %>%
   group_by(rep.year, dev.year) %>%
   summarise(settlement = sum(settlement))
 
 # The number of open claims in the year after the evaluation date
-triangle_open[row(triangle_open) + col(triangle_open) == 11] <- 
-  (triangle_open[row(triangle_open) + col(triangle_open) == 10] - rev(settle.evalyear$settlement))[1:8]
+triangle_open[row(triangle_open) + col(triangle_open) == 12] <- 
+  (triangle_open[row(triangle_open) + col(triangle_open) == 11] - rev(settle.evalyear$settlement))[1:9]
 ```
 
 We then apply (a special version of) the chain-ladder model on the incremental run-off triangle for the number of open claims. For the number of payments and the payment sizes, we use the classical chain ladder model applied on the cumulative run-off triangles.
@@ -632,13 +632,13 @@ First, we compare the prediction for the total number of open claims in the test
 nsim <- 50
 
 # Predictions
-obs_open_total <- prediction_data %>% filter(calendar.year != 12) %>% summarise(Total = sum(open)) %>% pull(Total)
+obs_open_total <- prediction_data %>% filter(calendar.year != 11) %>% summarise(Total = sum(open)) %>% pull(Total)
 cl_open_total  <- sum(cl_open)
-glm_open_total <- simul_glm %>% filter(calendar.year != 12) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
-gbm_open_total <- simul_gbm %>% filter(calendar.year != 12) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
-xgb_open_total <- simul_xgb %>% filter(calendar.year != 12) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
-dnn_open_total <- simul_dnn %>% filter(calendar.year != 12) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
-cann_open_total <- simul_cann %>% filter(calendar.year != 12) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
+glm_open_total <- simul_glm %>% filter(calendar.year != 11) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
+gbm_open_total <- simul_gbm %>% filter(calendar.year != 11) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
+xgb_open_total <- simul_xgb %>% filter(calendar.year != 11) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
+dnn_open_total <- simul_dnn %>% filter(calendar.year != 11) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
+cann_open_total <- simul_cann %>% filter(calendar.year != 11) %>% summarise(Total = sum(open)/nsim) %>% pull(Total)
 
 # Print Results
 c('Actual' =  obs_open_total, 'Chain-Ladder' = cl_open_total, 'Hierarchical GLM' = glm_open_total, 'Hierarchical GBM' = gbm_open_total, 'Hierarchical XGB' = xgb_open_total, 'Hierarchical DNN' = dnn_open_total, 'Hierarchical CANN' = cann_open_total)

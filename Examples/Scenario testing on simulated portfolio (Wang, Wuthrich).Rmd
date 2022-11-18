@@ -28,12 +28,12 @@ require(Matrix)
 require(tidyverse)
 require(data.table)
 require(ggplot2)
-require(keras)
 require(tensorflow)
 require(recipes)
 #install.packages('devtools')
 #devtools::install_github('cnoza/hirem')
 require(hirem)
+require(keras)
 ```
 
 We simulate one portfolio using the simulation engine from Wang and Wuthrich.
@@ -126,6 +126,8 @@ reserving_data$devYearMonth <- factor(paste(reserving_data$dev.year, reserving_d
 # We remove recoveries for the moment
 reserving_data <- as_tibble(reserving_data %>% filter(size >= 0))
 
+reserving_data <- reserving_data %>% filter(rep.year <= 10)
+
 str(reserving_data)
 
 ```
@@ -136,6 +138,10 @@ Next, we set the evaluation date to .... The observed portfolio then consists of
 # Observed and prediction data set
 observed_data   <- reserving_data %>% filter(calendar.year <= 10)
 prediction_data <- reserving_data %>% filter(calendar.year > 10)
+
+# For comparison purposes
+observed_data_h   <- reserving_data_h %>% filter(calendar.year <= 9)
+prediction_data_h <- reserving_data_h %>% filter(calendar.year > 9)
 ```
 
 ## Calibration of the hierarhical reserving models
@@ -209,7 +215,7 @@ gbm_param_size   <- list('n.trees' = 700, 'interaction.depth' = 1, 'shrinkage' =
 
 # Model specifications
 model_gbm <- hirem(reserving_data) %>%
-  split_data(observed = function(df) df %>% filter(calendar.year <= 11, open == 1)) %>%
+  split_data(observed = function(df) df %>% filter(calendar.year <= 10, open == 1)) %>%
   layer_gbm('settlement', distribution = 'bernoulli', bag.fraction = 0.75, n.minobsinnode = 100,
             n.trees = gbm_param_settle$n.trees, interaction.depth = gbm_param_settle$interaction.depth,
             shrinkage = gbm_param_settle$shrinkage, select_trees = 'last') %>%
@@ -226,7 +232,7 @@ We now fit the hierarchical GBM on the observed portfolio of simulated claims.
 
 ```{r}
 # Covariates
-covariates_gbm <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'calendar.year')
+covariates_gbm <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'age', 'calendar.year')
 
 # Fitting the hierarchical GBM
 model_gbm <- hirem::fit(model_gbm,
@@ -258,7 +264,7 @@ hyper_grid <- expand.grid(
 
 # Model specifications
 model_xgb <- hirem(reserving_data) %>%
-  split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
+  split_data(observed = function(df) df %>% filter(calendar.year <= 10, open == 1)) %>%
   layer_xgb('settlement', objective = 'binary:logistic',
             eval_metric = 'logloss',
             bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
@@ -287,7 +293,7 @@ We now fit the hierarchical XGB on the observed portfolio of simulated claims.
 
 ```{r}
 # Covariates
-covariates_xgb <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'Age', 'calendar.year')
+covariates_xgb <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'age', 'calendar.year')
 
 # Fitting the hierarchical XGB
 model_xgb <- hirem::fit(model_xgb,
@@ -314,7 +320,7 @@ metric_gamma_deviance_keras <- keras::custom_metric("gamma_deviance_keras", func
 })
 ```
 
-We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`). 
+We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 10`). 
 
 ```{r message=FALSE, warning=FALSE}
 # Bounds specification for Bayesian optimization
@@ -333,7 +339,7 @@ hyper_grid <- expand.grid(
 
 # Model specifications
 model_dnn <-  hirem(reserving_data) %>%
-  split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
+  split_data(observed = function(df) df %>% filter(calendar.year <= 10, open == 1)) %>%
   layer_dnn('settlement', distribution = 'bernoulli',
             bayesOpt = F, bayesOpt_min = T, bayesOpt_iters_n = 3, bayesOpt_bounds = bounds,
             gridsearch_cv=F, hyper_grid=hyper_grid,
@@ -506,7 +512,7 @@ We now fit the hierarchical CANN on the observed portfolio of simulated claims. 
 
 ```{r}
 #Covariates
-covariates_cann <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'rep.delay', 'calendar.year')
+covariates_cann <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'calendar.year', 'age')
 
 # Fitting the hierarchical CANN
 model_cann <- hirem::fit(model_cann,

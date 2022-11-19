@@ -112,9 +112,11 @@ reserving_data <- d4 %>%
          settlement = as.integer(calendar.year >= settlement.year),
          open = as.integer(ifelse(calendar.year==settlement.year,1,1-settlement)),
          type = factor(Type),
-         rep.month = month(ymd(RepDate))) %>%
+         rep.month = factor(month(ymd(RepDate)))) %>%
   select(-CumPaid, -Ultimate, -Type, -Status, -PayCount, -AccMonth, -AccDate, -Age, -AccWeekday, -RepDate, RepMonth) %>%
   arrange(Id, dev.year)
+
+reserving_data <- reserving_data %>% filter(rep.year <= 10 & dev.year <= 10)
 
 reserving_data$dev.year.fact <- factor(reserving_data$dev.year, levels = 1:max(reserving_data$dev.year))
 reserving_data$rep.year.fact <- factor(reserving_data$rep.year, levels = 1:max(reserving_data$rep.year))
@@ -125,8 +127,6 @@ reserving_data$devYearMonth <- factor(paste(reserving_data$dev.year, reserving_d
 
 # We remove recoveries for the moment
 reserving_data <- as_tibble(reserving_data %>% filter(size >= 0))
-
-reserving_data <- reserving_data %>% filter(rep.year <= 10)
 
 str(reserving_data)
 

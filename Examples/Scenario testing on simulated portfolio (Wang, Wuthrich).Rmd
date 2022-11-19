@@ -475,22 +475,20 @@ model_cann <- hirem::fit(model_cann,
                  payment = paste0('payment ~ ', paste0(c(covariates_cann, 'settlement'), collapse = ' + ')),
                  size = paste0('size ~ ', paste0(c(covariates_cann,'settlement'), collapse = ' + ')))
 ```
+We can obtain the cross-validation results (hypergrid case) as follows:
+```{r}
+if(!is.null(model_cann$layers$settlement$hyper_grid)) model_cann$layers$settlement$hyper_grid
+if(!is.null(model_cann$layers$payment$hyper_grid)) model_cann$layers$payment$hyper_grid
+if(!is.null(model_cann$layers$size$hyper_grid)) model_cann$layers$size$hyper_grid
+```
 
 We show the model retained:
 ```{r}
-# Settlement
-model_cann$layers$settlement$fit.biased
+if(!is.null(model_cann$layers$settlement$fit.biased)) model_cann$layers$settlement$fit.biased
+if(!is.null(model_cann$layers$payment$fit.biased)) model_cann$layers$payment$fit.biased
+if(!is.null(model_cann$layers$size$fit.biased)) model_cann$layers$size$fit.biased
 ```
 
-```{r}
-# Payment
-model_cann$layers$payment$fit.biased
-```
-
-```{r}
-# Size
-model_cann$layers$size$fit.biased
-```
 
 ## Predicting the future development of claims in the hierarchical reserving models
 In the next step, we predict the future development of claims. We do this by simulating 50 different paths for each open claim in the year of the evaluation date and by averaging the results afterwards. In this prediction strategy, the hierarchical structure of the reserving model is preserved and the development of claims are simulated in chronological order.
@@ -516,9 +514,6 @@ model_cann <- register_updater(model_cann, update)
 Next, we apply the actual simulation of the development of claims over time beyond the observation window of those claims that are still open at the evaluation date (calendar year 11). Moreover, we apply the balance correction as explained in @hirempaper.
 
 ```{r}
-detach("package:hirem", unload=TRUE)
-library(hirem)
-
 nsim <- 50 # Instead of 100 (original value), to avoid memory issues
 
 simul_glm <- simulate(model_glm,

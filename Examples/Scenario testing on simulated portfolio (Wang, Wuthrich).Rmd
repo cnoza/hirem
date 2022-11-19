@@ -71,9 +71,6 @@ claims <- claims %>% filter(Status == 'Closed')
 
 paid <- claims_list[[2]] %>% filter(Paid > 0)
 
-# For comparison purposes
-reserving_data_h <- simulate_scenario_extreme_event(seed = 1, period_extra = '2019', n = 125000)
-
 # We now build a reserving dataset compatible with hirem
 
 d0 <- merge(paid, claims, by="Id") %>%
@@ -138,10 +135,6 @@ Next, we set the evaluation date to .... The observed portfolio then consists of
 # Observed and prediction data set
 observed_data   <- reserving_data %>% filter(calendar.year <= 10)
 prediction_data <- reserving_data %>% filter(calendar.year > 10)
-
-# For comparison purposes
-observed_data_h   <- reserving_data_h %>% filter(calendar.year <= 9)
-prediction_data_h <- reserving_data_h %>% filter(calendar.year > 9)
 ```
 
 ## Calibration of the hierarhical reserving models

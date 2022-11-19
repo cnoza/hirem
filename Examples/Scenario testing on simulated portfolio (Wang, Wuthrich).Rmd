@@ -258,7 +258,7 @@ xgb_param_size   <- list('eta' = .05, 'max_depth' = 1, 'nrounds' = 690, 'subsamp
 
 # Model specifications
 model_xgb <- hirem(reserving_data) %>%
-  split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
+  split_data(observed = function(df) df %>% filter(calendar.year <= 10, open == 1)) %>%
   layer_xgb('settlement', objective = 'binary:logistic', eval_metric = 'logloss', grow_policy = 'lossguide',
             eta = xgb_param_settle$eta, max_depth = xgb_param_settle$max_depth, 
             nrounds = xgb_param_settle$nrounds, subsample = xgb_param_settle$subsample) %>%

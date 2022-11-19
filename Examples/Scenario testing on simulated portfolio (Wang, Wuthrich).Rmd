@@ -22,32 +22,32 @@ We evaluate the predictive performance of our hierarchical reserving model (hier
 First, we load the required packages.
 
 ```{r, results='hide'}
+require(SynthETIC)  # 1.0.0 or higher needed
+require(plyr)
+require(dplyr)
+require(locfit)
+require(actuar)
+require(tidyr)
+require(lubridate)
 require(tidyverse)
 require(xgboost)
 require(Matrix)
 require(tidyverse)
 require(data.table)
 require(ggplot2)
-require(tensorflow)
 require(recipes)
+require(tensorflow)
+require(keras)
 #install.packages('devtools')
 #devtools::install_github('cnoza/hirem')
 require(hirem)
-require(keras)
+
 ```
 
 We simulate one portfolio using the simulation engine from Wang and Wuthrich.
 
 
 ```{r}
-library(SynthETIC)  # 1.0.0 or higher needed
-library(plyr)
-library(locfit)
-library(dplyr)
-library(actuar)
-library(tidyr)
-library(lubridate)
-
 ref_claim <- 1          # currency is 1
 time_unit <- 1/12       # we consider monthly claims development
 set_parameters(ref_claim=ref_claim, time_unit=time_unit)
@@ -251,41 +251,24 @@ We first define the model specifications of each layer. We only train the reserv
 To tune the hyperparameters, one can activate a cross-validation by setting the `nfolds` parameter to the desired integer in the `layer_xgb` function. Optionally, one can provide a `hyper_grid` parameter or use a predefined one. The hyperparameters performing the best will then be retained automatically.
 
 ```{r message=TRUE}
-# Bounds specification for Bayesian optimization
-bounds <- list(
-  eta = c(0.05,1),
-  max_depth = c(1L,6L)
-)
-
-hyper_grid <- expand.grid(
-  eta = c(0.05,0.5,1),
-  max_depth = c(1,3,5)
-)
+# Results of hierarchical model calibration
+xgb_param_settle <- list('eta' =   1, 'max_depth' = 1, 'nrounds' =  10, 'subsample' = 1)
+xgb_param_pay    <- list('eta' =  .5, 'max_depth' = 3, 'nrounds' =  10, 'subsample' = 1)
+xgb_param_size   <- list('eta' = .05, 'max_depth' = 1, 'nrounds' = 690, 'subsample' = .75)
 
 # Model specifications
 model_xgb <- hirem(reserving_data) %>%
-  split_data(observed = function(df) df %>% filter(calendar.year <= 10, open == 1)) %>%
-  layer_xgb('settlement', objective = 'binary:logistic',
-            eval_metric = 'logloss',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-            #gridsearch_cv=T, hyper_grid = hyper_grid,
-            grow_policy = 'lossguide',
-            nfolds = 5,
-            verbose = F ) %>%
-  layer_xgb('payment', objective = 'binary:logistic',
-            eval_metric = 'logloss',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-            #gridsearch_cv=T, hyper_grid = hyper_grid,
-            grow_policy = 'lossguide',
-            nfolds = 5,
-            verbose = F) %>%
-  layer_xgb('size', objective = 'reg:gamma',
-            eval_metric = 'gamma-deviance',
-            bayesOpt = T, bayesOpt_min = T, bayesOpt_iters_n = 1, bayesOpt_bounds = bounds,
-            #gridsearch_cv=T, hyper_grid = hyper_grid,
-            grow_policy = 'lossguide',
-            nfolds = 5,
-            verbose = F,
+  split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
+  layer_xgb('settlement', objective = 'binary:logistic', eval_metric = 'logloss', grow_policy = 'lossguide',
+            eta = xgb_param_settle$eta, max_depth = xgb_param_settle$max_depth, 
+            nrounds = xgb_param_settle$nrounds, subsample = xgb_param_settle$subsample) %>%
+  layer_xgb('payment', objective = 'binary:logistic', eval_metric = 'logloss', grow_policy = 'lossguide',
+            eta = xgb_param_pay$eta, max_depth = xgb_param_pay$max_depth, 
+            nrounds = xgb_param_pay$nrounds, subsample = xgb_param_pay$subsample) %>%
+  layer_xgb('size', objective = 'reg:gamma', 
+            eval_metric = 'gamma-deviance', grow_policy = 'lossguide',
+            eta = xgb_param_size$eta, max_depth = xgb_param_size$max_depth, 
+            nrounds = xgb_param_size$nrounds, subsample = xgb_param_size$subsample,
             filter = function(data){data$payment == 1})
 ```
 
@@ -303,6 +286,30 @@ model_xgb <- hirem::fit(model_xgb,
                         settlement = paste0('settlement ~ ', paste0(covariates_xgb, collapse = ' + ')),
                         payment = paste0('payment ~ ', paste0(c(covariates_xgb, 'settlement'), collapse = ' + ')),
                         size = paste0('size ~ ', paste0(c(covariates_xgb,'settlement'), collapse = ' + ')))
+```
+We can obtain the cross-validation results as follows:
+```{r}
+if(!is.null(model_xgb$layers$settlement$hyper_grid)) model_xgb$layers$settlement$hyper_grid
+if(!is.null(model_xgb$layers$payment$hyper_grid)) model_xgb$layers$payment$hyper_grid
+if(!is.null(model_xgb$layers$size$hyper_grid)) model_xgb$layers$size$hyper_grid
+```
+
+```{r}
+# Variable importance
+xgb.importance(colnames(model_xgb$layers$settlement$fit), model = model_xgb$layers$settlement$fit)
+
+```
+
+```{r}
+# Variable importance
+xgb.importance(colnames(model_xgb$layers$payment$fit), model = model_xgb$layers$payment$fit)
+
+```
+
+```{r}
+# Variable importance
+xgb.importance(colnames(model_xgb$layers$size$fit), model = model_xgb$layers$size$fit)
+
 ```
 
 ### Hierarchical DNN
@@ -368,7 +375,6 @@ model_dnn <-  hirem(reserving_data) %>%
             patience = 20,
             filter = function(data){data$payment == 1})
 ```
-
 We now fit the hierarchical DNN on the observed portfolio of simulated claims.
 
 ```{r message=FALSE, warning=FALSE}
@@ -383,20 +389,18 @@ model_dnn <- hirem::fit(model_dnn,
                         size = paste0('size ~ ', paste0(c(covariates_dnn,'settlement'), collapse = ' + ')))
 ```
 
-The bias regularization being activated, the neural network architecture can be recovered as follows:
+We can obtain the cross-validation results as follows:
 ```{r}
-# Settlement
-model_dnn$layers$settlement$fit.biased
+if(!is.null(model_dnn$layers$settlement$hyper_grid)) model_dnn$layers$settlement$hyper_grid
+if(!is.null(model_dnn$layers$payment$hyper_grid)) model_dnn$layers$payment$hyper_grid
+if(!is.null(model_dnn$layers$size$hyper_grid)) model_dnn$layers$size$hyper_grid
 ```
 
+We show the model retained:
 ```{r}
-# Payment
-model_dnn$layers$payment$fit.biased
-```
-
-```{r}
-# Size
-model_dnn$layers$size$fit.biased
+if(!is.null(model_dnn$layers$settlement$fit.biased)) model_dnn$layers$settlement$fit.biased
+if(!is.null(model_dnn$layers$payment$fit.biased)) model_dnn$layers$payment$fit.biased
+if(!is.null(model_dnn$layers$size$fit.biased)) model_dnn$layers$size$fit.biased
 ```
 
 ### Hierarchical CANN
@@ -512,6 +516,9 @@ model_cann <- register_updater(model_cann, update)
 Next, we apply the actual simulation of the development of claims over time beyond the observation window of those claims that are still open at the evaluation date (calendar year 11). Moreover, we apply the balance correction as explained in @hirempaper.
 
 ```{r}
+detach("package:hirem", unload=TRUE)
+library(hirem)
+
 nsim <- 50 # Instead of 100 (original value), to avoid memory issues
 
 simul_glm <- simulate(model_glm,

@@ -388,7 +388,7 @@ data.generation.type <- function(type, exposure, seed){
 
 data.generation <- function(seed, future_info = FALSE){
 
-  exposure = c(40000, 30000, 10000, 40000, 20000, 20000) * 1.5
+  exposure = c(40000, 30000, 10000, 40000, 20000, 20000) * 2
   seeds = seed + c(0:5)
 
   for (type in c(1:6)) {

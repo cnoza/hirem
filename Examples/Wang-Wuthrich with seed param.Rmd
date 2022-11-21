@@ -176,9 +176,9 @@ Next, we perform a covariate selection procedure to select the optimal covariate
 
 ```{r}
 # Formulae hierarchical GLM layers - model calibration
-formula_settle_glm <- "settlement ~ type + dev.year.fact"
-formula_pay_glm    <- "payment ~ settlement + type + devYearMonth"
-formula_size_glm   <- "size ~ devYearMonth + type + settlement + rep.month"
+formula_settle_glm <- "settlement ~ type + dev.year.fact + age"
+formula_pay_glm    <- "payment ~ settlement + type + age"
+formula_size_glm   <- "size ~ type + settlement + age"
 ```
 
 We fit the hierarchical GLM on the observed portfolio of simulated claims.

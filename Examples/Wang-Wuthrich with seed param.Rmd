@@ -200,10 +200,11 @@ covariate_selection <- function(response_variable, all_covariates, family, data,
       deviance <- append(deviance, m_glm$deviance)
       formula_resp_list <- append(formula_resp_list, formula_resp)
       step = append(step,i)
-      if(m_glm$deviance < deviance_sav) {
-        formula_resp_sav <- formula_resp
+      if( (m_glm$deviance < deviance_sav & minimize == "deviance") 
+          | (m_glm$aic < aic_sav & minimize == "aic")) {
+        #formula_resp_sav <- formula_resp
         covariate_sav <- covariate
-        deviance_sav <- m_glm$deviance
+        #deviance_sav <- m_glm$deviance
       }
     }
     if(!is.null(covariate_sav)) {
@@ -232,18 +233,21 @@ covariate_selection <- function(response_variable, all_covariates, family, data,
 
 d <- reserving_data %>% filter(calendar.year <= 10, open == 1)
 all_covariates <- c('type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age')
-res.tab.settle <- covariate_selection('settlement',all_covariates, binomial(link = logit), d, weight)
+family.settle <- model_glm$layers$settlement$method_options
+res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, d, weight)
 print(res.tab.settle)
 
 # Covariate selection for payment layer
 all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age')
-res.tab.pay <- covariate_selection('payment',all_covariates, binomial(link = logit), d, weight)
+family.pay <- model_glm$layers$payment$method_options
+res.tab.pay <- covariate_selection('payment',all_covariates, family.pay, d, weight)
 print(res.tab.pay)
 
 # Covariate selection for size layer
 all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age')
 d_size <- reserving_data %>% filter(calendar.year <= 10, open == 1, payment == 1)
-res.tab.size <- covariate_selection('size',all_covariates, Gamma(link = 'log'), d_size, weight)
+family.size <- model_glm$layers$size$method_options
+res.tab.size <- covariate_selection('size',all_covariates, family.size, d_size, weight)
 print(res.tab.size)
 
 ```

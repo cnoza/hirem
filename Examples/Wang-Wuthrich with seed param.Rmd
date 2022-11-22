@@ -241,7 +241,7 @@ covariate_selection <- function(response_variable, all_covariates, family, data,
 
 # Covariate selection for settlement layer
 
-all_covariates <- c('type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
+all_covariates <- c('type', 'dev.year.fact')
 family.settle <- model_glm$layers$settlement$method_options
 res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, 
                                       model_glm$data_observed, weight, minimize='deviance')

@@ -114,6 +114,7 @@ reserving_data <- d4 %>%
          occ.weekday = factor(AccWeekday),
          rep.date = RepDate,
          age = Age,
+         age.fact = factor(Age),
          settlement = as.integer(calendar.year >= settlement.year),
          open = as.integer(ifelse(calendar.year==settlement.year,1,1-settlement)),
          type = factor(Type),
@@ -240,21 +241,21 @@ covariate_selection <- function(response_variable, all_covariates, family, data,
 
 # Covariate selection for settlement layer
 
-all_covariates <- c('type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age')
+all_covariates <- c('type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
 family.settle <- model_glm$layers$settlement$method_options
 res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, 
                                       model_glm$data_observed, weight, minimize='deviance')
 print(res.tab.settle)
 
 # Covariate selection for payment layer
-all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age')
+all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
 family.pay <- model_glm$layers$payment$method_options
 res.tab.pay <- covariate_selection('payment',all_covariates, family.pay, 
                                    model_glm$data_observed, weight, minimize='deviance')
 print(res.tab.pay)
 
 # Covariate selection for size layer
-all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age')
+all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
 d_size <- model_glm$data_observed %>% filter(payment == 1)
 family.size <- model_glm$layers$size$method_options
 res.tab.size <- covariate_selection('size',all_covariates, family.size, d_size, weight, minimize='deviance')
@@ -313,7 +314,7 @@ We now fit the hierarchical GBM on the observed portfolio of simulated claims.
 
 ```{r}
 # Covariates
-covariates_gbm <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'age', 'calendar.year')
+covariates_gbm <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'age.fact', 'calendar.year')
 
 # Fitting the hierarchical GBM
 model_gbm <- hirem::fit(model_gbm,
@@ -357,7 +358,7 @@ We now fit the hierarchical XGB on the observed portfolio of simulated claims.
 
 ```{r}
 # Covariates
-covariates_xgb <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'age', 'calendar.year')
+covariates_xgb <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'age.fact', 'calendar.year')
 
 # Fitting the hierarchical XGB
 model_xgb <- hirem::fit(model_xgb,
@@ -460,7 +461,7 @@ We now fit the hierarchical DNN on the observed portfolio of simulated claims.
 
 ```{r message=FALSE, warning=FALSE}
 # Covariates
-covariates_dnn <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'calendar.year')
+covariates_dnn <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'calendar.year', 'age.fact')
 
 # Fitting the hierarchical MLP
 model_dnn <- hirem::fit(model_dnn,
@@ -509,7 +510,7 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('payment', distribution = 'bernoulli',
-             hidden = c(30,30,50),
+             hidden = c(50,40,30),
              formula.glm = formula_pay_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),
@@ -547,7 +548,7 @@ We now fit the hierarchical CANN on the observed portfolio of simulated claims. 
 
 ```{r}
 #Covariates
-covariates_cann <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'calendar.year')
+covariates_cann <- c('type', 'dev.year.fact', 'rep.month', 'rep.year.fact', 'calendar.year', 'age.fact')
 
 # Fitting the hierarchical CANN
 model_cann <- hirem::fit(model_cann,

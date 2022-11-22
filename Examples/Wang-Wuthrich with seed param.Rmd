@@ -46,6 +46,11 @@ require(hirem)
 
 We simulate one portfolio using the simulation engine from Wang and Wuthrich.
 
+The seed number is:
+```{r}
+cat(sprintf("%s", seed))
+```
+
 
 ```{r}
 ref_claim <- 1          # currency is 1
@@ -64,6 +69,9 @@ dest_path <- "" # plot to be saved in ...
 
 # generate individual claims: may take 60 seconds
 claims_list <- data.generation(seed=seed, future_info=F)
+
+# We unset the seed
+set.seed(NULL)
 
 # save individual output for easier access
 claims <- claims_list[[1]]
@@ -204,7 +212,8 @@ covariate_selection <- function(response_variable, all_covariates, family, data,
           | (m_glm$aic < aic_sav & minimize == "aic")) {
         #formula_resp_sav <- formula_resp
         covariate_sav <- covariate
-        #deviance_sav <- m_glm$deviance
+        aic_sav <- m_glm$aic
+        deviance_sav <- m_glm$deviance
       }
     }
     if(!is.null(covariate_sav)) {
@@ -231,23 +240,24 @@ covariate_selection <- function(response_variable, all_covariates, family, data,
 
 # Covariate selection for settlement layer
 
-d <- reserving_data %>% filter(calendar.year <= 10, open == 1)
 all_covariates <- c('type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age')
 family.settle <- model_glm$layers$settlement$method_options
-res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, d, weight)
+res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, 
+                                      model_glm$data_observed, weight, minimize='deviance')
 print(res.tab.settle)
 
 # Covariate selection for payment layer
 all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age')
 family.pay <- model_glm$layers$payment$method_options
-res.tab.pay <- covariate_selection('payment',all_covariates, family.pay, d, weight)
+res.tab.pay <- covariate_selection('payment',all_covariates, family.pay, 
+                                   model_glm$data_observed, weight, minimize='deviance')
 print(res.tab.pay)
 
 # Covariate selection for size layer
 all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age')
-d_size <- reserving_data %>% filter(calendar.year <= 10, open == 1, payment == 1)
+d_size <- model_glm$data_observed %>% filter(payment == 1)
 family.size <- model_glm$layers$size$method_options
-res.tab.size <- covariate_selection('size',all_covariates, family.size, d_size, weight)
+res.tab.size <- covariate_selection('size',all_covariates, family.size, d_size, weight, minimize='deviance')
 print(res.tab.size)
 
 ```

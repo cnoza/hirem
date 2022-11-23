@@ -128,7 +128,7 @@ reserving_data$dev.year.fact <- factor(reserving_data$dev.year, levels = 1:max(r
 reserving_data$rep.year.fact <- factor(reserving_data$rep.year, levels = 1:max(reserving_data$rep.year))
 
 reserving_data$monthDev12 <- as.character(reserving_data$rep.month)
-reserving_data$monthDev12[reserving_data$dev.year > 3] <- 'dev.year > 3'
+reserving_data$monthDev12[reserving_data$dev.year > 3] <- 'dev.year.over.3'
 reserving_data$devYearMonth <- factor(paste(reserving_data$dev.year, reserving_data$monthDev12, sep = '-'))
 
 # We remove recoveries for the moment
@@ -177,7 +177,7 @@ model_glm  <- hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 10, open == 1)) %>%
   layer_glm(name = 'settlement', 'family' = binomial(link = cloglog)) %>%
   layer_glm(name = 'payment', 'family' = binomial(link = logit)) %>%
-  layer_glm(name = 'size', 'family' = Gamma(link = 'log'), 
+  layer_glm(name = 'size', 'family' = Gamma(link = 'log'),
             filter = function(x){x$payment == 1})
 ```
 
@@ -188,8 +188,8 @@ Next, we perform a covariate selection procedure to select the optimal covariate
 # Covariate selection function
 
 covariate_selection <- function(response_variable, all_covariates, family, data, weight, minimize="deviance") {
-  aic_sav <- 1000000
-  deviance_sav <- 1000000
+  aic_sav <- NULL
+  deviance_sav <- NULL
   aic <- c()
   deviance <- c()
   formula_resp_list <- c()
@@ -209,6 +209,10 @@ covariate_selection <- function(response_variable, all_covariates, family, data,
       deviance <- append(deviance, m_glm$deviance)
       formula_resp_list <- append(formula_resp_list, formula_resp)
       step = append(step,i)
+      
+      if(is.null(aic_sav)) aic_sav = m_glm$aic + 1
+      if(is.null(deviance_sav)) deviance_sav = m_glm$deviance + 1
+      
       if( (m_glm$deviance < deviance_sav & minimize == "deviance") 
           | (m_glm$aic < aic_sav & minimize == "aic")) {
         #formula_resp_sav <- formula_resp
@@ -241,7 +245,7 @@ covariate_selection <- function(response_variable, all_covariates, family, data,
 
 # Covariate selection for settlement layer
 
-all_covariates <- c('type', 'dev.year.fact')
+all_covariates <- c('type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
 family.settle <- model_glm$layers$settlement$method_options
 res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, 
                                       model_glm$data_observed, weight, minimize='deviance')
@@ -258,7 +262,7 @@ print(res.tab.pay)
 all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
 d_size <- model_glm$data_observed %>% filter(payment == 1)
 family.size <- model_glm$layers$size$method_options
-res.tab.size <- covariate_selection('size',all_covariates, family.size, d_size, weight, minimize='deviance')
+res.tab.size <- covariate_selection('size', all_covariates, family.size, d_size, weight, minimize='deviance')
 print(res.tab.size)
 
 ```
@@ -287,7 +291,7 @@ model_glm <- hirem::fit(model_glm,
 
 The hierarchical GBM consists of the same three layer structure and the same distributional assumptions as the hierarchical GLM. However each layer is now modeled with a GBM instead of a GLM.
 
-We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`). We tune some of the GBM parameters (number of trees, interaction depth and shrinkage) using a 5-fold cross validation approach [@hirempaper]. We list here the obtained results from the tuning strategy in the paper. We further fix the `bag.fraction` to 0.75 and the minimum number of observecations each node (`n.minobsinnode`) to 100.
+We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 10`). We tune some of the GBM parameters (number of trees, interaction depth and shrinkage) using a 5-fold cross validation approach [@hirempaper]. We list here the obtained results from the tuning strategy in the paper. We further fix the `bag.fraction` to 0.75 and the minimum number of observecations each node (`n.minobsinnode`) to 100.
 
 ```{r}
 # Results of hierarchical model calibration
@@ -557,6 +561,7 @@ model_cann <- hirem::fit(model_cann,
                  payment = paste0('payment ~ ', paste0(c(covariates_cann, 'settlement'), collapse = ' + ')),
                  size = paste0('size ~ ', paste0(c(covariates_cann,'settlement'), collapse = ' + ')))
 ```
+
 We can obtain the cross-validation results (hypergrid case) as follows:
 ```{r}
 if(!is.null(model_cann$layers$settlement$hyper_grid)) model_cann$layers$settlement$hyper_grid
@@ -581,8 +586,12 @@ We define an update function applied to the data for the simulation of each subs
 # Update function
 update <- function(data) {
   data$dev.year <- data$dev.year + 1
-  data$dev.year.fact <- factor(data$dev.year, levels = 1:max(reserving_data$dev.year))
+  data$dev.year.fact <- factor(data$dev.year, levels = 1:10)
+  
   data$calendar.year <- data$calendar.year + 1
+  
+  data$monthDev12[data$dev.year > 3] <- 'dev.year.over.3'
+  data$devYearMonth <- factor(paste(data$dev.year, data$monthDev12, sep = '-'))
   data
 }
 

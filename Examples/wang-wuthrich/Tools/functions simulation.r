@@ -98,6 +98,24 @@ rmixed_payment_no <- function(n, claim_size, claim_size_benchmark_1, claim_size_
   no_pmt
 }
 
+hirem_payment_size <- function(n, claim_size) {
+  x1 <- sample(c("T1","T2","T3"), size = n, replace = TRUE,  prob = c(0.60,0.25,0.15))
+  xh <- sample(c("L","M","H"), size = n, replace = TRUE, prob = c(0.35,0.45,0.20))
+  x1 <- factor(x1, levels = c("T1",'T2',"T3"))
+  xh <- factor(xh, levels = c("L","M","H"))
+  meanlog <- function(x1, x2){
+    base <- log(c(100,200,400)[as.numeric(x1)])
+    ext  <- 0.1*(n)^(c(1.50,1.25,1.40)[as.numeric(x2)])
+    rep(base + ext, times = 30)
+  }
+
+  df_size <- matrix(rlnorm(n,
+                           meanlog = meanlog(x1 = x1, x2 = xh),
+                           sdlog =  1), nrow = n, byrow = T)
+
+  amt <- as.vector(df_size / sum(df_size) * claim_size)
+}
+
 # define sampling function for individual payment sizes of multiple payments
 # taken from vignette
 rmixed_payment_size <- function(n, claim_size) {

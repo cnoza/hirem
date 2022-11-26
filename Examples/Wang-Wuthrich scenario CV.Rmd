@@ -187,14 +187,97 @@ model_glm  <- hirem(reserving_data) %>%
             filter = function(x){x$payment == 1})
 ```
 
-Next, we provide the formulae for each layer, coming from the covariate selection procedure.
+Next, we perform a covariate selection procedure to select the optimal covariates that are retained in the regression models for each layer.
 
+```{r}
+
+# Covariate selection function
+
+covariate_selection <- function(response_variable, all_covariates, family, data, weight, minimize="deviance") {
+  aic_sav <- NULL
+  deviance_sav <- NULL
+  aic <- c()
+  deviance <- c()
+  formula_resp_list <- c()
+  step <- c()
+  i = 1
+  covariate_sav_list <- c()
+  weights.vec <- weight[data[['dev.year']]]
+  
+  while(length(all_covariates) > 0) {
+
+    covariate_sav <- NULL
+    for(covariate in all_covariates) {
+      cov_list <- append(covariate_sav_list, covariate)
+      formula_resp <- as.formula(paste0(response_variable, ' ~ ',paste0(cov_list, collapse = ' + ')))
+      m_glm <- glm(formula_resp , family = family, data = data, weights = weights.vec)
+      aic <- append(aic, m_glm$aic)
+      deviance <- append(deviance, m_glm$deviance)
+      formula_resp_list <- append(formula_resp_list, formula_resp)
+      step = append(step,i)
+      
+      if(is.null(aic_sav)) aic_sav = m_glm$aic + 1
+      if(is.null(deviance_sav)) deviance_sav = m_glm$deviance + 1
+      
+      if( (m_glm$deviance < deviance_sav & minimize == "deviance") 
+          | (m_glm$aic < aic_sav & minimize == "aic")) {
+        #formula_resp_sav <- formula_resp
+        covariate_sav <- covariate
+        aic_sav <- m_glm$aic
+        deviance_sav <- m_glm$deviance
+      }
+    }
+    if(!is.null(covariate_sav)) {
+      covariate_sav_list <- append(covariate_sav_list, covariate_sav)
+      all_covariates <- all_covariates[all_covariates != covariate_sav]
+      i=i+1
+    } else all_covariates <- NULL
+    
+  }
+  
+  if(minimize=="deviance")
+    res.tab <- data.frame(step = step, 
+                          m_formula = as.character(formula_resp_list), 
+                          aic = aic, 
+                          deviance = deviance) %>% arrange(deviance)
+  else
+    res.tab <- data.frame(step = step, 
+                          m_formula = as.character(formula_resp_list), 
+                          aic = aic, deviance = deviance) %>% arrange(aic)
+  
+  return(res.tab)
+  
+}
+
+# Covariate selection for settlement layer
+
+all_covariates <- c('type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
+family.settle <- model_glm$layers$settlement$method_options
+res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, 
+                                      model_glm$data_observed, weight, minimize='deviance')
+print(res.tab.settle)
+
+# Covariate selection for payment layer
+all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
+family.pay <- model_glm$layers$payment$method_options
+res.tab.pay <- covariate_selection('payment',all_covariates, family.pay, 
+                                   model_glm$data_observed, weight, minimize='deviance')
+print(res.tab.pay)
+
+# Covariate selection for size layer
+all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
+d_size <- model_glm$data_observed %>% filter(payment == 1)
+family.size <- model_glm$layers$size$method_options
+res.tab.size <- covariate_selection('size', all_covariates, family.size, d_size, weight, minimize='deviance')
+print(res.tab.size)
+
+```
 
 ```{r}
 # Formulae hierarchical GLM layers - model calibration
-formula_settle_glm <- "settlement ~ type + age.fact + rep.month"
-formula_pay_glm    <- "payment ~ settlement + devYearMonth + type + age.fact + rep.month"
-formula_size_glm   <- "size ~ type + devYearMonth + age.fact + rep.month + settlement"
+formula_settle_glm <- res.tab.settle$m_formula[[1]]
+formula_pay_glm    <- res.tab.pay$m_formula[[1]]
+formula_size_glm   <- res.tab.size$m_formula[[1]]
 ```
 
 We fit the hierarchical GLM on the observed portfolio of simulated claims.
@@ -260,6 +343,12 @@ We first define the model specifications of each layer. We only train the reserv
 To tune the hyperparameters, one can activate a cross-validation by setting the `nfolds` parameter to the desired integer in the `layer_xgb` function. Optionally, one can provide a `hyper_grid` parameter or use a predefined one. The hyperparameters performing the best will then be retained automatically.
 
 ```{r message=TRUE}
+
+hyper_grid <- expand.grid(
+  eta = c(.05, .5, 1),
+  max_depth = c(1:3)
+)
+
 # Results of hierarchical model calibration
 xgb_param_settle <- list('eta' =   .5, 'max_depth' = 3, 'nrounds' =  40, 'subsample' = 1)
 xgb_param_pay    <- list('eta' =  .5, 'max_depth' = 3, 'nrounds' =  25, 'subsample' = 1)
@@ -339,6 +428,11 @@ metric_gamma_deviance_keras <- keras::custom_metric("gamma_deviance_keras", func
 We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 10`). 
 
 ```{r message=FALSE, warning=FALSE}
+hyper_grid <- expand.grid(
+  dnn_hidden_1 = seq(from=0,to=30,by=10),
+  dnn_hidden_2 = seq(from=0,to=30,by=10),
+  dnn_hidden_3 = seq(from=0,to=30,by=10)
+)
 
 # Model specifications
 model_dnn <-  hirem(reserving_data) %>%
@@ -417,11 +511,21 @@ if(!is.null(model_dnn$layers$size$fit.biased)) model_dnn$layers$size$fit.biased
 We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 10`).
 
 ```{r message=FALSE, warning=FALSE}
+hyper_grid <- expand.grid(
+  dnn_hidden_1 = seq(from=10,to=30,by=10),
+  dnn_hidden_2 = seq(from=10,to=30,by=10),
+  dnn_hidden_3 = seq(from=10,to=30,by=10),
+  dnn_hidden_4 = seq(from=10,to=30,by=10)
+)
+hyper_grid <- rbind(c(0,0,0,0),hyper_grid) 
+
 # Model specifications
 model_cann <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 10, open == 1)) %>%
   layer_cann('settlement', distribution = 'bernoulli',
-             hidden = c(10,20,10),
+             gridsearch_cv = TRUE,
+             hyper_grid = hyper_grid,
+             #hidden = c(30,30,30),
              formula.glm = formula_settle_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),
@@ -437,7 +541,9 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('payment', distribution = 'bernoulli',
-             hidden = c(10,10,20),
+             gridsearch_cv = TRUE,
+             hyper_grid = hyper_grid,
+             #hidden = c(30,30,30),
              formula.glm = formula_pay_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),
@@ -453,7 +559,9 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('size', distribution = 'gamma',
-             hidden = c(30,20,10),
+             gridsearch_cv = TRUE,
+             hyper_grid = hyper_grid,
+             #hidden = c(30,30,30),
              formula.glm = formula_size_glm, 
              bias_regularization = T,
              family_for_glm = Gamma(link=log),

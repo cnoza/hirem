@@ -97,7 +97,7 @@ weight
 
 The hierarchical GLM consists of the three layer structure: settlement, payment and size. We model the settlement indicator using a binomial regression model with a complementary log link function. The payment indicator will be modeled using a logistic regression model and the payment sizes using a Gamma GLM with log-link function. 
 
-We define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 9`).
+We define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 10`).
 
 ```{r}
 # Model specifications hierarchical GLM
@@ -109,13 +109,95 @@ model_glm  <- hirem(reserving_data) %>%
             filter = function(x){x$payment == 1})
 ```
 
-Next, we perform a covariate selection procedure to select the optimal covariates that are retained in the regression models for each layer. Here, we just list the formulae with the retained covariates, but the details of this covariate selection are provided in @hirempaper.
+Next, we perform a covariate selection procedure to select the optimal covariates that are retained in the regression models for each layer. 
+
+```{r}
+# Covariate selection function
+covariate_selection <- function(response_variable, all_covariates, family, data, weight, minimize="deviance") {
+  aic_sav <- NULL
+  deviance_sav <- NULL
+  aic <- c()
+  deviance <- c()
+  formula_resp_list <- c()
+  step <- c()
+  i = 1
+  covariate_sav_list <- c()
+  weights.vec <- weight[data[['dev.year']]]
+  
+  while(length(all_covariates) > 0) {
+    covariate_sav <- NULL
+    for(covariate in all_covariates) {
+      cov_list <- append(covariate_sav_list, covariate)
+      formula_resp <- as.formula(paste0(response_variable, ' ~ ',paste0(cov_list, collapse = ' + ')))
+      m_glm <- glm(formula_resp , family = family, data = data, weights = weights.vec)
+      aic <- append(aic, m_glm$aic)
+      deviance <- append(deviance, m_glm$deviance)
+      formula_resp_list <- append(formula_resp_list, formula_resp)
+      step = append(step,i)
+      
+      if(is.null(aic_sav)) aic_sav = m_glm$aic + 1
+      if(is.null(deviance_sav)) deviance_sav = m_glm$deviance + 1
+      
+      if( (m_glm$deviance < deviance_sav & minimize == "deviance") 
+          | (m_glm$aic < aic_sav & minimize == "aic")) {
+        #formula_resp_sav <- formula_resp
+        covariate_sav <- covariate
+        aic_sav <- m_glm$aic
+        deviance_sav <- m_glm$deviance
+      }
+    }
+    if(!is.null(covariate_sav)) {
+      covariate_sav_list <- append(covariate_sav_list, covariate_sav)
+      all_covariates <- all_covariates[all_covariates != covariate_sav]
+      i=i+1
+    } else all_covariates <- NULL
+    
+  }
+  
+  if(minimize=="deviance")
+    res.tab <- data.frame(step = step, 
+                          m_formula = as.character(formula_resp_list), 
+                          aic = aic, 
+                          deviance = deviance) %>% arrange(deviance)
+  else
+    res.tab <- data.frame(step = step, 
+                          m_formula = as.character(formula_resp_list), 
+                          aic = aic, deviance = deviance) %>% arrange(aic)
+  
+  return(res.tab)
+  
+}
+
+# Covariate selection for settlement layer
+all_covariates <- c('type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
+family.settle <- model_glm$layers$settlement$method_options
+res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, 
+                                      model_glm$data_observed, weight, minimize='deviance')
+print(res.tab.settle)
+
+# Covariate selection for payment layer
+all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
+family.pay <- model_glm$layers$payment$method_options
+res.tab.pay <- covariate_selection('payment',all_covariates, family.pay, 
+                                   model_glm$data_observed, weight, minimize='deviance')
+print(res.tab.pay)
+
+
+# Covariate selection for size.pay layer
+all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth', 'age.fact')
+d_size <- model_glm$data_observed %>% filter(payment == 1)
+family.size <- model_glm$layers$size$method_options
+res.tab.size <- covariate_selection('size', all_covariates, family.size.pay, d_size_pay, weight, minimize='deviance')
+print(res.tab.size)
+
+```
+
 
 ```{r}
 # Formulae hierarchical GLM layers - model calibration
-formula_settle_glm <- "settlement ~ type + dev.year.fact"
-formula_pay_glm    <- "payment ~ settlement + type + devYearMonth"
-formula_size_glm   <- "size ~ devYearMonth + type + settlement + rep.month"
+formula_settle_glm <- res.tab.settle$m_formula[[1]]
+formula_pay_glm    <- res.tab.pay$m_formula[[1]]
+formula_size_glm   <- res.tab.size$m_formula[[1]]
 ```
 
 We fit the hierarchical GLM on the observed portfolio of simulated claims.

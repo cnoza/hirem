@@ -431,12 +431,6 @@ model_xgb <- hirem::fit(model_xgb,
                         size.pay = paste0('size.pay ~ ', paste0(c(covariates_xgb,'settlement'), collapse = ' + ')),
                         q.size.recov = paste0('q.size.recov ~ ', paste0(c(covariates_xgb,'settlement'), collapse = ' + ')))
 ```
-We can obtain the cross-validation results as follows:
-```{r}
-if(!is.null(model_xgb$layers$settlement$hyper_grid)) model_xgb$layers$settlement$hyper_grid
-if(!is.null(model_xgb$layers$payment$hyper_grid)) model_xgb$layers$payment$hyper_grid
-if(!is.null(model_xgb$layers$size$hyper_grid)) model_xgb$layers$size$hyper_grid
-```
 
 ```{r}
 # Variable importance
@@ -464,7 +458,7 @@ xgb.importance(colnames(model_xgb$layers$size.pay$fit), model = model_xgb$layers
 
 ```{r}
 # Variable importance
-xgb.importance(colnames(model_xgb$layers$size.recov$fit), model = model_xgb$layers$size.recov$fit)
+xgb.importance(colnames(model_xgb$layers$q.size.recov$fit), model = model_xgb$layers$q.size.recov$fit)
 
 ```
 

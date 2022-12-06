@@ -232,7 +232,8 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
     df.long <- df.long %>%
       dplyr::mutate(recovery = (size < 0)*1,
                     size.pay = ifelse(size > 0, size, 0),
-                    size.recov = ifelse(size < 0, -size, 0))
+                    size.recov = ifelse(size < 0, -size, 0)) %>%
+      dplyr::select(-p.size.recov)
   }
 
   df.long

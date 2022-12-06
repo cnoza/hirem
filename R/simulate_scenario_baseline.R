@@ -19,7 +19,7 @@
 #' @export
 
 simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25,0.15), prob.Hidden = c(0.35,0.45,0.20),
-                                       max_rep_delay = 2, max_set_delay = 20, gen.recoveries = FALSE){
+                                       max_rep_delay = 2, max_set_delay = 20, gen.recoveries = FALSE, prob.Hidden.recov = c(.10,.30,.50)){
 
   # Set seed
   set.seed(seed)
@@ -159,7 +159,6 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
 
   # Remove claims with reporting year later than 2028
   df <- df %>% filter(rep.year <= 9, rep.year >= 1)
-  df <- df %>% mutate(rep.year.fact = factor(rep.year, levels = 1:9))
 
   if(gen.recoveries) {
 
@@ -171,22 +170,22 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
       dplyr::ungroup()
 
     # Generate recovery size per claim as percentage of total size
-    df$recovery <- (df$total.pay > 2)*rbinom(dim(df)[1],1,df$total.pay/100)
+    df$recovery <- (df$total.pay > 2)*rbinom(dim(df)[1],1,prob.Hidden.recov[as.numeric(df$hidden)])
     df$p.size.recov <- (df$total.pay > 2)*df$recovery*runif(dim(df)[1])/10*df$total.pay
-    df$nbr.recov = (df$total.pay > 2)*df$recovery*(rbinom(dim(df)[1],1,1-df$total.pay/10)+1) # At most 2 recoveries per claim
+    df$nbr.recov = (df$total.pay > 2)*df$recovery*(rbinom(dim(df)[1],1,1-df$total.pay/10)+1) # At most 2 development years with recoveries per claim
     df$total.recov = df$p.size.recov * df$total.size
 
-    create_recov <- function(k,s) {
+    create_recov <- function(k,s,t) {
       r <- runif(k)
       r <- r/sum(r)*s
-      ind <- sample(2:9,k,prob=c(2:9)/sum(c(2:9))) # probability increases with development year
+      ind <- sort(sample(1:(t+1),k,prob=c(1:(t+1))/sum(c(1:(t+1))))) # probability increases with development year
       l <- list(recov1=0,recov2=0,recov3=0,recov4=0,recov5=0,recov6=0,recov7=0,recov8=0,recov9=0)
       if(k==1) l[[ind]]=r
       else if(k==2) { l[[ind[1]]]=r[1]; l[[ind[2]]]=r[2] }
       else l=r
       l
     }
-    df$recoveries <- mapply(create_recov, df$nbr.recov, df$total.recov)
+    df$recoveries <- mapply(create_recov, df$nbr.recov, df$total.recov, df$settlement.year - df$rep.year)
 
     mutate_cond <- function(.data, condition, ..., envir = parent.frame()) {
       condition <- eval(substitute(condition), .data, envir)

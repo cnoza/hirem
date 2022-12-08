@@ -166,13 +166,13 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
     df <- df %>%
       dplyr::rowwise() %>%
       dplyr::mutate(total.size = sum(c_across(starts_with("size_"))),
-                    total.pay = sum(c_across(starts_with("size_"))>0)) %>%
-      dplyr::ungroup()
+                    total.pay = sum(c_across(starts_with("size_"))>0))
 
     # Generate recovery size per claim as percentage of total size
     df$recovery <- (df$total.pay > 2)*rbinom(dim(df)[1],1,prob.Hidden.recov[as.numeric(df$hidden)])
+    p <- cumsum(c(1:max(df$total.pay))); p <- p/sum(p)
     df$p.size.recov <- (df$total.pay > 2)*df$recovery*runif(dim(df)[1])/10*df$total.pay
-    df$nbr.recov = (df$total.pay > 2)*df$recovery*(rbinom(dim(df)[1],1,1-df$total.pay/10)+1) # At most 2 development years with recoveries per claim
+    df$nbr.recov = (df$total.pay > 2)*df$recovery*(rbinom(dim(df)[1],1,p[df$total.pay])+1) # At most 2 development years with recoveries per claim
     df$total.recov = df$p.size.recov * df$total.size
 
     create_recov <- function(k,s,t) {

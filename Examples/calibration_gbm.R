@@ -26,21 +26,18 @@ formula_recov <- paste0('recovery ~ 1 + ', paste0(c(covariates_gbm, 'settlement'
 formula_size_pay <- paste0('size.pay ~ 1 + ', paste0(c(covariates_gbm,'settlement'), collapse = ' + '))
 formula_size_recov <- paste0('q.size.recov ~ 1 + ', paste0(c(covariates_gbm,'settlement'), collapse = ' + '))
 
-distribution_bern <- 'bernoulli'
-distribution_gamma <- 'gamma'
-
-hyper_grid <- expand.grid('shrinkage' = c(0.05),
-                          'interaction.depth' = c(1:3))
+hyper_grid <- expand.grid('shrinkage' = c(0.05,0.2,0.5),
+                          'interaction.depth' = c(2))
 
 iter <- c()
 cv_error <- c()
 
 for(i in seq_len(nrow(hyper_grid))){
 
-  mod_gbm <- gbm(as.formula(formula_size_recov),
+  mod_gbm <- gbm(as.formula(formula_settl),
                    data = data,
-                   distribution = 'gamma',
-                   n.trees = 700,
+                   distribution = 'bernoulli',
+                   n.trees = 200,
                    cv.folds = 5,
                    interaction.depth = hyper_grid$interaction.depth[i],
                    shrinkage = hyper_grid$shrinkage[i],

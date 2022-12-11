@@ -51,6 +51,10 @@ require(hirem)
 We simulate one portfolio along the mixed claims scenario. The portfolio initially consists of $125\ 000$ claims, but only the claims that are reported between January 1, 2012 and December 31, 2020 are retained. Claims are tracked over 9 development years since reporting. In addition, we create an extra covariate `devYearMonth`, representing a simplified version of the interaction effect between `dev.year` and `rep.month`.
 
 ```{r}
+
+# For the calibration, we use seed=1
+seed=1
+
 # The complete portfolio
 reserving_data <- simulate_scenario_claim_mix(seed = seed, n= 125000)
 
@@ -281,24 +285,32 @@ We first define the model specifications of each layer. We only train the reserv
 Hyper parameters have been tuned in a previous stage.
 
 ```{r}
-# Results of hierarchical model calibration
-xgb_param_settle <- list('eta' =   .5, 'max_depth' = 1, 'nrounds' =  45, 'subsample' = 1)
-xgb_param_pay    <- list('eta' =  .5, 'max_depth' = 3, 'nrounds' =  10, 'subsample' = 1)
-xgb_param_size   <- list('eta' = .1, 'max_depth' = 1, 'nrounds' = 600, 'subsample' = 1)
+
+hyper_grid <- expand.grid(
+  eta = c(0.05, 0.1, 0.2, 0.3),
+  max_depth = c(1:7)
+)
+
+hyper_grid2 <- expand.grid(
+  eta = 0.05,
+  max_depth = 1
+)
+
+hyper_grid <- expand.grid(
+  eta = c(0.05, 0.1, 0.2, 0.3),
+  max_depth = 1
+)
 
 # Model specifications
 model_xgb <- hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_xgb('settlement', objective = 'binary:logistic', eval_metric = 'logloss', grow_policy = 'lossguide',
-            eta = xgb_param_settle$eta, max_depth = xgb_param_settle$max_depth, 
-            nrounds = xgb_param_settle$nrounds, subsample = xgb_param_settle$subsample) %>%
+            gridsearch_cv = TRUE, hyper_grid = hyper_grid2, nrounds=10) %>%
   layer_xgb('payment', objective = 'binary:logistic', eval_metric = 'logloss', grow_policy = 'lossguide',
-            eta = xgb_param_pay$eta, max_depth = xgb_param_pay$max_depth, 
-            nrounds = xgb_param_pay$nrounds, subsample = xgb_param_pay$subsample) %>%
+            gridsearch_cv = TRUE, hyper_grid = hyper_grid2, nrounds=10) %>%
   layer_xgb('size', objective = 'reg:gamma', 
             eval_metric = 'gamma-deviance', grow_policy = 'lossguide',
-            eta = xgb_param_size$eta, max_depth = xgb_param_size$max_depth, 
-            nrounds = xgb_param_size$nrounds, subsample = xgb_param_size$subsample,
+            gridsearch_cv = TRUE, hyper_grid = hyper_grid, nrounds=1500,
             filter = function(data){data$payment == 1})
 ```
 
@@ -362,12 +374,19 @@ We first define the model specifications of each layer. We only train the reserv
 
 ```{r message=FALSE, warning=FALSE}
 
+hyper_grid <- expand.grid(
+  dnn_hidden_1 = seq(from=0,to=40,by=10),
+  dnn_hidden_2 = seq(from=0,to=40,by=10),
+  dnn_hidden_3 = seq(from=0,to=40,by=10) 
+)
+
 # Model specifications
 model_dnn <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_dnn('settlement', distribution = 'bernoulli',
             bias_regularization = T, 
-            hidden = c(40,30,20),
+            gridsearch_cv = F,
+            hidden=c(30,30,40),
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
@@ -380,7 +399,8 @@ model_dnn <-  hirem(reserving_data) %>%
             patience = 20) %>%
   layer_dnn('payment', distribution = 'bernoulli',
             bias_regularization = T,
-            hidden = c(40,30,20),
+            gridsearch_cv = F,
+            hidden=c(40,30,20),
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
@@ -393,7 +413,8 @@ model_dnn <-  hirem(reserving_data) %>%
             patience = 20) %>%
   layer_dnn('size', distribution = 'gamma',
             bias_regularization = T, 
-            hidden = c(40,30,20),
+            gridsearch_cv = T,
+            hyper_grid = hyper_grid,
             loss = gamma_deviance_keras,
             metrics = metric_gamma_deviance_keras,
             optimizer = optimizer_nadam(),
@@ -442,11 +463,18 @@ We first define the model specifications of each layer. We only train the reserv
 
 ```{r message=FALSE, warning=FALSE}
 
+hyper_grid <- expand.grid(
+  dnn_hidden_1 = seq(from=0,to=40,by=10),
+  dnn_hidden_2 = seq(from=0,to=40,by=10),
+  dnn_hidden_3 = seq(from=0,to=40,by=10) 
+)
+
 # Model specifications
 model_cann <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_cann('settlement', distribution = 'bernoulli',
-             hidden = c(40,30,20),
+             gridsearch_cv = F,
+             hidden=c(40,30,20),
              formula.glm = formula_settle_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),
@@ -462,7 +490,8 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('payment', distribution = 'bernoulli',
-             hidden = c(40,30,20),
+             gridsearch_cv = T,
+             hyper_grid = hyper_grid,
              formula.glm = formula_pay_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),

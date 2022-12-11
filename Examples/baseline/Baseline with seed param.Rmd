@@ -139,9 +139,9 @@ We first define the model specifications of each layer. We only train the reserv
 
 ```{r}
 # Results of hierarchical model calibration
-gbm_param_settle <- list('n.trees' = 225, 'interaction.depth' = 1, 'shrinkage' = 0.05)
+gbm_param_settle <- list('n.trees' = 100, 'interaction.depth' = 2, 'shrinkage' = 0.05)
 gbm_param_pay    <- list('n.trees' = 125, 'interaction.depth' = 3, 'shrinkage' = 0.05)
-gbm_param_size   <- list('n.trees' = 700, 'interaction.depth' = 1, 'shrinkage' = 0.05)
+gbm_param_size   <- list('n.trees' = 50, 'interaction.depth' = 1, 'shrinkage' = 0.3)
 
 # Model specifications
 model_gbm <- hirem(reserving_data) %>%

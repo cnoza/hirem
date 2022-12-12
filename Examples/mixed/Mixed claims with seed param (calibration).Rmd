@@ -490,8 +490,8 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('payment', distribution = 'bernoulli',
-             gridsearch_cv = T,
-             hyper_grid = hyper_grid,
+             gridsearch_cv = F,
+             hidden = c(40,10,10),
              formula.glm = formula_pay_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),
@@ -507,7 +507,8 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('size', distribution = 'gamma',
-             hidden = c(40,30,20),
+             gridsearch_cv = T,
+             hyper_grid = hyper_grid,
              formula.glm = formula_size_glm, 
              bias_regularization = T,
              family_for_glm = Gamma(link=log),

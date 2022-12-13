@@ -162,53 +162,19 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
 
   if(gen.recoveries) {
 
-    # Add total size per claim and total number of development years with size > 0 per claim
-    df <- df %>%
-      dplyr::rowwise() %>%
-      dplyr::mutate(total.size = sum(c_across(starts_with("size_"))),
-                    total.pay = sum(c_across(starts_with("size_"))>0))
-
-    # Generate recovery size per claim as percentage of total size
-    df$recovery <- (df$total.pay > 2)*rbinom(dim(df)[1],1,prob.Hidden.recov[as.numeric(df$hidden)])
-    p <- cumsum(c(1:max(df$total.pay))); p <- p/sum(p)
-    df$p.size.recov <- (df$total.pay > 2)*df$recovery*runif(dim(df)[1])/10*df$total.pay
-    df$nbr.recov = (df$total.pay > 2)*df$recovery*(rbinom(dim(df)[1],1,p[df$total.pay])+1) # At most 2 development years with recoveries per claim
-    df$total.recov = df$p.size.recov * df$total.size
-
-    create_recov <- function(k,s,t) {
-      r <- runif(k)
-      r <- r/sum(r)*s
-      ind <- sort(sample(1:(t+1),k,prob=c(1:(t+1))/sum(c(1:(t+1))))) # probability increases with development year
-      l <- list(recov1=0,recov2=0,recov3=0,recov4=0,recov5=0,recov6=0,recov7=0,recov8=0,recov9=0)
-      if(k==1) l[[ind]]=r
-      else if(k==2) { l[[ind[1]]]=r[1]; l[[ind[2]]]=r[2] }
-      else l=r
-      l
-    }
-    df$recoveries <- mapply(create_recov, df$nbr.recov, df$total.recov, df$settlement.year - df$rep.year)
-
-    mutate_cond <- function(.data, condition, ..., envir = parent.frame()) {
-      condition <- eval(substitute(condition), .data, envir)
-      .data[condition, ] <- .data[condition, ] %>% mutate(...)
-      .data
+    size_obs = df[paste0('size_obs',c(1:9))]
+    size_recov = as_tibble(rep(0,dim(df)[1]))
+    csize <- size_obs[ ,1]
+    for(i in 2:9) {
+      csize <- csize + size_obs[ ,i] - size_recov
+      size <- size_obs[, i]
+      recov <- (csize>size)*rbinom(dim(df)[1],1,prob.Hidden.recov[as.numeric(df$hidden)])*(i <= df$settlement.year - df$rep.year + 1)
+      p.recov <- runif(dim(df)[1])
+      size_recov <- recov*(size + p.recov*(csize-size))
+      df[paste0('size_obs',i)] <- df[[paste0('size_obs',i)]] - size_recov
     }
 
-    df <- df %>%
-      rowwise() %>%
-      mutate_cond(nbr.recov > 0,
-                  size_obs1 = size_obs1 - recoveries[["recov1"]],
-                  size_obs2 = size_obs2 - recoveries[["recov2"]],
-                  size_obs3 = size_obs3 - recoveries[["recov3"]],
-                  size_obs4 = size_obs4 - recoveries[["recov4"]],
-                  size_obs5 = size_obs5 - recoveries[["recov5"]],
-                  size_obs6 = size_obs6 - recoveries[["recov6"]],
-                  size_obs7 = size_obs7 - recoveries[["recov7"]],
-                  size_obs8 = size_obs8 - recoveries[["recov8"]],
-                  size_obs9 = size_obs9 - recoveries[["recov9"]])
-
-    df <- df %>%
-      mutate(ultimate = total.size - total.recov) %>%
-      select(-recoveries, -recovery)
+    df$ultimate = apply(df[paste0('size_obs',c(1:9))], 1, sum)
 
   }
 
@@ -232,8 +198,7 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
     df.long <- df.long %>%
       dplyr::mutate(recovery = (size < 0)*1,
                     size.pay = ifelse(size > 0, size, 0),
-                    size.recov = ifelse(size < 0, -size, 0)) %>%
-      dplyr::select(-p.size.recov)
+                    size.recov = ifelse(size < 0, -size, 0))
   }
 
   df.long

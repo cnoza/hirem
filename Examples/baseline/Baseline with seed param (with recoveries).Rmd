@@ -51,14 +51,14 @@ cat(sprintf("%s", seed))
 ```
 ```{r}
 # The complete portfolio
-reserving_data <- simulate_scenario_baseline(seed = seed, n = 125000, gen.recoveries = TRUE)
+reserving_data <- simulate_scenario_baseline(seed = seed, n = 125000, gen.recoveries = TRUE, prob.Hidden.recov = c(.1,.2,.3))
 
 reserving_data <- reserving_data %>%
   dplyr::group_by(claim.nr) %>%
   dplyr::mutate(total.size.pay = sum(size.pay)) %>%
   dplyr::ungroup() %>%
   mutate(p.size.recov = ifelse(size<0, -size/total.size.pay, 0),
-         q.size.recov = ifelse(size<0, p.size.recov/(1-p.size.recov), 0))
+         q.size.recov = ifelse(size<0, log(p.size.recov/(1-p.size.recov)), 0))
 ```
 
 
@@ -119,7 +119,9 @@ model_glm  <- hirem(reserving_data) %>%
   layer_glm(name = 'recovery', 'family' = binomial(link = logit)) %>%
   layer_glm(name = 'size.pay', 'family' = Gamma(link = 'log'), 
             filter = function(x){x$payment == 1}) %>%
-  layer_glm(name = 'q.size.recov', 'family' = Gamma(link = 'log'), 
+ # layer_glm(name = 'q.size.recov', 'family' = Gamma(link = 'log'), 
+#            filter = function(x){x$recovery == 1})
+  layer_glm(name = 'q.size.recov', 'family' = gaussian(), 
             filter = function(x){x$recovery == 1})
 ```
 
@@ -275,7 +277,7 @@ model_gbm <- hirem(reserving_data) %>%
             n.trees = gbm_param_size_pay$n.trees, interaction.depth = gbm_param_size_pay$interaction.depth,
             shrinkage = gbm_param_size_pay$shrinkage, select_trees = 'last',
             filter = function(data){data$payment == 1}) %>%
-  layer_gbm('q.size.recov', distribution = 'gamma', bag.fraction = 0.75, n.minobsinnode = 100,
+  layer_gbm('q.size.recov', distribution = 'gaussian', bag.fraction = 0.75, n.minobsinnode = 100,
             n.trees = gbm_param_size_recov$n.trees, interaction.depth = gbm_param_size_recov$interaction.depth,
             shrinkage = gbm_param_size_recov$shrinkage, select_trees = 'last',
             filter = function(data){data$recovery == 1})
@@ -385,7 +387,7 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100, 
              batch_size = 1000,
              filter = function(data){data$payment == 1}) %>%
-  layer_glm(name = 'q.size.recov', 'family' = Gamma(link = 'log'), 
+  layer_glm(name = 'q.size.recov', 'family' = gaussian, 
              filter = function(x){x$recovery == 1})
 ```
 
@@ -481,7 +483,7 @@ model_cann2 <-  hirem(reserving_data) %>%
              epochs = 100, 
              batch_size = 1000,
              filter = function(data){data$payment == 1}) %>%
-  layer_gbm('q.size.recov', distribution = 'gamma', bag.fraction = 0.75, n.minobsinnode = 100,
+  layer_gbm('q.size.recov', distribution = 'gaussian', bag.fraction = 0.75, n.minobsinnode = 100,
             n.trees = gbm_param_size_recov$n.trees, interaction.depth = gbm_param_size_recov$interaction.depth,
             shrinkage = gbm_param_size_recov$shrinkage, select_trees = 'last',
             filter = function(data){data$recovery == 1})
@@ -689,12 +691,12 @@ Fifth, we compare the prediction for the total amount of recovery sizes in the p
 update_simul <- function(simul) {
   
   simul <- simul %>% 
-    dplyr::select(-total.size, -size.recov) %>%
+    dplyr::select(-p.size.recov, -size.recov) %>%
     dplyr::group_by(simulation, claim.nr) %>%
-    dplyr::mutate(total.size = sum(size.pay)) %>%
+    dplyr::mutate(total.size.pay = sum(size.pay)) %>%
     dplyr::ungroup() %>%
-    mutate(p.size.recov = q.size.recov / (1+q.size.recov), 
-           size.recov = p.size.recov * total.size)
+    dplyr::mutate(p.size.recov = exp(q.size.recov) / (1+exp(q.size.recov)), 
+                  size.recov = p.size.recov * total.size.pay)
   
   return(simul)
   
@@ -707,11 +709,11 @@ simul_cann2 <- update_simul(simul_cann2)
 
 # Predictions
 obs_size_recov_total <- prediction_data %>% summarise(Total = sum(size.recov)) %>% pull(Total)
-cl_size_recov_total  <- sum(cl_size_recov)
-glm_size_recov_total <- simul_glm %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
-gbm_size_recov_total <- simul_gbm %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
-cann_size_recov_total <- simul_cann %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
-cann2_size_recov_total <- simul_cann2 %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
+cl_size_recov_total  <- sum(cl_size_recov, na.rm=T)
+glm_size_recov_total <- simul_glm %>% filter(recovery==1) %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
+gbm_size_recov_total <- simul_gbm %>% filter(recovery==1) %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
+cann_size_recov_total <- simul_cann %>% filter(recovery==1) %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
+cann2_size_recov_total <- simul_cann2 %>% filter(recovery==1) %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
 
 # Print Results
 c('Actual' = obs_size_recov_total, 
@@ -739,9 +741,9 @@ Comparing the empirical cumulative distribution function obtained from the predi
 Fn <- prediction_data %>% filter(size.recov > 0) %>% pull(size.recov)
 ecdf_pred <- ecdf(Fn)
 plot(ecdf_pred, do.points = F, col.hor = "red")
-ecdf_glm <- ecdf(simul_glm %>% filter(size.recov > 0) %>% pull(size.recov))
+ecdf_glm <- ecdf(simul_glm %>% filter(recovery==1) %>% pull(size.recov))
 lines(ecdf_glm, do.points = F, col.hor = "green")
-ecdf_gbm <- ecdf(simul_gbm %>% filter(size.recov > 0) %>% pull(size.recov))
+ecdf_gbm <- ecdf(simul_gbm %>% filter(recovery==1) %>% pull(size.recov))
 lines(ecdf_gbm, do.points = F, col.hor = "blue")
 ```
 
@@ -749,9 +751,9 @@ lines(ecdf_gbm, do.points = F, col.hor = "blue")
 Fn <- prediction_data %>% filter(size.recov > 0) %>% pull(size.recov)
 ecdf_pred <- ecdf(Fn)
 plot(ecdf_pred, do.points = F, col.hor = "red")
-ecdf_cann <- ecdf(simul_cann %>% filter(size.recov > 0) %>% pull(size.recov))
+ecdf_cann <- ecdf(simul_cann %>% filter(recovery==1) %>% pull(size.recov))
 lines(ecdf_cann, do.points = F, col.hor = "green")
-ecdf_cann2 <- ecdf(simul_cann2 %>% filter(size.recov > 0) %>% pull(size.recov))
+ecdf_cann2 <- ecdf(simul_cann2 %>% filter(recovery==1) %>% pull(size.recov))
 lines(ecdf_cann2, do.points = F, col.hor = "blue")
 ```
 

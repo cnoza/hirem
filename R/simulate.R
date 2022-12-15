@@ -44,7 +44,7 @@ simulate.layer_glm <- function(obj, data, balance.correction, balance.var) {
   response <- predict(obj$fit, newdata = data[select, ], type = 'response')
 
   if(balance.correction) {
-    response <- response * obj$balance.correction[(data[select,])[[balance.var]]]
+    response <- response * obj$balance.correction[as.character((data[select,])[[balance.var]])]
   }
 
   if(obj$method_options$family == 'binomial') {
@@ -77,7 +77,7 @@ simulate.layer_gbm <- function(obj, data, balance.correction, balance.var) {
   response <- predict(obj$fit, n.trees = obj$iter, newdata = data[select, ], type = 'response')
 
   if(balance.correction) {
-    response <- response * obj$balance.correction[(data[select,])[[balance.var]]]
+    response <- response * obj$balance.correction[as.character((data[select,])[[balance.var]])]
   }
 
   if(obj$method_options$distribution == 'bernoulli') {

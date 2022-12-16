@@ -18,7 +18,7 @@ simulate.layer_xgb <- function(obj, data, balance.correction, balance.var) {
     response <- predict(obj$fit, ntreelimit = obj$fit$niter, newdata = newdata.xgb, type = 'response')
 
     if(balance.correction) {
-      response <- response * obj$balance.correction[as.character((data[select,])[[balance.var]])]
+      response <- response * obj$balance.correction[(data[select,])[[balance.var]]]
     }
 
     if(obj$method_options$objective == 'binary:logistic') {

@@ -44,7 +44,7 @@ simulate.layer_dnn <- function(obj, data, balance.correction, balance.var) {
   }
 
   if(balance.correction) {
-    response <- response * obj$balance.correction[as.character((data[select,])[[balance.var]])]
+    response <- response * obj$balance.correction[(data[select,])[[balance.var]]]
   }
 
   if(obj$method_options$distribution == 'bernoulli') {

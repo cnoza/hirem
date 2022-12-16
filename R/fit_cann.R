@@ -1313,6 +1313,13 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                          }
 
                                        })
+
+    if(length(layer$balance.correction) != length(levels(data$dev.year.fact))) {
+      ind <- !(levels(data$dev.year.fact) %in% names(layer$balance.correction))
+      layer$balance.correction[as.character(which(ind))]=1
+      layer$balance.correction = layer$balance.correction[levels(data$dev.year.fact)]
+    }
+
   }
 
   if(layer$method_options$bias_regularization)

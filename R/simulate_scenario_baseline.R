@@ -174,7 +174,8 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
       prob.recov <- prob.recov*(i <= df$settlement.year - df$rep.year + 1)*i/(df$settlement.year - df$rep.year + 1)
       recov <- (csize>size)*rbinom(dim(df)[1],1,prob=prob.recov)*(i <= df$settlement.year - df$rep.year + 1)
       #p.recov <- runif(dim(df)[1])*i/(df$settlement.year - df$rep.year + 1)*(i <= df$settlement.year - df$rep.year + 1)
-      p.recov <- runif(dim(df)[1])*i/10*(i <= df$settlement.year - df$rep.year + 1)
+      #p.recov <- runif(dim(df)[1])*i/10*(i <= df$settlement.year - df$rep.year + 1)
+      p.recov <- rbeta(dim(df)[1], shape1 = 1, shape2 = c(1,0.75,0.5)[as.numeric(x1)])*i/10*(i <= df$settlement.year - df$rep.year + 1)
       size_recov <- recov*(size + p.recov*(csize-size))
       df[paste0('size_obs',i)] <- df[[paste0('size_obs',i)]] - size_recov
     }

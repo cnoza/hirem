@@ -1,7 +1,7 @@
 ---
-title: "Testing the hierarchical reserving models on the simulation engine proposed by Wang and Wuthrich"
+title: "Testing the hierarchical reserving models on the simulation engine including recoveries"
 author: "Christophe Nozaradan"
-date: "October 2022"
+date: "December 2022"
 output: html_document
 bibliography: references.bib  
 ---
@@ -387,8 +387,8 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100, 
              batch_size = 1000,
              filter = function(data){data$payment == 1}) %>%
-  layer_glm(name = 'q.size.recov', 'family' = gaussian, 
-             filter = function(x){x$recovery == 1})
+  layer_glm(name = 'q.size.recov', 'family' = gaussian(), 
+            filter = function(x){x$recovery == 1})
 ```
 
 We now fit the hierarchical CANN on the observed portfolio of simulated claims. Notice that `dev.year.fact` is removed from the list of covariates to prevent an issue in the calibration process (loss function is `nan`).
@@ -502,7 +502,7 @@ model_cann2 <- hirem::fit(model_cann2,
                  payment = paste0('payment ~ ', paste0(c(covariates_cann, 'settlement'), collapse = ' + ')),
                  recovery = paste0('recovery ~ ', paste0(c(covariates_cann, 'settlement'), collapse = ' + ')),
                  size.pay = paste0('size.pay ~ ', paste0(c(covariates_cann,'settlement'), collapse = ' + ')),
-                 q.size.recov = paste0('size.recov ~ 1 + ', paste0(c(covariates_gbm,'settlement'), collapse = ' + ')))
+                 q.size.recov = paste0('q.size.recov ~ 1 + ', paste0(c(covariates_gbm,'settlement'), collapse = ' + ')))
 ```
 
 ## Predicting the future development of claims in the hierarchical reserving models
@@ -649,7 +649,7 @@ Third, we compare the prediction for the total number of recoveries in the predi
 ```{r}
 # Predictions
 obs_recov_total <- prediction_data %>% summarise(Total = sum(recovery)) %>% pull(Total)
-cl_pay_total  <- sum(cl_pay)
+
 glm_recov_total <- simul_glm %>% summarise(Total = sum(recovery)/nsim) %>% pull(Total)
 gbm_recov_total <- simul_gbm %>% summarise(Total = sum(recovery)/nsim) %>% pull(Total)
 cann_recov_total <- simul_cann %>% summarise(Total = sum(recovery)/nsim) %>% pull(Total)

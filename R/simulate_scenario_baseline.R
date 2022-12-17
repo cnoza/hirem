@@ -174,7 +174,6 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
 
         # First way
 
-        #csize <- csize + size_obs[ ,i] - size_recov
         # Probability of recovery depends on hidden covariate
         prob.recov <- prob.Hidden.recov[as.numeric(df$hidden)]
         # Probability of recovery increases with development year

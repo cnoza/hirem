@@ -174,7 +174,7 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
 
         # First way
 
-        csize <- csize + size_obs[ ,i] - size_recov
+        #csize <- csize + size_obs[ ,i] - size_recov
         # Probability of recovery depends on hidden covariate
         prob.recov <- prob.Hidden.recov[as.numeric(df$hidden)]
         # Probability of recovery increases with development year
@@ -185,6 +185,7 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
         p.recov <- rbeta(dim(df)[1], shape1 = 1, shape2 = c(1,0.75,0.5)[as.numeric(x1)])*i/10*(i <= df$settlement.year - df$rep.year + 1)
         size_recov <- recov*(size + p.recov*(csize-size))
         df[paste0('size_obs',i)] <- df[[paste0('size_obs',i)]] - size_recov
+        csize <- csize + size_obs[ ,i] - size_recov
 
       }
       else if(way==2) {

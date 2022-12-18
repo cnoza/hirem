@@ -1,5 +1,5 @@
 ---
-title: "Testing the hierarchical reserving models on a simulated portfolio (mixed scenario)"
+title: "Testing the hierarchical reserving models on a simulated portfolio (change in settlement scenario)"
 author: "Christophe Nozaradan (extention of a previous version by Jens Robben)"
 date: "November 2021"
 output: html_document
@@ -51,7 +51,7 @@ We simulate one portfolio along the mixed claims scenario. The portfolio initial
 
 ```{r}
 # The complete portfolio
-reserving_data <- simulate_scenario_claim_mix(seed = seed, n= 125000)
+reserving_data <- simulate_scenario_change_in_settlement(seed = seed, n= 125000)
 
 # We unset the seed
 set.seed(NULL)
@@ -226,9 +226,9 @@ We first define the model specifications of each layer. We only train the reserv
 
 ```{r}
 # Results of hierarchical model calibration
-gbm_param_settle <- list('n.trees' = 50, 'interaction.depth' = 2, 'shrinkage' = 0.2)
-gbm_param_pay    <- list('n.trees' = 100, 'interaction.depth' = 5, 'shrinkage' = 0.05)
-gbm_param_size   <- list('n.trees' = 225, 'interaction.depth' = 1, 'shrinkage' = 0.1)
+gbm_param_settle <- list('n.trees' = 125, 'interaction.depth' = 2, 'shrinkage' = 0.05)
+gbm_param_pay    <- list('n.trees' = 50, 'interaction.depth' = 2, 'shrinkage' = 0.2)
+gbm_param_size   <- list('n.trees' = 475, 'interaction.depth' = 1, 'shrinkage' = 0.05)
 
 # Model specifications
 model_gbm <- hirem(reserving_data) %>%

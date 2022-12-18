@@ -13,7 +13,9 @@ simulate_scenario_baseline(
   prob.Type = c(0.6, 0.25, 0.15),
   prob.Hidden = c(0.35, 0.45, 0.2),
   max_rep_delay = 2,
-  max_set_delay = 20
+  max_set_delay = 20,
+  gen.recoveries = FALSE,
+  prob.Hidden.recov = c(0.2, 0.3, 0.5)
 )
 
 simulate_scenario_claim_mix(
@@ -23,7 +25,9 @@ simulate_scenario_claim_mix(
   prob.Hidden = c(0.35, 0.45, 0.2),
   max_rep_delay = 2,
   max_set_delay = 20,
-  inflation = c(-0.02, 0.005, 0.015)
+  inflation = c(-0.02, 0.005, 0.015),
+  gen.recoveries = FALSE,
+  prob.Hidden.recov = c(0.2, 0.3, 0.5)
 )
 
 simulate_scenario_extreme_event(
@@ -33,7 +37,9 @@ simulate_scenario_extreme_event(
   prob.Hidden = c(0.35, 0.45, 0.2),
   max_rep_delay = 2,
   max_set_delay = 20,
-  period_extra = "2019"
+  period_extra = "2019",
+  gen.recoveries = FALSE,
+  prob.Hidden.recov = c(0.2, 0.3, 0.5)
 )
 
 simulate_scenario_change_in_settlement(
@@ -43,7 +49,9 @@ simulate_scenario_change_in_settlement(
   prob.Hidden = c(0.35, 0.45, 0.2),
   max_rep_delay = 2,
   max_set_delay = 20,
-  settlement_change = "2017"
+  settlement_change = "2017",
+  gen.recoveries = FALSE,
+  prob.Hidden.recov = c(0.2, 0.3, 0.5)
 )
 }
 \arguments{

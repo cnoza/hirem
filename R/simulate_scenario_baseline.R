@@ -160,56 +160,8 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
   # Remove claims with reporting year later than 2028
   df <- df %>% filter(rep.year <= 9, rep.year >= 1)
 
-  if(gen.recoveries) {
-
-    way = 1
-    size_obs = df[paste0('size_obs',c(1:9))]
-    size_recov = as_tibble(rep(0,dim(df)[1]))
-    csize <- size_obs[ ,1]
-    for(i in 2:9) {
-
-      size <- size_obs[, i]
-
-      if(way==1) {
-
-        # First way
-
-        # Probability of recovery depends on hidden covariate
-        prob.recov <- prob.Hidden.recov[as.numeric(df$hidden)]
-        # Probability of recovery increases with development year
-        prob.recov <- prob.recov*(i <= df$settlement.year - df$rep.year + 1)*i/(df$settlement.year - df$rep.year + 1)
-        # For testing purposes
-        #prob.recov <- c(1,1,1)[as.numeric(df$hidden)]*(i <= df$settlement.year - df$rep.year + 1)
-        recov <- (csize>size)*rbinom(dim(df)[1],1,prob=prob.recov)*(i <= df$settlement.year - df$rep.year + 1)
-        p.recov <- rbeta(dim(df)[1], shape1 = 1, shape2 = c(1,0.75,0.5)[as.numeric(x1)])*i/10*(i <= df$settlement.year - df$rep.year + 1)
-        size_recov <- recov*(size + p.recov*(csize-size))
-        df[paste0('size_obs',i)] <- df[[paste0('size_obs',i)]] - size_recov
-        csize <- csize + size_obs[ ,i] - size_recov
-
-      }
-      else if(way==2) {
-
-        # Second way
-
-        # Probability of recovery depends on hidden covariate
-        prob.recov <- prob.Hidden.recov[as.numeric(df$hidden)]
-        # Probability of recovery increases with development year
-        prob.recov <- prob.recov*(i <= df$settlement.year - df$rep.year + 1)*i/(df$settlement.year - df$rep.year + 1)
-        # For testing purposes
-        #prob.recov <- c(1,1,1)[as.numeric(df$hidden)]*(i <= df$settlement.year - df$rep.year + 1)
-        recov <- (csize>size)*rbinom(dim(df)[1],1,prob=prob.recov)*(i <= df$settlement.year - df$rep.year + 1)
-        p.recov <- rbeta(dim(df)[1], shape1 = 1, shape2 = c(1,0.75,0.5)[as.numeric(x1)])*i/10*(i <= df$settlement.year - df$rep.year + 1)
-        size_recov <- recov*csize*p.recov
-        df[paste0('size_obs',i)] <- df[[paste0('size_obs',i)]] * (size_recov == 0) - size_recov
-        csize <- csize + df[paste0('size_obs',i)]
-
-      }
-
-    }
-
-    df$ultimate = apply(df[paste0('size_obs',c(1:9))], 1, sum)
-
-  }
+  # Generate recoveries
+  if(gen.recoveries) df <- simulate_recoveries(df, prob.Hidden.recov)
 
   # Put in long format
   df.long <- df %>% pivot_longer(cols = starts_with(c('open_obs', 'settlement_obs', 'size_obs')),
@@ -241,7 +193,8 @@ simulate_scenario_baseline <- function(seed, n = 125000, prob.Type = c(0.60,0.25
 #' @rdname simulate_scenario_baseline
 #' @export
 simulate_scenario_claim_mix <- function(seed, n = 125000, prob.Type = c(0.60,0.25,0.15), prob.Hidden = c(0.35,0.45,0.20),
-                                        max_rep_delay = 2, max_set_delay = 20, inflation = c(-0.02,0.005,0.015)){
+                                        max_rep_delay = 2, max_set_delay = 20, inflation = c(-0.02,0.005,0.015),
+                                        gen.recoveries = FALSE, prob.Hidden.recov = c(.20,.30,.50)){
 
   # Set seed
   set.seed(seed)
@@ -390,6 +343,9 @@ simulate_scenario_claim_mix <- function(seed, n = 125000, prob.Type = c(0.60,0.2
   df <- df %>% filter(rep.year <= 9, rep.year >= 1)
   df <- df %>% mutate(rep.year.fact = factor(rep.year, levels = 1:9))
 
+  # Generate recoveries
+  if(gen.recoveries) df <- simulate_recoveries(df, prob.Hidden.recov)
+
   # Put in long format
   df.long <- df %>% pivot_longer(cols = starts_with(c('open_obs', 'settlement_obs', 'size_obs')),
                                  names_to = c(".value", "obs"),
@@ -406,6 +362,13 @@ simulate_scenario_claim_mix <- function(seed, n = 125000, prob.Type = c(0.60,0.2
   df.long <- df.long %>% dplyr::mutate('calendar.year' = rep.year + dev.year - 1, .after = 'dev.year.fact') %>%
     dplyr::mutate('payment' = (size > 0)*1, .before = 'size')
 
+  if(gen.recoveries) {
+    df.long <- df.long %>%
+      dplyr::mutate(recovery = (size < 0)*1,
+                    size.pay = ifelse(size > 0, size, 0),
+                    size.recov = ifelse(size < 0, -size, 0))
+  }
+
   df.long
 
 }
@@ -413,7 +376,8 @@ simulate_scenario_claim_mix <- function(seed, n = 125000, prob.Type = c(0.60,0.2
 #' @rdname simulate_scenario_baseline
 #' @export
 simulate_scenario_extreme_event <- function(seed, n = 125000, prob.Type = c(0.60,0.25,0.15), prob.Hidden = c(0.35,0.45,0.20),
-                                            max_rep_delay = 2, max_set_delay = 20, period_extra = '2019'){
+                                            max_rep_delay = 2, max_set_delay = 20, period_extra = '2019',
+                                            gen.recoveries = FALSE, prob.Hidden.recov = c(.20,.30,.50)){
 
   # Set seed
   set.seed(seed)
@@ -565,6 +529,9 @@ simulate_scenario_extreme_event <- function(seed, n = 125000, prob.Type = c(0.60
   df <- df %>% filter(rep.year <= 9, rep.year >= 1)
   df <- df %>% mutate(rep.year.fact = factor(rep.year, levels = 1:9))
 
+  # Generate recoveries
+  if(gen.recoveries) df <- simulate_recoveries(df, prob.Hidden.recov)
+
   # Put in long format
   df.long <- df %>% pivot_longer(cols = starts_with(c('open_obs', 'settlement_obs', 'size_obs')),
                                  names_to = c(".value", "obs"),
@@ -581,6 +548,13 @@ simulate_scenario_extreme_event <- function(seed, n = 125000, prob.Type = c(0.60
   df.long <- df.long %>% dplyr::mutate('calendar.year' = rep.year + dev.year - 1, .after = 'dev.year.fact') %>%
     dplyr::mutate('payment' = (size > 0)*1, .before = 'size')
 
+  if(gen.recoveries) {
+    df.long <- df.long %>%
+      dplyr::mutate(recovery = (size < 0)*1,
+                    size.pay = ifelse(size > 0, size, 0),
+                    size.recov = ifelse(size < 0, -size, 0))
+  }
+
   df.long
 
 }
@@ -588,7 +562,8 @@ simulate_scenario_extreme_event <- function(seed, n = 125000, prob.Type = c(0.60
 #' @rdname simulate_scenario_baseline
 #' @export
 simulate_scenario_change_in_settlement <- function(seed, n = 125000, prob.Type = c(0.60,0.25,0.15), prob.Hidden = c(0.35,0.45,0.20),
-                                                   max_rep_delay = 2, max_set_delay = 20, settlement_change = '2017'){
+                                                   max_rep_delay = 2, max_set_delay = 20, settlement_change = '2017',
+                                                   gen.recoveries = FALSE, prob.Hidden.recov = c(.20,.30,.50)){
 
   # Set seed
   set.seed(seed)
@@ -740,6 +715,9 @@ simulate_scenario_change_in_settlement <- function(seed, n = 125000, prob.Type =
   df <- df %>% filter(rep.year <= 9, rep.year >= 1)
   df <- df %>% mutate(rep.year.fact = factor(rep.year, levels = 1:9))
 
+  # Generate recoveries
+  if(gen.recoveries) df <- simulate_recoveries(df, prob.Hidden.recov)
+
   # Put in long format
   df.long <- df %>% pivot_longer(cols = starts_with(c('open_obs', 'settlement_obs', 'size_obs')),
                                  names_to = c(".value", "obs"),
@@ -756,8 +734,68 @@ simulate_scenario_change_in_settlement <- function(seed, n = 125000, prob.Type =
   df.long <- df.long %>% dplyr::mutate('calendar.year' = rep.year + dev.year - 1, .after = 'dev.year.fact') %>%
     dplyr::mutate('payment' = (size > 0)*1, .before = 'size')
 
+  if(gen.recoveries) {
+    df.long <- df.long %>%
+      dplyr::mutate(recovery = (size < 0)*1,
+                    size.pay = ifelse(size > 0, size, 0),
+                    size.recov = ifelse(size < 0, -size, 0))
+  }
+
   df.long
 
 }
 
 
+#' @export
+simulate_recoveries <- function(df, prob.Hidden.recov = c(.20,.30,.50)){
+
+  way = 1
+  size_obs = df[paste0('size_obs',c(1:9))]
+  size_recov = as_tibble(rep(0,dim(df)[1]))
+  csize <- size_obs[ ,1]
+  for(i in 2:9) {
+
+    size <- size_obs[, i]
+
+    if(way==1) {
+
+      # First way
+
+      # Probability of recovery depends on hidden covariate
+      prob.recov <- prob.Hidden.recov[as.numeric(df$hidden)]
+      # Probability of recovery increases with development year
+      prob.recov <- prob.recov*(i <= df$settlement.year - df$rep.year + 1)*i/(df$settlement.year - df$rep.year + 1)
+      # For testing purposes
+      #prob.recov <- c(1,1,1)[as.numeric(df$hidden)]*(i <= df$settlement.year - df$rep.year + 1)
+      recov <- (csize>size)*rbinom(dim(df)[1],1,prob=prob.recov)*(i <= df$settlement.year - df$rep.year + 1)
+      p.recov <- rbeta(dim(df)[1], shape1 = 1, shape2 = c(1,0.75,0.5)[as.numeric(df$type)])*i/10*(i <= df$settlement.year - df$rep.year + 1)
+      size_recov <- recov*(size + p.recov*(csize-size))
+      df[paste0('size_obs',i)] <- df[[paste0('size_obs',i)]] - size_recov
+      csize <- csize + size_obs[ ,i] - size_recov
+
+    }
+    else if(way==2) {
+
+      # Second way
+
+      # Probability of recovery depends on hidden covariate
+      prob.recov <- prob.Hidden.recov[as.numeric(df$hidden)]
+      # Probability of recovery increases with development year
+      prob.recov <- prob.recov*(i <= df$settlement.year - df$rep.year + 1)*i/(df$settlement.year - df$rep.year + 1)
+      # For testing purposes
+      #prob.recov <- c(1,1,1)[as.numeric(df$hidden)]*(i <= df$settlement.year - df$rep.year + 1)
+      recov <- (csize>size)*rbinom(dim(df)[1],1,prob=prob.recov)*(i <= df$settlement.year - df$rep.year + 1)
+      p.recov <- rbeta(dim(df)[1], shape1 = 1, shape2 = c(1,0.75,0.5)[as.numeric(df$type)])*i/10*(i <= df$settlement.year - df$rep.year + 1)
+      size_recov <- recov*csize*p.recov
+      df[paste0('size_obs',i)] <- df[[paste0('size_obs',i)]] * (size_recov == 0) - size_recov
+      csize <- csize + df[paste0('size_obs',i)]
+
+    }
+
+  }
+
+  df$ultimate = apply(df[paste0('size_obs',c(1:9))], 1, sum)
+
+  return(df)
+
+}

@@ -255,7 +255,7 @@ We first define the model specifications of each layer. We only train the reserv
 
 ```{r}
 # Results of hierarchical model calibration
-gbm_param_settle <- list('n.trees' = 215, 'interaction.depth' = 3, 'shrinkage' = 0.05)
+gbm_param_settle <- list('n.trees' = 25, 'interaction.depth' = 6, 'shrinkage' = 0.2)
 gbm_param_pay    <- list('n.trees' = 490, 'interaction.depth' = 3, 'shrinkage' = 0.05)
 gbm_param_recov    <- list('n.trees' = 235, 'interaction.depth' = 1, 'shrinkage' = 0.05)
 gbm_param_size_pay   <- list('n.trees' = 442, 'interaction.depth' = 3, 'shrinkage' = 0.05)
@@ -695,8 +695,8 @@ update_simul <- function(simul) {
     dplyr::group_by(simulation, claim.nr) %>%
     dplyr::mutate(total.size.pay = sum(size.pay)) %>%
     dplyr::ungroup() %>%
-    dplyr::mutate(p.size.recov = exp(q.size.recov) / (1+exp(q.size.recov)), 
-                  size.recov = p.size.recov * total.size.pay)
+    dplyr::mutate(p.size.recov = ifelse(recovery == 1, exp(q.size.recov) / (1+exp(q.size.recov)),0), 
+                  size.recov = ifelse(recovery == 1, p.size.recov * total.size.pay, 0))
   
   return(simul)
   
@@ -710,10 +710,10 @@ simul_cann2 <- update_simul(simul_cann2)
 # Predictions
 obs_size_recov_total <- prediction_data %>% summarise(Total = sum(size.recov)) %>% pull(Total)
 cl_size_recov_total  <- sum(cl_size_recov, na.rm=T)
-glm_size_recov_total <- simul_glm %>% filter(recovery==1) %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
-gbm_size_recov_total <- simul_gbm %>% filter(recovery==1) %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
-cann_size_recov_total <- simul_cann %>% filter(recovery==1) %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
-cann2_size_recov_total <- simul_cann2 %>% filter(recovery==1) %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
+glm_size_recov_total <- simul_glm %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
+gbm_size_recov_total <- simul_gbm %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
+cann_size_recov_total <- simul_cann %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
+cann2_size_recov_total <- simul_cann2 %>% summarise(Total = sum(size.recov)/nsim) %>% pull(Total)
 
 # Print Results
 c('Actual' = obs_size_recov_total, 

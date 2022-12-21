@@ -444,6 +444,14 @@ hyper_grid <- expand.grid(
   dnn_hidden_3 = seq(from=0,to=40,by=10) 
 )
 
+hyper_grid <- tribble(
+  ~dnn_hidden_1, ~dnn_hidden_2, ~dnn_hidden_3,
+  20,30,40,
+  30,30,30,
+  40,30,20,
+  40,20,40
+)
+
 # Model specifications
 model_cann <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%

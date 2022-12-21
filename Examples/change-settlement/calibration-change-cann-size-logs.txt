@@ -1,34 +1,34 @@
 Fitting layer_cann for settlement...
 Model: "CANN"
 _______________________________________________________________________________________________________________________________
- Layer (type)                            Output Shape                Param #         Connected to                              
+ Layer (type)                            Output Shape                Param #         Connected to
 ===============================================================================================================================
- input_layer_nn (InputLayer)             [(None, 35)]                0               []                                        
-                                                                                                                               
- hidden_layer_1 (Dense)                  (None, 30)                  1080            ['input_layer_nn[0][0]']                  
-                                                                                                                               
- hidden_layer_activation_1 (Activation)  (None, 30)                  0               ['hidden_layer_1[0][0]']                  
-                                                                                                                               
- hidden_layer_2 (Dense)                  (None, 10)                  310             ['hidden_layer_activation_1[0][0]']       
-                                                                                                                               
- hidden_layer_activation_2 (Activation)  (None, 10)                  0               ['hidden_layer_2[0][0]']                  
-                                                                                                                               
- last_hidden_layer (Dense)               (None, 30)                  330             ['hidden_layer_activation_2[0][0]']       
-                                                                                                                               
- input_layer_glm (InputLayer)            [(None, 54)]                0               []                                        
-                                                                                                                               
- last_hidden_layer_activation (Activatio  (None, 30)                 0               ['last_hidden_layer[0][0]']               
- n)                                                                                                                            
-                                                                                                                               
- output_layer_glm (Dense)                (None, 1)                   55              ['input_layer_glm[0][0]']                 
-                                                                                                                               
- output_layer_NN (Dense)                 (None, 1)                   31              ['last_hidden_layer_activation[0][0]']    
-                                                                                                                               
- add_1026 (Add)                          (None, 1)                   0               ['output_layer_glm[0][0]',                
-                                                                                      'output_layer_NN[0][0]']                 
-                                                                                                                               
- output_layer_CANN (Dense)               (None, 1)                   2               ['add_1026[0][0]']                        
-                                                                                                                               
+ input_layer_nn (InputLayer)             [(None, 35)]                0               []
+
+ hidden_layer_1 (Dense)                  (None, 30)                  1080            ['input_layer_nn[0][0]']
+
+ hidden_layer_activation_1 (Activation)  (None, 30)                  0               ['hidden_layer_1[0][0]']
+
+ hidden_layer_2 (Dense)                  (None, 10)                  310             ['hidden_layer_activation_1[0][0]']
+
+ hidden_layer_activation_2 (Activation)  (None, 10)                  0               ['hidden_layer_2[0][0]']
+
+ last_hidden_layer (Dense)               (None, 30)                  330             ['hidden_layer_activation_2[0][0]']
+
+ input_layer_glm (InputLayer)            [(None, 54)]                0               []
+
+ last_hidden_layer_activation (Activatio  (None, 30)                 0               ['last_hidden_layer[0][0]']
+ n)
+
+ output_layer_glm (Dense)                (None, 1)                   55              ['input_layer_glm[0][0]']
+
+ output_layer_NN (Dense)                 (None, 1)                   31              ['last_hidden_layer_activation[0][0]']
+
+ add_1026 (Add)                          (None, 1)                   0               ['output_layer_glm[0][0]',
+                                                                                      'output_layer_NN[0][0]']
+
+ output_layer_CANN (Dense)               (None, 1)                   2               ['add_1026[0][0]']
+
 ===============================================================================================================================
 Total params: 1,808
 Trainable params: 1,751
@@ -38,34 +38,34 @@ ________________________________________________________________________________
 Fitting layer_cann for payment...
 Model: "CANN"
 _______________________________________________________________________________________________________________________________
- Layer (type)                            Output Shape                Param #         Connected to                              
+ Layer (type)                            Output Shape                Param #         Connected to
 ===============================================================================================================================
- input_layer_nn (InputLayer)             [(None, 36)]                0               []                                        
-                                                                                                                               
- hidden_layer_1 (Dense)                  (None, 20)                  740             ['input_layer_nn[0][0]']                  
-                                                                                                                               
- hidden_layer_activation_1 (Activation)  (None, 20)                  0               ['hidden_layer_1[0][0]']                  
-                                                                                                                               
- hidden_layer_2 (Dense)                  (None, 40)                  840             ['hidden_layer_activation_1[0][0]']       
-                                                                                                                               
- hidden_layer_activation_2 (Activation)  (None, 40)                  0               ['hidden_layer_2[0][0]']                  
-                                                                                                                               
- last_hidden_layer (Dense)               (None, 10)                  410             ['hidden_layer_activation_2[0][0]']       
-                                                                                                                               
- input_layer_glm (InputLayer)            [(None, 55)]                0               []                                        
-                                                                                                                               
- last_hidden_layer_activation (Activatio  (None, 10)                 0               ['last_hidden_layer[0][0]']               
- n)                                                                                                                            
-                                                                                                                               
- output_layer_glm (Dense)                (None, 1)                   56              ['input_layer_glm[0][0]']                 
-                                                                                                                               
- output_layer_NN (Dense)                 (None, 1)                   11              ['last_hidden_layer_activation[0][0]']    
-                                                                                                                               
- add_1027 (Add)                          (None, 1)                   0               ['output_layer_glm[0][0]',                
-                                                                                      'output_layer_NN[0][0]']                 
-                                                                                                                               
- output_layer_CANN (Dense)               (None, 1)                   2               ['add_1027[0][0]']                        
-                                                                                                                               
+ input_layer_nn (InputLayer)             [(None, 36)]                0               []
+
+ hidden_layer_1 (Dense)                  (None, 20)                  740             ['input_layer_nn[0][0]']
+
+ hidden_layer_activation_1 (Activation)  (None, 20)                  0               ['hidden_layer_1[0][0]']
+
+ hidden_layer_2 (Dense)                  (None, 40)                  840             ['hidden_layer_activation_1[0][0]']
+
+ hidden_layer_activation_2 (Activation)  (None, 40)                  0               ['hidden_layer_2[0][0]']
+
+ last_hidden_layer (Dense)               (None, 10)                  410             ['hidden_layer_activation_2[0][0]']
+
+ input_layer_glm (InputLayer)            [(None, 55)]                0               []
+
+ last_hidden_layer_activation (Activatio  (None, 10)                 0               ['last_hidden_layer[0][0]']
+ n)
+
+ output_layer_glm (Dense)                (None, 1)                   56              ['input_layer_glm[0][0]']
+
+ output_layer_NN (Dense)                 (None, 1)                   11              ['last_hidden_layer_activation[0][0]']
+
+ add_1027 (Add)                          (None, 1)                   0               ['output_layer_glm[0][0]',
+                                                                                      'output_layer_NN[0][0]']
+
+ output_layer_CANN (Dense)               (None, 1)                   2               ['add_1027[0][0]']
+
 ===============================================================================================================================
 Total params: 2,059
 Trainable params: 2,001
@@ -675,33 +675,33 @@ _ Mean score for hyper_grid row 85 is 1.22087535858154
 _ Overall best score is 1.22053174972534 for hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=10 dnn_hidden_3=10
 Model: "CANN"
 ________________________________________________________________________________________________________________________________________
- Layer (type)                               Output Shape                  Param #          Connected to                                 
+ Layer (type)                               Output Shape                  Param #          Connected to
 ========================================================================================================================================
- input_layer_nn (InputLayer)                [(None, 36)]                  0                []                                           
-                                                                                                                                        
- hidden_layer_1 (Dense)                     (None, 20)                    740              ['input_layer_nn[0][0]']                     
-                                                                                                                                        
- hidden_layer_activation_1 (Activation)     (None, 20)                    0                ['hidden_layer_1[0][0]']                     
-                                                                                                                                        
- hidden_layer_2 (Dense)                     (None, 10)                    210              ['hidden_layer_activation_1[0][0]']          
-                                                                                                                                        
- hidden_layer_activation_2 (Activation)     (None, 10)                    0                ['hidden_layer_2[0][0]']                     
-                                                                                                                                        
- last_hidden_layer (Dense)                  (None, 10)                    110              ['hidden_layer_activation_2[0][0]']          
-                                                                                                                                        
- input_layer_glm (InputLayer)               [(None, 55)]                  0                []                                           
-                                                                                                                                        
- last_hidden_layer_activation (Activation)  (None, 10)                    0                ['last_hidden_layer[0][0]']                  
-                                                                                                                                        
- output_layer_glm (Dense)                   (None, 1)                     56               ['input_layer_glm[0][0]']                    
-                                                                                                                                        
- output_layer_NN (Dense)                    (None, 1)                     11               ['last_hidden_layer_activation[0][0]']       
-                                                                                                                                        
- add_1538 (Add)                             (None, 1)                     0                ['output_layer_glm[0][0]',                   
-                                                                                            'output_layer_NN[0][0]']                    
-                                                                                                                                        
- output_layer_CANN (Dense)                  (None, 1)                     2                ['add_1538[0][0]']                           
-                                                                                                                                        
+ input_layer_nn (InputLayer)                [(None, 36)]                  0                []
+
+ hidden_layer_1 (Dense)                     (None, 20)                    740              ['input_layer_nn[0][0]']
+
+ hidden_layer_activation_1 (Activation)     (None, 20)                    0                ['hidden_layer_1[0][0]']
+
+ hidden_layer_2 (Dense)                     (None, 10)                    210              ['hidden_layer_activation_1[0][0]']
+
+ hidden_layer_activation_2 (Activation)     (None, 10)                    0                ['hidden_layer_2[0][0]']
+
+ last_hidden_layer (Dense)                  (None, 10)                    110              ['hidden_layer_activation_2[0][0]']
+
+ input_layer_glm (InputLayer)               [(None, 55)]                  0                []
+
+ last_hidden_layer_activation (Activation)  (None, 10)                    0                ['last_hidden_layer[0][0]']
+
+ output_layer_glm (Dense)                   (None, 1)                     56               ['input_layer_glm[0][0]']
+
+ output_layer_NN (Dense)                    (None, 1)                     11               ['last_hidden_layer_activation[0][0]']
+
+ add_1538 (Add)                             (None, 1)                     0                ['output_layer_glm[0][0]',
+                                                                                            'output_layer_NN[0][0]']
+
+ output_layer_CANN (Dense)                  (None, 1)                     2                ['add_1538[0][0]']
+
 ========================================================================================================================================
 Total params: 1,129
 Trainable params: 1,071
@@ -794,107 +794,3 @@ ________________________________________________________________________________
 83           40           40            0    1.221173
 84           40           10            0    1.221210
 85           30           40           30    1.221275
-  |                                                                                                                                      |                                                                                                                              |   0%  |                                                                                                                                      |..                                                                                                                            |   1%
-  ordinary text without R code
-
-  |                                                                                                                                      |...                                                                                                                           |   3%
-label: unnamed-chunk-1 (with options) 
-List of 2
- $ echo  : logi FALSE
- $ engine: chr "css"
-
-  |                                                                                                                                      |.....                                                                                                                         |   4%
-  ordinary text without R code
-
-  |                                                                                                                                      |.......                                                                                                                       |   5%
-label: setup (with options) 
-List of 1
- $ include: logi FALSE
-
-  |                                                                                                                                      |.........                                                                                                                     |   7%
-  ordinary text without R code
-
-  |                                                                                                                                      |..........                                                                                                                    |   8%
-label: unnamed-chunk-2
-  |                                                                                                                                      |............                                                                                                                  |  10%
-  ordinary text without R code
-
-  |                                                                                                                                      |..............                                                                                                                |  11%
-label: unnamed-chunk-3 (with options) 
-List of 1
- $ results: chr "hide"
-
-  |                                                                                                                                      |................                                                                                                              |  12%
-  ordinary text without R code
-
-  |                                                                                                                                      |.................                                                                                                             |  14%
-label: unnamed-chunk-4
-  |                                                                                                                                      |...................                                                                                                           |  15%
-  ordinary text without R code
-
-  |                                                                                                                                      |.....................                                                                                                         |  16%
-label: unnamed-chunk-5
-  |                                                                                                                                      |......................                                                                                                        |  18%
-  ordinary text without R code
-
-  |                                                                                                                                      |........................                                                                                                      |  19%
-label: unnamed-chunk-6
-  |                                                                                                                                      |..........................                                                                                                    |  21%
-  ordinary text without R code
-
-  |                                                                                                                                      |............................                                                                                                  |  22%
-label: unnamed-chunk-7
-  |                                                                                                                                      |.............................                                                                                                 |  23%
-  ordinary text without R code
-
-  |                                                                                                                                      |...............................                                                                                               |  25%
-label: unnamed-chunk-8
-  |                                                                                                                                      |.................................                                                                                             |  26%
-  ordinary text without R code
-
-  |                                                                                                                                      |...................................                                                                                           |  27%
-label: unnamed-chunk-9
-  |                                                                                                                                      |....................................                                                                                          |  29%
-  ordinary text without R code
-
-  |                                                                                                                                      |......................................                                                                                        |  30%
-label: unnamed-chunk-10
-  |                                                                                                                                      |........................................                                                                                      |  32%
-  ordinary text without R code
-
-  |                                                                                                                                      |.........................................                                                                                     |  33%
-label: unnamed-chunk-11
-  |                                                                                                                                      |...........................................                                                                                   |  34%
-  ordinary text without R code
-
-  |                                                                                                                                      |.............................................                                                                                 |  36%
-label: unnamed-chunk-12
-  |                                                                                                                                      |...............................................                                                                               |  37%
-  ordinary text without R code
-
-  |                                                                                                                                      |................................................                                                                              |  38%
-label: unnamed-chunk-13
-  |                                                                                                                                      |..................................................                                                                            |  40%
-  ordinary text without R code
-
-  |                                                                                                                                      |....................................................                                                                          |  41%
-label: unnamed-chunk-14
-  |                                                                                                                                      |......................................................                                                                        |  42%
-  ordinary text without R code
-
-  |                                                                                                                                      |.......................................................                                                                       |  44%
-label: unnamed-chunk-15
-  |                                                                                                                                      |.........................................................                                                                     |  45%
-  ordinary text without R code
-
-  |                                                                                                                                      |...........................................................                                                                   |  47%
-label: unnamed-chunk-16
-  |                                                                                                                                      |............................................................                                                                  |  48%
-  ordinary text without R code
-
-  |                                                                                                                                      |..............................................................                                                                |  49%
-label: unnamed-chunk-17 (with options) 
-List of 1
- $ message: logi TRUE
-
-

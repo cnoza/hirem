@@ -749,48 +749,26 @@ simulate_scenario_change_in_settlement <- function(seed, n = 125000, prob.Type =
 #' @export
 simulate_recoveries <- function(df, prob.Hidden.recov = c(.20,.30,.50)){
 
-  way = 1
   size_obs = df[paste0('size_obs',c(1:9))]
   size_recov = as_tibble(rep(0,dim(df)[1]))
   csize <- size_obs[ ,1]
   for(i in 2:9) {
 
     size <- size_obs[, i]
-
-    if(way==1) {
-
-      # First way
-
-      # Probability of recovery depends on hidden covariate
-      prob.recov <- prob.Hidden.recov[as.numeric(df$hidden)]
-      # Probability of recovery increases with development year
-      prob.recov <- prob.recov*(i <= df$settlement.year - df$rep.year + 1)*i/(df$settlement.year - df$rep.year + 1)
-      # For testing purposes
-      #prob.recov <- c(1,1,1)[as.numeric(df$hidden)]*(i <= df$settlement.year - df$rep.year + 1)
-      recov <- (csize>size)*rbinom(dim(df)[1],1,prob=prob.recov)*(i <= df$settlement.year - df$rep.year + 1)
-      p.recov <- rbeta(dim(df)[1], shape1 = 1, shape2 = c(1,0.75,0.5)[as.numeric(df$type)])*i/10*(i <= df$settlement.year - df$rep.year + 1)
-      size_recov <- recov*(size + p.recov*(csize-size))
-      df[paste0('size_obs',i)] <- df[[paste0('size_obs',i)]] - size_recov
-      csize <- csize + size_obs[ ,i] - size_recov
-
-    }
-    else if(way==2) {
-
-      # Second way
-
-      # Probability of recovery depends on hidden covariate
-      prob.recov <- prob.Hidden.recov[as.numeric(df$hidden)]
-      # Probability of recovery increases with development year
-      prob.recov <- prob.recov*(i <= df$settlement.year - df$rep.year + 1)*i/(df$settlement.year - df$rep.year + 1)
-      # For testing purposes
-      #prob.recov <- c(1,1,1)[as.numeric(df$hidden)]*(i <= df$settlement.year - df$rep.year + 1)
-      recov <- (csize>size)*rbinom(dim(df)[1],1,prob=prob.recov)*(i <= df$settlement.year - df$rep.year + 1)
-      p.recov <- rbeta(dim(df)[1], shape1 = 1, shape2 = c(1,0.75,0.5)[as.numeric(df$type)])*i/10*(i <= df$settlement.year - df$rep.year + 1)
-      size_recov <- recov*csize*p.recov
-      df[paste0('size_obs',i)] <- df[[paste0('size_obs',i)]] * (size_recov == 0) - size_recov
-      csize <- csize + df[paste0('size_obs',i)]
-
-    }
+    # Probability of recovery depends on hidden covariate
+    prob.recov <- prob.Hidden.recov[as.numeric(df$hidden)]
+    # Probability of recovery increases with development year
+    prob.recov <- prob.recov*(i <= df$settlement.year - df$rep.year + 1)*i/(df$settlement.year - df$rep.year + 1)
+    # Recovery indicator
+    recov <- (csize>size)*rbinom(dim(df)[1],1,prob=prob.recov)*(i <= df$settlement.year - df$rep.year + 1)
+    # Recovery percentage follows a beta distribution depending on "type" covariate
+    p.recov <- rbeta(dim(df)[1], shape1 = 1, shape2 = c(1,0.75,0.5)[as.numeric(df$type)])*i/10*(i <= df$settlement.year - df$rep.year + 1)
+    # We want the amount recovered to generate a negative size for the current development year
+    size_recov <- recov*(size + p.recov*(csize-size))
+    # We update the dataset
+    df[paste0('size_obs',i)] <- size - size_recov
+    # We update the cumulative size
+    csize <- csize + size - size_recov
 
   }
 

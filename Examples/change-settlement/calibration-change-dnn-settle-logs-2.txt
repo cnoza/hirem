@@ -1,0 +1,111 @@
+Fitting layer_dnn for settlement...
+_ Initializing the weights...
+_ Starting hypergrid search...
+_ Now testing hyper_grid row with dnn_hidden_1=0 dnn_hidden_2=0 dnn_hidden_3=0
+_ Score for fold 1 is 0.550642728805542
+_ Score for fold 2 is 0.553077220916748
+_ Score for fold 3 is 0.549658596515656
+_ Score for fold 4 is 0.552093386650085
+_ Score for fold 5 is 0.551740646362305
+_ Mean score for hyper_grid row 1 is 0.551442515850067
+_ Best score so far is 0.551442515850067 for hyper_grid row with dnn_hidden_1=0 dnn_hidden_2=0 dnn_hidden_3=0
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=0 dnn_hidden_3=0
+_ Score for fold 1 is 0.550686299800873
+_ Score for fold 2 is 0.553067207336426
+_ Score for fold 3 is 0.549657166004181
+_ Score for fold 4 is 0.552098274230957
+_ Score for fold 5 is 0.55172735452652
+_ Mean score for hyper_grid row 2 is 0.551447260379791
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=0
+_ Score for fold 1 is 0.550672709941864
+_ Score for fold 2 is 0.553074598312378
+_ Score for fold 3 is 0.549677729606628
+_ Score for fold 4 is 0.552120685577393
+_ Score for fold 5 is 0.551691651344299
+_ Mean score for hyper_grid row 3 is 0.551447474956512
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=30
+_ Score for fold 1 is 0.550648391246796
+_ Score for fold 2 is 0.553077280521393
+_ Score for fold 3 is 0.5496906042099
+_ Score for fold 4 is 0.55209892988205
+_ Score for fold 5 is 0.551755905151367
+_ Mean score for hyper_grid row 4 is 0.551454222202301
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=40
+_ Score for fold 1 is 0.550673723220825
+_ Score for fold 2 is 0.553087651729584
+_ Score for fold 3 is 0.549662470817566
+_ Score for fold 4 is 0.552097380161285
+_ Score for fold 5 is 0.55173534154892
+_ Mean score for hyper_grid row 5 is 0.551451313495636
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=50
+_ Score for fold 1 is 0.5506991147995
+_ Score for fold 2 is 0.553075671195984
+_ Score for fold 3 is 0.549697041511536
+_ Score for fold 4 is 0.552094757556915
+_ Score for fold 5 is 0.55175906419754
+_ Mean score for hyper_grid row 6 is 0.551465129852295
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=60
+_ Score for fold 1 is 0.550645887851715
+_ Score for fold 2 is 0.553098320960999
+_ Score for fold 3 is 0.549603223800659
+_ Score for fold 4 is 0.552129924297333
+_ Score for fold 5 is 0.551714837551117
+_ Mean score for hyper_grid row 7 is 0.551438438892365
+_ Best score so far is 0.551438438892365 for hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=60
+_ Overall best score is 0.551438438892365 for hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=60
+Model: "model_558"
+________________________________________________________________________________________________________________
+ Layer (type)                                     Output Shape                                 Param #          
+================================================================================================================
+ input_layer_nn (InputLayer)                      [(None, 35)]                                 0                
+ hidden_layer_1 (Dense)                           (None, 30)                                   1080             
+ hidden_layer_activation_1 (Activation)           (None, 30)                                   0                
+ hidden_layer_2 (Dense)                           (None, 20)                                   620              
+ hidden_layer_activation_2 (Activation)           (None, 20)                                   0                
+ last_hidden_layer (Dense)                        (None, 60)                                   1260             
+ last_hidden_layer_activation (Activation)        (None, 60)                                   0                
+ output_layer (Dense)                             (None, 1)                                    61               
+================================================================================================================
+Total params: 3,021
+Trainable params: 3,021
+Non-trainable params: 0
+________________________________________________________________________________________________________________
+[1] "Model: \"model_558\"\n________________________________________________________________________________________________________________\n Layer (type)                                     Output Shape                                 Param #          \n================================================================================================================\n input_layer_nn (InputLayer)                      [(None, 35)]                                 0                \n hidden_layer_1 (Dense)                           (None, 30)                                   1080             \n hidden_layer_activation_1 (Activation)           (None, 30)                                   0                \n hidden_layer_2 (Dense)                           (None, 20)                                   620              \n hidden_layer_activation_2 (Activation)           (None, 20)                                   0                \n last_hidden_layer (Dense)                        (None, 60)                                   1260             \n last_hidden_layer_activation (Activation)        (None, 60)                                   0                \n output_layer (Dense)                             (None, 1)                                    61               \n================================================================================================================\nTotal params: 3,021\nTrainable params: 3,021\nNon-trainable params: 0\n________________________________________________________________________________________________________________"
+Fitting layer_dnn for payment...
+Model: "model_560"
+________________________________________________________________________________________________________________
+ Layer (type)                                     Output Shape                                 Param #          
+================================================================================================================
+ input_layer_nn (InputLayer)                      [(None, 36)]                                 0                
+ hidden_layer_1 (Dense)                           (None, 40)                                   1480             
+ hidden_layer_activation_1 (Activation)           (None, 40)                                   0                
+ hidden_layer_2 (Dense)                           (None, 30)                                   1230             
+ hidden_layer_activation_2 (Activation)           (None, 30)                                   0                
+ last_hidden_layer (Dense)                        (None, 20)                                   620              
+ last_hidden_layer_activation (Activation)        (None, 20)                                   0                
+ output_layer (Dense)                             (None, 1)                                    21               
+================================================================================================================
+Total params: 3,351
+Trainable params: 3,351
+Non-trainable params: 0
+________________________________________________________________________________________________________________
+[1] "Model: \"model_560\"\n________________________________________________________________________________________________________________\n Layer (type)                                     Output Shape                                 Param #          \n================================================================================================================\n input_layer_nn (InputLayer)                      [(None, 36)]                                 0                \n hidden_layer_1 (Dense)                           (None, 40)                                   1480             \n hidden_layer_activation_1 (Activation)           (None, 40)                                   0                \n hidden_layer_2 (Dense)                           (None, 30)                                   1230             \n hidden_layer_activation_2 (Activation)           (None, 30)                                   0                \n last_hidden_layer (Dense)                        (None, 20)                                   620              \n last_hidden_layer_activation (Activation)        (None, 20)                                   0                \n output_layer (Dense)                             (None, 1)                                    21               \n================================================================================================================\nTotal params: 3,351\nTrainable params: 3,351\nNon-trainable params: 0\n________________________________________________________________________________________________________________"
+Fitting layer_dnn for size...
+Model: "model_562"
+________________________________________________________________________________________________________________
+ Layer (type)                                     Output Shape                                 Param #          
+================================================================================================================
+ input_layer_nn (InputLayer)                      [(None, 36)]                                 0                
+ hidden_layer_1 (Dense)                           (None, 20)                                   740              
+ hidden_layer_activation_1 (Activation)           (None, 20)                                   0                
+ hidden_layer_2 (Dense)                           (None, 20)                                   420              
+ hidden_layer_activation_2 (Activation)           (None, 20)                                   0                
+ last_hidden_layer (Dense)                        (None, 30)                                   630              
+ last_hidden_layer_activation (Activation)        (None, 30)                                   0                
+ output_layer (Dense)                             (None, 1)                                    31               
+================================================================================================================
+Total params: 1,821
+Trainable params: 1,821
+Non-trainable params: 0
+________________________________________________________________________________________________________________
+[1] "Model: \"model_562\"\n________________________________________________________________________________________________________________\n Layer (type)                                     Output Shape                                 Param #          \n================================================================================================================\n input_layer_nn (InputLayer)                      [(None, 36)]                                 0                \n hidden_layer_1 (Dense)                           (None, 20)                                   740              \n hidden_layer_activation_1 (Activation)           (None, 20)                                   0                \n hidden_layer_2 (Dense)                           (None, 20)                                   420              \n hidden_layer_activation_2 (Activation)           (None, 20)                                   0                \n last_hidden_layer (Dense)                        (None, 30)                                   630              \n last_hidden_layer_activation (Activation)        (None, 30)                                   0                \n output_layer (Dense)                             (None, 1)                                    31               \n================================================================================================================\nTotal params: 1,821\nTrainable params: 1,821\nNon-trainable params: 0\n________________________________________________________________________________________________________________"

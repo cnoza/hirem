@@ -27,7 +27,7 @@ formula_size_pay <- paste0('size.pay ~ 1 + ', paste0(c(covariates_gbm,'settlemen
 formula_size_recov <- paste0('q.size.recov ~ 1 + ', paste0(c(covariates_gbm,'settlement'), collapse = ' + '))
 
 hyper_grid <- expand.grid('shrinkage' = c(0.05,0.2,0.5),
-                          'interaction.depth' = c(2))
+                          'interaction.depth' = c(1:9))
 
 iter <- c()
 cv_error <- c()
@@ -37,7 +37,7 @@ for(i in seq_len(nrow(hyper_grid))){
   mod_gbm <- gbm(as.formula(formula_settl),
                    data = data,
                    distribution = 'bernoulli',
-                   n.trees = 200,
+                   n.trees = 500,
                    cv.folds = 5,
                    interaction.depth = hyper_grid$interaction.depth[i],
                    shrinkage = hyper_grid$shrinkage[i],

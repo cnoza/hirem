@@ -292,7 +292,7 @@ hyper_grid <- expand.grid(
 
 # Results of hierarchical model calibration
 xgb_param_settle <- list('eta' =   .1, 'max_depth' = 1, 'nrounds' =  144, 'subsample' = .75)
-xgb_param_pay    <- list('eta' =  .3, 'max_depth' = 2, 'nrounds' =  34, 'subsample' = .75)
+xgb_param_pay    <- list('eta' =  .05, 'max_depth' = 3, 'nrounds' =  142, 'subsample' = .75)
 xgb_param_size   <- list('eta' = .2, 'max_depth' = 1, 'nrounds' = 311, 'subsample' = .75)
 
 
@@ -303,11 +303,11 @@ model_xgb <- hirem(reserving_data) %>%
             eta = xgb_param_settle$eta, max_depth = xgb_param_settle$max_depth, 
             nrounds = xgb_param_settle$nrounds, subsample = xgb_param_settle$subsample) %>%
   layer_xgb('payment', objective = 'binary:logistic', eval_metric = 'logloss', grow_policy = 'lossguide',
-            gridsearch_cv = TRUE, hyper_grid = hyper_grid, subsample = .75) %>%
+            eta = xgb_param_pay$eta, max_depth = xgb_param_pay$max_depth, 
+            nrounds = xgb_param_pay$nrounds, subsample = xgb_param_pay$subsample) %>%
   layer_xgb('size', objective = 'reg:gamma', 
             eval_metric = 'gamma-deviance', grow_policy = 'lossguide',
-            eta = xgb_param_size$eta, max_depth = xgb_param_size$max_depth, 
-            nrounds = xgb_param_size$nrounds, subsample = xgb_param_size$subsample,
+            gridsearch_cv = TRUE, hyper_grid = hyper_grid, subsample = .75,
             filter = function(data){data$payment == 1})
 ```
 
@@ -376,7 +376,7 @@ model_dnn <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_dnn('settlement', distribution = 'bernoulli',
             bias_regularization = T, 
-            hidden = c(30,30,40),
+            hidden = c(30,20,40),
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
@@ -389,7 +389,7 @@ model_dnn <-  hirem(reserving_data) %>%
             patience = 20) %>%
   layer_dnn('payment', distribution = 'bernoulli',
             bias_regularization = T,
-            hidden = c(40,30,20),
+            hidden = c(30,30,40),
             loss = 'binary_crossentropy',
             metrics = 'binary_crossentropy',
             optimizer = optimizer_nadam(),
@@ -402,7 +402,7 @@ model_dnn <-  hirem(reserving_data) %>%
             patience = 20) %>%
   layer_dnn('size', distribution = 'gamma',
             bias_regularization = T, 
-            hidden = c(20,20,30),
+            hidden = c(30,10,30),
             loss = gamma_deviance_keras,
             metrics = metric_gamma_deviance_keras,
             optimizer = optimizer_nadam(),
@@ -438,11 +438,17 @@ We first define the model specifications of each layer. We only train the reserv
 
 ```{r message=FALSE, warning=FALSE}
 
+hyper_grid <- expand.grid(
+  dnn_hidden_1 = seq(from=0,to=40,by=10),
+  dnn_hidden_2 = seq(from=0,to=40,by=10),
+  dnn_hidden_3 = seq(from=0,to=40,by=10) 
+)
+
 # Model specifications
 model_cann <-  hirem(reserving_data) %>%
   split_data(observed = function(df) df %>% filter(calendar.year <= 9, open == 1)) %>%
   layer_cann('settlement', distribution = 'bernoulli',
-             hidden = c(40,30,20),
+             hidden=c(30,10,30),
              formula.glm = formula_settle_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),
@@ -458,7 +464,7 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('payment', distribution = 'bernoulli',
-             hidden = c(40,10,10),
+             hidden = c(20,40,10),
              formula.glm = formula_pay_glm, 
              bias_regularization = T,
              family_for_glm = binomial(),
@@ -474,7 +480,7 @@ model_cann <-  hirem(reserving_data) %>%
              epochs = 100,
              batch_size = 1000) %>%
   layer_cann('size', distribution = 'gamma',
-             hidden = c(20,10,10),
+             hidden=c(20,10,10),
              formula.glm = formula_size_glm, 
              bias_regularization = T,
              family_for_glm = Gamma(link=log),

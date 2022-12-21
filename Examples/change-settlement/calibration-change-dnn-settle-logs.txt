@@ -1,0 +1,659 @@
+Fitting layer_dnn for settlement...
+_ Initializing the weights...
+_ Starting hypergrid search...
+_ Now testing hyper_grid row with dnn_hidden_1=0 dnn_hidden_2=0 dnn_hidden_3=0
+_ Score for fold 1 is 0.55273050069809
+_ Score for fold 2 is 0.551882266998291
+_ Score for fold 3 is 0.547130644321442
+_ Score for fold 4 is 0.553396761417389
+_ Score for fold 5 is 0.551916062831879
+_ Mean score for hyper_grid row 1 is 0.551411247253418
+_ Best score so far is 0.551411247253418 for hyper_grid row with dnn_hidden_1=0 dnn_hidden_2=0 dnn_hidden_3=0
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=0 dnn_hidden_3=0
+_ Score for fold 1 is 0.552748620510101
+_ Score for fold 2 is 0.551855027675629
+_ Score for fold 3 is 0.547108232975006
+_ Score for fold 4 is 0.553447902202606
+_ Score for fold 5 is 0.551937699317932
+_ Mean score for hyper_grid row 2 is 0.551419496536255
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=0 dnn_hidden_3=0
+_ Score for fold 1 is 0.552721798419952
+_ Score for fold 2 is 0.551874458789825
+_ Score for fold 3 is 0.547135055065155
+_ Score for fold 4 is 0.55342435836792
+_ Score for fold 5 is 0.551894724369049
+_ Mean score for hyper_grid row 3 is 0.55141007900238
+_ Best score so far is 0.55141007900238 for hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=0 dnn_hidden_3=0
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=0 dnn_hidden_3=0
+_ Score for fold 1 is 0.552752614021301
+_ Score for fold 2 is 0.551870405673981
+_ Score for fold 3 is 0.547127842903137
+_ Score for fold 4 is 0.553411483764648
+_ Score for fold 5 is 0.551941394805908
+_ Mean score for hyper_grid row 4 is 0.551420748233795
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=0 dnn_hidden_3=0
+_ Score for fold 1 is 0.552758395671844
+_ Score for fold 2 is 0.551851153373718
+_ Score for fold 3 is 0.547117292881012
+_ Score for fold 4 is 0.553423762321472
+_ Score for fold 5 is 0.551926612854004
+_ Mean score for hyper_grid row 5 is 0.55141544342041
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=10 dnn_hidden_3=0
+_ Score for fold 1 is 0.552744448184967
+_ Score for fold 2 is 0.551916360855103
+_ Score for fold 3 is 0.547158539295197
+_ Score for fold 4 is 0.55343359708786
+_ Score for fold 5 is 0.551965653896332
+_ Mean score for hyper_grid row 6 is 0.551443719863892
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=10 dnn_hidden_3=0
+_ Score for fold 1 is 0.552752315998077
+_ Score for fold 2 is 0.551878333091736
+_ Score for fold 3 is 0.547144949436188
+_ Score for fold 4 is 0.553415238857269
+_ Score for fold 5 is 0.551928579807281
+_ Mean score for hyper_grid row 7 is 0.55142388343811
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=10 dnn_hidden_3=0
+_ Score for fold 1 is 0.552730739116669
+_ Score for fold 2 is 0.551861226558685
+_ Score for fold 3 is 0.547155559062958
+_ Score for fold 4 is 0.553404748439789
+_ Score for fold 5 is 0.551929116249084
+_ Mean score for hyper_grid row 8 is 0.551416277885437
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=10 dnn_hidden_3=0
+_ Score for fold 1 is 0.552758753299713
+_ Score for fold 2 is 0.551871776580811
+_ Score for fold 3 is 0.54711639881134
+_ Score for fold 4 is 0.553432166576385
+_ Score for fold 5 is 0.551906108856201
+_ Mean score for hyper_grid row 9 is 0.55141704082489
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=20 dnn_hidden_3=0
+_ Score for fold 1 is 0.552748560905457
+_ Score for fold 2 is 0.551887571811676
+_ Score for fold 3 is 0.547102570533752
+_ Score for fold 4 is 0.55341249704361
+_ Score for fold 5 is 0.551929831504822
+_ Mean score for hyper_grid row 10 is 0.551416206359863
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=20 dnn_hidden_3=0
+_ Score for fold 1 is 0.552748620510101
+_ Score for fold 2 is 0.551911115646362
+_ Score for fold 3 is 0.547177612781525
+_ Score for fold 4 is 0.553427398204803
+_ Score for fold 5 is 0.551928758621216
+_ Mean score for hyper_grid row 11 is 0.551438701152801
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=0
+_ Score for fold 1 is 0.552712500095367
+_ Score for fold 2 is 0.551885902881622
+_ Score for fold 3 is 0.547201991081238
+_ Score for fold 4 is 0.553424417972565
+_ Score for fold 5 is 0.551940679550171
+_ Mean score for hyper_grid row 12 is 0.551433098316193
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=20 dnn_hidden_3=0
+_ Score for fold 1 is 0.552782595157623
+_ Score for fold 2 is 0.551902949810028
+_ Score for fold 3 is 0.547132253646851
+_ Score for fold 4 is 0.553422272205353
+_ Score for fold 5 is 0.551938354969025
+_ Mean score for hyper_grid row 13 is 0.551435685157776
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=30 dnn_hidden_3=0
+_ Score for fold 1 is 0.552768230438232
+_ Score for fold 2 is 0.55187052488327
+_ Score for fold 3 is 0.547112166881561
+_ Score for fold 4 is 0.553427159786224
+_ Score for fold 5 is 0.551910400390625
+_ Mean score for hyper_grid row 14 is 0.551417696475983
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=30 dnn_hidden_3=0
+_ Score for fold 1 is 0.552764654159546
+_ Score for fold 2 is 0.551873207092285
+_ Score for fold 3 is 0.547134876251221
+_ Score for fold 4 is 0.553437650203705
+_ Score for fold 5 is 0.551950633525848
+_ Mean score for hyper_grid row 15 is 0.551432204246521
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=30 dnn_hidden_3=0
+_ Score for fold 1 is 0.55276495218277
+_ Score for fold 2 is 0.551938712596893
+_ Score for fold 3 is 0.547167778015137
+_ Score for fold 4 is 0.553409278392792
+_ Score for fold 5 is 0.551942706108093
+_ Mean score for hyper_grid row 16 is 0.551444685459137
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=30 dnn_hidden_3=0
+_ Score for fold 1 is 0.552722036838531
+_ Score for fold 2 is 0.551888465881348
+_ Score for fold 3 is 0.547086656093597
+_ Score for fold 4 is 0.553394019603729
+_ Score for fold 5 is 0.551961362361908
+_ Mean score for hyper_grid row 17 is 0.551410508155823
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=40 dnn_hidden_3=0
+_ Score for fold 1 is 0.552767992019653
+_ Score for fold 2 is 0.551850736141205
+_ Score for fold 3 is 0.547171533107758
+_ Score for fold 4 is 0.553423702716827
+_ Score for fold 5 is 0.551910698413849
+_ Mean score for hyper_grid row 18 is 0.551424932479858
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=40 dnn_hidden_3=0
+_ Score for fold 1 is 0.552770555019379
+_ Score for fold 2 is 0.551890194416046
+_ Score for fold 3 is 0.547137081623077
+_ Score for fold 4 is 0.553405821323395
+_ Score for fold 5 is 0.551940143108368
+_ Mean score for hyper_grid row 19 is 0.551428759098053
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=40 dnn_hidden_3=0
+_ Score for fold 1 is 0.55272775888443
+_ Score for fold 2 is 0.551915645599365
+_ Score for fold 3 is 0.547148823738098
+_ Score for fold 4 is 0.553419768810272
+_ Score for fold 5 is 0.551922976970673
+_ Mean score for hyper_grid row 20 is 0.551426994800568
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=40 dnn_hidden_3=0
+_ Score for fold 1 is 0.552780032157898
+_ Score for fold 2 is 0.551890969276428
+_ Score for fold 3 is 0.547091543674469
+_ Score for fold 4 is 0.553465068340302
+_ Score for fold 5 is 0.551926016807556
+_ Mean score for hyper_grid row 21 is 0.551430726051331
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=10 dnn_hidden_3=10
+_ Score for fold 1 is 0.552747786045074
+_ Score for fold 2 is 0.551860153675079
+_ Score for fold 3 is 0.547147870063782
+_ Score for fold 4 is 0.553413033485413
+_ Score for fold 5 is 0.551930665969849
+_ Mean score for hyper_grid row 22 is 0.551419901847839
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=10 dnn_hidden_3=10
+_ Score for fold 1 is 0.552748143672943
+_ Score for fold 2 is 0.55186402797699
+_ Score for fold 3 is 0.547144412994385
+_ Score for fold 4 is 0.553435325622559
+_ Score for fold 5 is 0.551913917064667
+_ Mean score for hyper_grid row 23 is 0.551421165466309
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=10 dnn_hidden_3=10
+_ Score for fold 1 is 0.552767336368561
+_ Score for fold 2 is 0.551892042160034
+_ Score for fold 3 is 0.547098636627197
+_ Score for fold 4 is 0.553471148014069
+_ Score for fold 5 is 0.551958858966827
+_ Mean score for hyper_grid row 24 is 0.551437604427338
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=10 dnn_hidden_3=10
+_ Score for fold 1 is 0.552734911441803
+_ Score for fold 2 is 0.551888406276703
+_ Score for fold 3 is 0.547100365161896
+_ Score for fold 4 is 0.553436756134033
+_ Score for fold 5 is 0.551966071128845
+_ Mean score for hyper_grid row 25 is 0.551425302028656
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=20 dnn_hidden_3=10
+_ Score for fold 1 is 0.552786767482758
+_ Score for fold 2 is 0.551888465881348
+_ Score for fold 3 is 0.547122299671173
+_ Score for fold 4 is 0.553410589694977
+_ Score for fold 5 is 0.551939725875854
+_ Mean score for hyper_grid row 26 is 0.551429569721222
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=20 dnn_hidden_3=10
+_ Score for fold 1 is 0.552767634391785
+_ Score for fold 2 is 0.551882326602936
+_ Score for fold 3 is 0.547102510929108
+_ Score for fold 4 is 0.553426921367645
+_ Score for fold 5 is 0.551953434944153
+_ Mean score for hyper_grid row 27 is 0.551426565647125
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=10
+_ Score for fold 1 is 0.552733838558197
+_ Score for fold 2 is 0.551874935626984
+_ Score for fold 3 is 0.547167599201202
+_ Score for fold 4 is 0.553448557853699
+_ Score for fold 5 is 0.551933765411377
+_ Mean score for hyper_grid row 28 is 0.551431739330292
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=20 dnn_hidden_3=10
+_ Score for fold 1 is 0.552751123905182
+_ Score for fold 2 is 0.551864504814148
+_ Score for fold 3 is 0.547204732894897
+_ Score for fold 4 is 0.55341362953186
+_ Score for fold 5 is 0.551938891410828
+_ Mean score for hyper_grid row 29 is 0.551434576511383
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=30 dnn_hidden_3=10
+_ Score for fold 1 is 0.552722454071045
+_ Score for fold 2 is 0.551890969276428
+_ Score for fold 3 is 0.547148764133453
+_ Score for fold 4 is 0.553419589996338
+_ Score for fold 5 is 0.551925480365753
+_ Mean score for hyper_grid row 30 is 0.551421451568604
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=30 dnn_hidden_3=10
+_ Score for fold 1 is 0.552767515182495
+_ Score for fold 2 is 0.551883220672607
+_ Score for fold 3 is 0.547135889530182
+_ Score for fold 4 is 0.553411424160004
+_ Score for fold 5 is 0.551922559738159
+_ Mean score for hyper_grid row 31 is 0.551424121856689
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=30 dnn_hidden_3=10
+_ Score for fold 1 is 0.55275297164917
+_ Score for fold 2 is 0.551889896392822
+_ Score for fold 3 is 0.547106742858887
+_ Score for fold 4 is 0.553436577320099
+_ Score for fold 5 is 0.551928520202637
+_ Mean score for hyper_grid row 32 is 0.551422941684723
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=30 dnn_hidden_3=10
+_ Score for fold 1 is 0.552746057510376
+_ Score for fold 2 is 0.551863133907318
+_ Score for fold 3 is 0.54713237285614
+_ Score for fold 4 is 0.553435146808624
+_ Score for fold 5 is 0.551981449127197
+_ Mean score for hyper_grid row 33 is 0.551431632041931
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=40 dnn_hidden_3=10
+_ Score for fold 1 is 0.552753806114197
+_ Score for fold 2 is 0.551895201206207
+_ Score for fold 3 is 0.547158777713776
+_ Score for fold 4 is 0.553427934646606
+_ Score for fold 5 is 0.551937758922577
+_ Mean score for hyper_grid row 34 is 0.551434695720673
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=40 dnn_hidden_3=10
+_ Score for fold 1 is 0.552751839160919
+_ Score for fold 2 is 0.551900565624237
+_ Score for fold 3 is 0.547067999839783
+_ Score for fold 4 is 0.553441166877747
+_ Score for fold 5 is 0.551945090293884
+_ Mean score for hyper_grid row 35 is 0.551421332359314
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=40 dnn_hidden_3=10
+_ Score for fold 1 is 0.552758991718292
+_ Score for fold 2 is 0.551879823207855
+_ Score for fold 3 is 0.547141790390015
+_ Score for fold 4 is 0.553381979465485
+_ Score for fold 5 is 0.551944017410278
+_ Mean score for hyper_grid row 36 is 0.551421320438385
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=40 dnn_hidden_3=10
+_ Score for fold 1 is 0.552752494812012
+_ Score for fold 2 is 0.551856935024261
+_ Score for fold 3 is 0.547097563743591
+_ Score for fold 4 is 0.553405821323395
+_ Score for fold 5 is 0.551915049552917
+_ Mean score for hyper_grid row 37 is 0.551405572891235
+_ Best score so far is 0.551405572891235 for hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=40 dnn_hidden_3=10
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=10 dnn_hidden_3=20
+_ Score for fold 1 is 0.552746951580048
+_ Score for fold 2 is 0.551870167255402
+_ Score for fold 3 is 0.547110140323639
+_ Score for fold 4 is 0.553396999835968
+_ Score for fold 5 is 0.551930665969849
+_ Mean score for hyper_grid row 38 is 0.551410984992981
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=10 dnn_hidden_3=20
+_ Score for fold 1 is 0.552736699581146
+_ Score for fold 2 is 0.551855385303497
+_ Score for fold 3 is 0.547105848789215
+_ Score for fold 4 is 0.553467929363251
+_ Score for fold 5 is 0.551928222179413
+_ Mean score for hyper_grid row 39 is 0.551418817043304
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=10 dnn_hidden_3=20
+_ Score for fold 1 is 0.552739679813385
+_ Score for fold 2 is 0.551869988441467
+_ Score for fold 3 is 0.547182440757751
+_ Score for fold 4 is 0.553414344787598
+_ Score for fold 5 is 0.551920890808105
+_ Mean score for hyper_grid row 40 is 0.551425468921661
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=10 dnn_hidden_3=20
+_ Score for fold 1 is 0.552727460861206
+_ Score for fold 2 is 0.551893532276154
+_ Score for fold 3 is 0.547127306461334
+_ Score for fold 4 is 0.553424298763275
+_ Score for fold 5 is 0.55194228887558
+_ Mean score for hyper_grid row 41 is 0.55142297744751
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=20 dnn_hidden_3=20
+_ Score for fold 1 is 0.552754402160645
+_ Score for fold 2 is 0.551877915859222
+_ Score for fold 3 is 0.547138631343842
+_ Score for fold 4 is 0.553405225276947
+_ Score for fold 5 is 0.551960051059723
+_ Mean score for hyper_grid row 42 is 0.551427245140076
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=20 dnn_hidden_3=20
+_ Score for fold 1 is 0.552749633789062
+_ Score for fold 2 is 0.551925301551819
+_ Score for fold 3 is 0.547146677970886
+_ Score for fold 4 is 0.553421139717102
+_ Score for fold 5 is 0.551935255527496
+_ Mean score for hyper_grid row 43 is 0.551435601711273
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=20
+_ Score for fold 1 is 0.552726924419403
+_ Score for fold 2 is 0.55188262462616
+_ Score for fold 3 is 0.547158896923065
+_ Score for fold 4 is 0.553428113460541
+_ Score for fold 5 is 0.551938474178314
+_ Mean score for hyper_grid row 44 is 0.551427006721497
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=20 dnn_hidden_3=20
+_ Score for fold 1 is 0.552734553813934
+_ Score for fold 2 is 0.551881015300751
+_ Score for fold 3 is 0.547130227088928
+_ Score for fold 4 is 0.553370356559753
+_ Score for fold 5 is 0.551912486553192
+_ Mean score for hyper_grid row 45 is 0.551405727863312
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=30 dnn_hidden_3=20
+_ Score for fold 1 is 0.552719414234161
+_ Score for fold 2 is 0.551892161369324
+_ Score for fold 3 is 0.54708993434906
+_ Score for fold 4 is 0.553406238555908
+_ Score for fold 5 is 0.551931798458099
+_ Mean score for hyper_grid row 46 is 0.551407909393311
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=30 dnn_hidden_3=20
+_ Score for fold 1 is 0.552771925926208
+_ Score for fold 2 is 0.551915943622589
+_ Score for fold 3 is 0.547127902507782
+_ Score for fold 4 is 0.553439795970917
+_ Score for fold 5 is 0.551952540874481
+_ Mean score for hyper_grid row 47 is 0.551441621780395
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=30 dnn_hidden_3=20
+_ Score for fold 1 is 0.552758753299713
+_ Score for fold 2 is 0.551875352859497
+_ Score for fold 3 is 0.547132015228271
+_ Score for fold 4 is 0.55343234539032
+_ Score for fold 5 is 0.551923632621765
+_ Mean score for hyper_grid row 48 is 0.551424419879913
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=30 dnn_hidden_3=20
+_ Score for fold 1 is 0.552749931812286
+_ Score for fold 2 is 0.551892697811127
+_ Score for fold 3 is 0.547131299972534
+_ Score for fold 4 is 0.553439736366272
+_ Score for fold 5 is 0.551925420761108
+_ Mean score for hyper_grid row 49 is 0.551427817344666
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=40 dnn_hidden_3=20
+_ Score for fold 1 is 0.552757024765015
+_ Score for fold 2 is 0.551897704601288
+_ Score for fold 3 is 0.547124326229095
+_ Score for fold 4 is 0.553420186042786
+_ Score for fold 5 is 0.551932752132416
+_ Mean score for hyper_grid row 50 is 0.55142639875412
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=40 dnn_hidden_3=20
+_ Score for fold 1 is 0.552744925022125
+_ Score for fold 2 is 0.551898419857025
+_ Score for fold 3 is 0.547120273113251
+_ Score for fold 4 is 0.553428769111633
+_ Score for fold 5 is 0.551913976669312
+_ Mean score for hyper_grid row 51 is 0.551421272754669
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=40 dnn_hidden_3=20
+_ Score for fold 1 is 0.552764594554901
+_ Score for fold 2 is 0.551892101764679
+_ Score for fold 3 is 0.547140300273895
+_ Score for fold 4 is 0.553445219993591
+_ Score for fold 5 is 0.551919400691986
+_ Mean score for hyper_grid row 52 is 0.551432323455811
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=40 dnn_hidden_3=20
+_ Score for fold 1 is 0.552751362323761
+_ Score for fold 2 is 0.5518878698349
+_ Score for fold 3 is 0.547123789787292
+_ Score for fold 4 is 0.553429841995239
+_ Score for fold 5 is 0.551937937736511
+_ Mean score for hyper_grid row 53 is 0.551426160335541
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=10 dnn_hidden_3=30
+_ Score for fold 1 is 0.55272114276886
+_ Score for fold 2 is 0.551880240440369
+_ Score for fold 3 is 0.547177672386169
+_ Score for fold 4 is 0.553414344787598
+_ Score for fold 5 is 0.551933407783508
+_ Mean score for hyper_grid row 54 is 0.551425361633301
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=10 dnn_hidden_3=30
+_ Score for fold 1 is 0.552761852741241
+_ Score for fold 2 is 0.551882207393646
+_ Score for fold 3 is 0.547135174274445
+_ Score for fold 4 is 0.553435146808624
+_ Score for fold 5 is 0.551915526390076
+_ Mean score for hyper_grid row 55 is 0.551425981521606
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=10 dnn_hidden_3=30
+_ Score for fold 1 is 0.552729487419128
+_ Score for fold 2 is 0.551875472068787
+_ Score for fold 3 is 0.547145664691925
+_ Score for fold 4 is 0.553421378135681
+_ Score for fold 5 is 0.551917314529419
+_ Mean score for hyper_grid row 56 is 0.551417863368988
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=10 dnn_hidden_3=30
+_ Score for fold 1 is 0.552766621112823
+_ Score for fold 2 is 0.551886200904846
+_ Score for fold 3 is 0.547114074230194
+_ Score for fold 4 is 0.553394675254822
+_ Score for fold 5 is 0.551911950111389
+_ Mean score for hyper_grid row 57 is 0.551414704322815
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=20 dnn_hidden_3=30
+_ Score for fold 1 is 0.552723348140717
+_ Score for fold 2 is 0.551901519298553
+_ Score for fold 3 is 0.547117114067078
+_ Score for fold 4 is 0.553377151489258
+_ Score for fold 5 is 0.551930010318756
+_ Mean score for hyper_grid row 58 is 0.551409828662872
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=20 dnn_hidden_3=30
+_ Score for fold 1 is 0.552753686904907
+_ Score for fold 2 is 0.551889300346375
+_ Score for fold 3 is 0.547140121459961
+_ Score for fold 4 is 0.553433954715729
+_ Score for fold 5 is 0.551933646202087
+_ Mean score for hyper_grid row 59 is 0.551430141925812
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=30
+_ Score for fold 1 is 0.552747488021851
+_ Score for fold 2 is 0.551837801933289
+_ Score for fold 3 is 0.547153234481812
+_ Score for fold 4 is 0.553426325321198
+_ Score for fold 5 is 0.551915943622589
+_ Mean score for hyper_grid row 60 is 0.551416158676147
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=20 dnn_hidden_3=30
+_ Score for fold 1 is 0.552756607532501
+_ Score for fold 2 is 0.551863431930542
+_ Score for fold 3 is 0.547144174575806
+_ Score for fold 4 is 0.553413987159729
+_ Score for fold 5 is 0.551975429058075
+_ Mean score for hyper_grid row 61 is 0.551430726051331
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=30 dnn_hidden_3=30
+_ Score for fold 1 is 0.552754700183868
+_ Score for fold 2 is 0.55186915397644
+_ Score for fold 3 is 0.547117948532104
+_ Score for fold 4 is 0.553412437438965
+_ Score for fold 5 is 0.551924169063568
+_ Mean score for hyper_grid row 62 is 0.551415681838989
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=30 dnn_hidden_3=30
+_ Score for fold 1 is 0.55272912979126
+_ Score for fold 2 is 0.551863193511963
+_ Score for fold 3 is 0.547143280506134
+_ Score for fold 4 is 0.553451776504517
+_ Score for fold 5 is 0.551917672157288
+_ Mean score for hyper_grid row 63 is 0.551421010494232
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=30 dnn_hidden_3=30
+_ Score for fold 1 is 0.552782833576202
+_ Score for fold 2 is 0.551915943622589
+_ Score for fold 3 is 0.547120809555054
+_ Score for fold 4 is 0.553420066833496
+_ Score for fold 5 is 0.551958680152893
+_ Mean score for hyper_grid row 64 is 0.551439666748047
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=30 dnn_hidden_3=30
+_ Score for fold 1 is 0.552746474742889
+_ Score for fold 2 is 0.551874399185181
+_ Score for fold 3 is 0.547106564044952
+_ Score for fold 4 is 0.55340588092804
+_ Score for fold 5 is 0.551918208599091
+_ Mean score for hyper_grid row 65 is 0.551410305500031
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=40 dnn_hidden_3=30
+_ Score for fold 1 is 0.552754998207092
+_ Score for fold 2 is 0.551869034767151
+_ Score for fold 3 is 0.547135174274445
+_ Score for fold 4 is 0.553463459014893
+_ Score for fold 5 is 0.551896095275879
+_ Mean score for hyper_grid row 66 is 0.551423752307892
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=40 dnn_hidden_3=30
+_ Score for fold 1 is 0.552715718746185
+_ Score for fold 2 is 0.551906585693359
+_ Score for fold 3 is 0.547138154506683
+_ Score for fold 4 is 0.553382575511932
+_ Score for fold 5 is 0.551904261112213
+_ Mean score for hyper_grid row 67 is 0.551409459114075
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=40 dnn_hidden_3=30
+_ Score for fold 1 is 0.552730143070221
+_ Score for fold 2 is 0.5518878698349
+_ Score for fold 3 is 0.547130227088928
+_ Score for fold 4 is 0.553440690040588
+_ Score for fold 5 is 0.551933288574219
+_ Mean score for hyper_grid row 68 is 0.551424443721771
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=40 dnn_hidden_3=30
+_ Score for fold 1 is 0.552757501602173
+_ Score for fold 2 is 0.551909685134888
+_ Score for fold 3 is 0.5472092628479
+_ Score for fold 4 is 0.553410053253174
+_ Score for fold 5 is 0.551948666572571
+_ Mean score for hyper_grid row 69 is 0.551447033882141
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=10 dnn_hidden_3=40
+_ Score for fold 1 is 0.552752375602722
+_ Score for fold 2 is 0.551867425441742
+_ Score for fold 3 is 0.547137439250946
+_ Score for fold 4 is 0.553398907184601
+_ Score for fold 5 is 0.551937818527222
+_ Mean score for hyper_grid row 70 is 0.551418793201446
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=10 dnn_hidden_3=40
+_ Score for fold 1 is 0.552746057510376
+_ Score for fold 2 is 0.5518718957901
+_ Score for fold 3 is 0.547164022922516
+_ Score for fold 4 is 0.553418695926666
+_ Score for fold 5 is 0.551922261714935
+_ Mean score for hyper_grid row 71 is 0.551424586772919
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=10 dnn_hidden_3=40
+_ Score for fold 1 is 0.552729487419128
+_ Score for fold 2 is 0.551858425140381
+_ Score for fold 3 is 0.547146022319794
+_ Score for fold 4 is 0.553393065929413
+_ Score for fold 5 is 0.551961481571198
+_ Mean score for hyper_grid row 72 is 0.551417696475983
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=10 dnn_hidden_3=40
+_ Score for fold 1 is 0.552757859230042
+_ Score for fold 2 is 0.551884233951569
+_ Score for fold 3 is 0.547130048274994
+_ Score for fold 4 is 0.55339127779007
+_ Score for fold 5 is 0.55196475982666
+_ Mean score for hyper_grid row 73 is 0.551425635814667
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=20 dnn_hidden_3=40
+_ Score for fold 1 is 0.552761256694794
+_ Score for fold 2 is 0.551886677742004
+_ Score for fold 3 is 0.547125816345215
+_ Score for fold 4 is 0.55341112613678
+_ Score for fold 5 is 0.551917731761932
+_ Mean score for hyper_grid row 74 is 0.551420521736145
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=20 dnn_hidden_3=40
+_ Score for fold 1 is 0.552734851837158
+_ Score for fold 2 is 0.551876306533813
+_ Score for fold 3 is 0.547143936157227
+_ Score for fold 4 is 0.553428709506989
+_ Score for fold 5 is 0.551927924156189
+_ Mean score for hyper_grid row 75 is 0.551422345638275
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=40
+_ Score for fold 1 is 0.552716434001923
+_ Score for fold 2 is 0.551881432533264
+_ Score for fold 3 is 0.547106206417084
+_ Score for fold 4 is 0.553377389907837
+_ Score for fold 5 is 0.551910877227783
+_ Mean score for hyper_grid row 76 is 0.551398468017578
+_ Best score so far is 0.551398468017578 for hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=40
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=20 dnn_hidden_3=40
+_ Score for fold 1 is 0.5527463555336
+_ Score for fold 2 is 0.551874160766602
+_ Score for fold 3 is 0.547160267829895
+_ Score for fold 4 is 0.553429186344147
+_ Score for fold 5 is 0.551924228668213
+_ Mean score for hyper_grid row 77 is 0.551426839828491
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=30 dnn_hidden_3=40
+_ Score for fold 1 is 0.552743315696716
+_ Score for fold 2 is 0.551917374134064
+_ Score for fold 3 is 0.547177970409393
+_ Score for fold 4 is 0.553439080715179
+_ Score for fold 5 is 0.551952004432678
+_ Mean score for hyper_grid row 78 is 0.551445949077606
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=30 dnn_hidden_3=40
+_ Score for fold 1 is 0.552752733230591
+_ Score for fold 2 is 0.551904916763306
+_ Score for fold 3 is 0.547148287296295
+_ Score for fold 4 is 0.553434491157532
+_ Score for fold 5 is 0.551962077617645
+_ Mean score for hyper_grid row 79 is 0.551440501213074
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=30 dnn_hidden_3=40
+_ Score for fold 1 is 0.552758574485779
+_ Score for fold 2 is 0.551876664161682
+_ Score for fold 3 is 0.547120869159698
+_ Score for fold 4 is 0.553394377231598
+_ Score for fold 5 is 0.551914036273956
+_ Mean score for hyper_grid row 80 is 0.551412904262543
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=30 dnn_hidden_3=40
+_ Score for fold 1 is 0.552779257297516
+_ Score for fold 2 is 0.551892042160034
+_ Score for fold 3 is 0.547128260135651
+_ Score for fold 4 is 0.55339103937149
+_ Score for fold 5 is 0.5519859790802
+_ Mean score for hyper_grid row 81 is 0.551435315608978
+_ Now testing hyper_grid row with dnn_hidden_1=10 dnn_hidden_2=40 dnn_hidden_3=40
+_ Score for fold 1 is 0.552751243114471
+_ Score for fold 2 is 0.551902413368225
+_ Score for fold 3 is 0.547090411186218
+_ Score for fold 4 is 0.553449153900146
+_ Score for fold 5 is 0.5519198179245
+_ Mean score for hyper_grid row 82 is 0.551422607898712
+_ Now testing hyper_grid row with dnn_hidden_1=20 dnn_hidden_2=40 dnn_hidden_3=40
+_ Score for fold 1 is 0.552759110927582
+_ Score for fold 2 is 0.551889955997467
+_ Score for fold 3 is 0.547124624252319
+_ Score for fold 4 is 0.553414344787598
+_ Score for fold 5 is 0.551904559135437
+_ Mean score for hyper_grid row 83 is 0.551418519020081
+_ Now testing hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=40 dnn_hidden_3=40
+_ Score for fold 1 is 0.552773058414459
+_ Score for fold 2 is 0.551913976669312
+_ Score for fold 3 is 0.547103881835938
+_ Score for fold 4 is 0.553411245346069
+_ Score for fold 5 is 0.551900267601013
+_ Mean score for hyper_grid row 84 is 0.551420485973358
+_ Now testing hyper_grid row with dnn_hidden_1=40 dnn_hidden_2=40 dnn_hidden_3=40
+_ Score for fold 1 is 0.552729964256287
+_ Score for fold 2 is 0.551878869533539
+_ Score for fold 3 is 0.547117173671722
+_ Score for fold 4 is 0.55343496799469
+_ Score for fold 5 is 0.551924467086792
+_ Mean score for hyper_grid row 85 is 0.551417088508606
+_ Overall best score is 0.551398468017578 for hyper_grid row with dnn_hidden_1=30 dnn_hidden_2=20 dnn_hidden_3=40
+Model: "model_510"
+________________________________________________________________________________________________________________
+ Layer (type)                                     Output Shape                                 Param #          
+================================================================================================================
+ input_layer_nn (InputLayer)                      [(None, 35)]                                 0                
+ hidden_layer_1 (Dense)                           (None, 30)                                   1080             
+ hidden_layer_activation_1 (Activation)           (None, 30)                                   0                
+ hidden_layer_2 (Dense)                           (None, 20)                                   620              
+ hidden_layer_activation_2 (Activation)           (None, 20)                                   0                
+ last_hidden_layer (Dense)                        (None, 40)                                   840              
+ last_hidden_layer_activation (Activation)        (None, 40)                                   0                
+ output_layer (Dense)                             (None, 1)                                    41               
+================================================================================================================
+Total params: 2,581
+Trainable params: 2,581
+Non-trainable params: 0
+________________________________________________________________________________________________________________
+[1] "Model: \"model_510\"\n________________________________________________________________________________________________________________\n Layer (type)                                     Output Shape                                 Param #          \n================================================================================================================\n input_layer_nn (InputLayer)                      [(None, 35)]                                 0                \n hidden_layer_1 (Dense)                           (None, 30)                                   1080             \n hidden_layer_activation_1 (Activation)           (None, 30)                                   0                \n hidden_layer_2 (Dense)                           (None, 20)                                   620              \n hidden_layer_activation_2 (Activation)           (None, 20)                                   0                \n last_hidden_layer (Dense)                        (None, 40)                                   840              \n last_hidden_layer_activation (Activation)        (None, 40)                                   0                \n output_layer (Dense)                             (None, 1)                                    41               \n================================================================================================================\nTotal params: 2,581\nTrainable params: 2,581\nNon-trainable params: 0\n________________________________________________________________________________________________________________"
+Fitting layer_dnn for payment...
+Model: "model_512"
+________________________________________________________________________________________________________________
+ Layer (type)                                     Output Shape                                 Param #          
+================================================================================================================
+ input_layer_nn (InputLayer)                      [(None, 36)]                                 0                
+ hidden_layer_1 (Dense)                           (None, 40)                                   1480             
+ hidden_layer_activation_1 (Activation)           (None, 40)                                   0                
+ hidden_layer_2 (Dense)                           (None, 30)                                   1230             
+ hidden_layer_activation_2 (Activation)           (None, 30)                                   0                
+ last_hidden_layer (Dense)                        (None, 20)                                   620              
+ last_hidden_layer_activation (Activation)        (None, 20)                                   0                
+ output_layer (Dense)                             (None, 1)                                    21               
+================================================================================================================
+Total params: 3,351
+Trainable params: 3,351
+Non-trainable params: 0
+________________________________________________________________________________________________________________
+[1] "Model: \"model_512\"\n________________________________________________________________________________________________________________\n Layer (type)                                     Output Shape                                 Param #          \n================================================================================================================\n input_layer_nn (InputLayer)                      [(None, 36)]                                 0                \n hidden_layer_1 (Dense)                           (None, 40)                                   1480             \n hidden_layer_activation_1 (Activation)           (None, 40)                                   0                \n hidden_layer_2 (Dense)                           (None, 30)                                   1230             \n hidden_layer_activation_2 (Activation)           (None, 30)                                   0                \n last_hidden_layer (Dense)                        (None, 20)                                   620              \n last_hidden_layer_activation (Activation)        (None, 20)                                   0                \n output_layer (Dense)                             (None, 1)                                    21               \n================================================================================================================\nTotal params: 3,351\nTrainable params: 3,351\nNon-trainable params: 0\n________________________________________________________________________________________________________________"
+Fitting layer_dnn for size...
+Model: "model_514"
+________________________________________________________________________________________________________________
+ Layer (type)                                     Output Shape                                 Param #          
+================================================================================================================
+ input_layer_nn (InputLayer)                      [(None, 36)]                                 0                
+ hidden_layer_1 (Dense)                           (None, 20)                                   740              
+ hidden_layer_activation_1 (Activation)           (None, 20)                                   0                
+ hidden_layer_2 (Dense)                           (None, 20)                                   420              
+ hidden_layer_activation_2 (Activation)           (None, 20)                                   0                
+ last_hidden_layer (Dense)                        (None, 30)                                   630              
+ last_hidden_layer_activation (Activation)        (None, 30)                                   0                
+ output_layer (Dense)                             (None, 1)                                    31               
+================================================================================================================
+Total params: 1,821
+Trainable params: 1,821
+Non-trainable params: 0
+________________________________________________________________________________________________________________
+[1] "Model: \"model_514\"\n________________________________________________________________________________________________________________\n Layer (type)                                     Output Shape                                 Param #          \n================================================================================================================\n input_layer_nn (InputLayer)                      [(None, 36)]                                 0                \n hidden_layer_1 (Dense)                           (None, 20)                                   740              \n hidden_layer_activation_1 (Activation)           (None, 20)                                   0                \n hidden_layer_2 (Dense)                           (None, 20)                                   420              \n hidden_layer_activation_2 (Activation)           (None, 20)                                   0                \n last_hidden_layer (Dense)                        (None, 30)                                   630              \n last_hidden_layer_activation (Activation)        (None, 30)                                   0                \n output_layer (Dense)                             (None, 1)                                    31               \n================================================================================================================\nTotal params: 1,821\nTrainable params: 1,821\nNon-trainable params: 0\n________________________________________________________________________________________________________________"

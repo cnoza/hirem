@@ -1,0 +1,808 @@
+---
+title: "Model comparison (extreme scenario)"
+author: "Christophe Nozaradan"
+date: "January 2022"
+output: html_document
+---
+
+```{css, echo=FALSE}
+.main-container {
+  max-width: 1200px; 
+}
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+options(dplyr.summarise.inform = FALSE)
+options(warn = -1)
+```
+## Extraction via web scraping 
+We first extract the data from the simulation results stored in HTML output.
+
+```{r}
+library(tidyverse)
+library(rvest)
+library(scales)
+rep <- './run-2/'
+files <- list.files(path = rep,pattern = ".html")
+
+settlements <- list()
+payments <- list()
+sizes <- list()
+
+for(i in seq_along(files)) {
+
+  page <- read_html(paste0(rep,files[i]))
+
+  # settlement
+
+  settlements[i] <- page %>% html_node(xpath = '//*[@id="evaluating-the-predictive-performance-of-the-chain-ladder-model-and-the-hierarchical-glm-and-gbm"]/pre[2]/code/text()') %>% html_text()
+  settlements[i] <- regmatches(settlements[[i]], gregexpr("[[:digit:]]+.[[:digit:]]+", settlements[[i]]))
+
+  # payment
+
+  payments[i] <- page %>% html_node(xpath = '//*[@id="evaluating-the-predictive-performance-of-the-chain-ladder-model-and-the-hierarchical-glm-and-gbm"]/pre[4]/code/text()') %>% html_text()
+  payments[i] <- regmatches(payments[i], gregexpr("[[:digit:]]+.[[:digit:]]+", payments[i]))
+
+  # size
+
+  sizes[i] <- page %>% html_node(xpath = '//*[@id="evaluating-the-predictive-performance-of-the-chain-ladder-model-and-the-hierarchical-glm-and-gbm"]/pre[6]/code/text()') %>% html_text()
+  sizes[i] <- regmatches(sizes[i], gregexpr("[[:digit:]]+.[[:digit:]]+", sizes[i]))
+
+}
+
+df.settle <- as.data.frame(do.call(rbind, settlements))
+names(df.settle) <- c('Actual','CL','HGLM','HGBM','HXGB','HDNN','HCANN')
+
+df.pay <- as.data.frame(do.call(rbind, payments))
+names(df.pay) <- c('Actual','CL','HGLM','HGBM','HXGB','HDNN','HCANN')
+
+df.size <- as.data.frame(do.call(rbind, sizes))
+names(df.size) <- c('Actual','CL','HGLM','HGBM','HXGB','HDNN','HCANN')
+```
+
+## Comparison
+We then compute the average absolute error for settlement, payment and size:
+```{r}
+df.settle <- df.settle %>% mutate(error.cl=100*abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hglm=100*abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hgbm=100*abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hxgb=100*abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hdnn=100*abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hcann=100*abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+settl.error.cl <- df.settle %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
+settl.error.hglm <- df.settle %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
+settl.error.hgbm <- df.settle %>% summarize(av.error=mean(error.hgbm)) %>% pull(av.error)
+settl.error.hxgb <- df.settle %>% summarize(av.error=mean(error.hxgb)) %>% pull(av.error)
+settl.error.hdnn <- df.settle %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
+settl.error.hcann <- df.settle %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
+
+# Print Results
+c('Chain-Ladder' = settl.error.cl, 'Hierarchical GLM' = settl.error.hglm, 'Hierarchical GBM' = settl.error.hgbm, 'Hierarchical XGB' = settl.error.hxgb, 'Hierarchical DNN' = settl.error.hdnn, 'Hierarchical CANN' = settl.error.hcann) %>% round(digits=3)
+
+```
+
+```{r}
+df.pay <- df.pay %>% mutate(error.cl=100*abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hglm=100*abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hgbm=100*abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hxgb=100*abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hdnn=100*abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hcann=100*abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+payment.error.cl <- df.pay %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
+payment.error.hglm <- df.pay %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
+payment.error.hgbm <- df.pay %>% summarize(av.error=mean(error.hgbm)) %>% pull(av.error)
+payment.error.hxgb <- df.pay %>% summarize(av.error=mean(error.hxgb)) %>% pull(av.error)
+payment.error.hdnn <- df.pay %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
+payment.error.hcann <- df.pay %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
+
+# Print Results
+c('Chain-Ladder' = payment.error.cl, 'Hierarchical GLM' = payment.error.hglm, 'Hierarchical GBM' = payment.error.hgbm, 'Hierarchical XGB' = payment.error.hxgb, 'Hierarchical DNN' = payment.error.hdnn, 'Hierarchical CANN' = payment.error.hcann) %>% round(digits = 3)
+
+```
+
+```{r}
+#
+df.size <- df.size %>% mutate(error.cl=100*abs(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hglm=100*abs(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hgbm=100*abs(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hxgb=100*abs(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hdnn=100*abs(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hcann=100*abs(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+size.error.cl <- df.size %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
+size.error.hglm <- df.size %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
+size.error.hgbm <- df.size %>% summarize(av.error=mean(error.hgbm)) %>% pull(av.error)
+size.error.hxgb <- df.size %>% summarize(av.error=mean(error.hxgb)) %>% pull(av.error)
+size.error.hdnn <- df.size %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
+size.error.hcann <- df.size %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
+
+# Print Results
+c('Chain-Ladder' = size.error.cl, 'Hierarchical GLM' = size.error.hglm, 'Hierarchical GBM' = size.error.hgbm, 'Hierarchical XGB' = size.error.hxgb, 'Hierarchical DNN' = size.error.hdnn, 'Hierarchical CANN' = size.error.hcann) %>% round(digits = 3)
+
+```
+
+```{r}
+df.settle.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.settle$error.cl, df.settle$error.hglm, df.settle$error.hgbm, 
+          df.settle$error.hxgb, df.settle$error.hdnn, df.settle$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+boxplot.settle <- df.settle.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() + theme_bw() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (settlement) in %")
+```
+
+```{r}
+violin.settle <- df.settle.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (settlement) in %")
+```
+
+```{r}
+df.pay.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.pay$error.cl, df.pay$error.hglm, df.pay$error.hgbm, 
+          df.pay$error.hxgb, df.pay$error.hdnn, df.pay$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+boxplot.pay <- df.pay.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() + theme_bw() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (payment) in %")
+```
+
+```{r}
+violin.pay <- df.pay.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (payment) in %")
+```
+
+
+```{r}
+df.size.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.size$error.cl, df.size$error.hglm, df.size$error.hgbm, 
+          df.size$error.hxgb, df.size$error.hdnn, df.size$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+boxplot.size <- df.size.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() + theme_bw() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (size) in %")
+```
+
+```{r}
+violin.size <- df.size.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Absolute error (size) in %")
+```
+
+```{r, fig.width=12, fig.height=4}
+library(gridExtra)
+grid.arrange(boxplot.settle,boxplot.pay,boxplot.size,ncol=3)
+```
+
+```{r, fig.width=12, fig.height=4}
+library(gridExtra)
+grid.arrange(violin.settle,violin.pay,violin.size,ncol=3)
+```
+
+We then compute the average relative error for settlement, payment and size:
+```{r}
+df.settle <- df.settle %>% mutate(error.cl=100*(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hglm=100*(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hgbm=100*(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hxgb=100*(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hdnn=100*(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.settle <- df.settle %>% mutate(error.hcann=100*(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+settl.error.cl <- df.settle %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
+settl.error.hglm <- df.settle %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
+settl.error.hgbm <- df.settle %>% summarize(av.error=mean(error.hgbm)) %>% pull(av.error)
+settl.error.hxgb <- df.settle %>% summarize(av.error=mean(error.hxgb)) %>% pull(av.error)
+settl.error.hdnn <- df.settle %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
+settl.error.hcann <- df.settle %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
+
+# Print Results (in %)
+c('Chain-Ladder' = settl.error.cl, 'Hierarchical GLM' = settl.error.hglm, 'Hierarchical GBM' = settl.error.hgbm, 'Hierarchical XGB' = settl.error.hxgb, 'Hierarchical DNN' = settl.error.hdnn, 'Hierarchical CANN' = settl.error.hcann) %>% round(digits=3)
+
+```
+
+```{r}
+df.pay <- df.pay %>% mutate(error.cl=100*(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hglm=100*(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hgbm=100*(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hxgb=100*(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hdnn=100*(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.pay <- df.pay %>% mutate(error.hcann=100*(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+payment.error.cl <- df.pay %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
+payment.error.hglm <- df.pay %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
+payment.error.hgbm <- df.pay %>% summarize(av.error=mean(error.hgbm)) %>% pull(av.error)
+payment.error.hxgb <- df.pay %>% summarize(av.error=mean(error.hxgb)) %>% pull(av.error)
+payment.error.hdnn <- df.pay %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
+payment.error.hcann <- df.pay %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
+
+# Print Results
+c('Chain-Ladder' = payment.error.cl, 'Hierarchical GLM' = payment.error.hglm, 'Hierarchical GBM' = payment.error.hgbm, 'Hierarchical XGB' = payment.error.hxgb, 'Hierarchical DNN' = payment.error.hdnn, 'Hierarchical CANN' = payment.error.hcann) %>% round(digits=3)
+
+```
+
+```{r}
+#
+df.size <- df.size %>% mutate(error.cl=100*(as.numeric(Actual)-as.numeric(CL))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hglm=100*(as.numeric(Actual)-as.numeric(HGLM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hgbm=100*(as.numeric(Actual)-as.numeric(HGBM))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hxgb=100*(as.numeric(Actual)-as.numeric(HXGB))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hdnn=100*(as.numeric(Actual)-as.numeric(HDNN))/as.numeric(Actual))
+df.size <- df.size %>% mutate(error.hcann=100*(as.numeric(Actual)-as.numeric(HCANN))/as.numeric(Actual))
+
+size.error.cl <- df.size %>% summarize(av.error=mean(error.cl)) %>% pull(av.error)
+size.error.hglm <- df.size %>% summarize(av.error=mean(error.hglm)) %>% pull(av.error)
+size.error.hgbm <- df.size %>% summarize(av.error=mean(error.hgbm)) %>% pull(av.error)
+size.error.hxgb <- df.size %>% summarize(av.error=mean(error.hxgb)) %>% pull(av.error)
+size.error.hdnn <- df.size %>% summarize(av.error=mean(error.hdnn)) %>% pull(av.error)
+size.error.hcann <- df.size %>% summarize(av.error=mean(error.hcann)) %>% pull(av.error)
+
+# Print Results
+c('Chain-Ladder' = size.error.cl, 'Hierarchical GLM' = size.error.hglm, 'Hierarchical GBM' = size.error.hgbm, 'Hierarchical XGB' = size.error.hxgb, 'Hierarchical DNN' = size.error.hdnn, 'Hierarchical CANN' = size.error.hcann) %>% round(digits=3)
+
+```
+
+```{r}
+df.settle.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.settle$error.cl, df.settle$error.hglm, df.settle$error.hgbm, 
+          df.settle$error.hxgb, df.settle$error.hdnn, df.settle$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+boxplot.settle <- df.settle.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() + theme_bw() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (settlement) in %")
+```
+
+```{r}
+violin.settle <- df.settle.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (settlement) in %")
+```
+
+```{r}
+df.pay.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.pay$error.cl, df.pay$error.hglm, df.pay$error.hgbm, 
+          df.pay$error.hxgb, df.pay$error.hdnn, df.pay$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+boxplot.pay <- df.pay.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() + theme_bw() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (payment) in %")
+```
+
+```{r}
+violin.pay <- df.pay.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (payment) in %")
+```
+
+
+```{r}
+df.size.error <- data.frame(
+  name=c(rep("CL",100), rep("HGLM",100),rep("HGBM",100),rep("HXGB",100),rep("HDNN",100),rep("HCANN",100)) ,
+  value=c(df.size$error.cl, df.size$error.hglm, df.size$error.hgbm, 
+          df.size$error.hxgb, df.size$error.hdnn, df.size$error.hcann)
+)
+
+library(hrbrthemes)
+library(ggplot2)
+library(viridis)
+boxplot.size <- df.size.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_boxplot() + theme_bw() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (size) in %")
+```
+
+```{r}
+violin.size <- df.size.error %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("") +
+    xlab("") +
+    ylab("Relative error (size) in %")
+```
+
+```{r, fig.width=12, fig.height=4}
+library(gridExtra)
+grid.arrange(boxplot.settle,boxplot.pay,boxplot.size,ncol=3)
+```
+
+```{r, fig.width=12, fig.height=4}
+library(gridExtra)
+grid.arrange(violin.settle,violin.pay,violin.size,ncol=3)
+```
+
+We now generate partial dependence plots. For this, we consider a portfolio generated with seed 1. All models were trained based on the "Baseline with seed param.Rmd" file before executing the code below. 
+
+```{r}
+par_dep <- function(object, data, grid) {
+  # We backup the data
+  data_sav <- data
+  # Initialize a vector to save the effect
+  pd_effect <- rep(0, nrow(grid))
+  # Iterate over the grid values to calculate the effect
+  for (i in seq_len(length(pd_effect))) {
+    data <- data_sav
+    if(object$method == "glm") {
+      data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
+      data$monthDev12 <- as.character(data$rep.month)
+      data$monthDev12[as.numeric(data$dev.year.fact) > 3] <- 'dev.year.over.3'
+      data <- data %>% dplyr::mutate( devYearMonth = factor(paste(dev.year.fact, monthDev12, sep = '-')) )
+      pd_effect[i] <-
+        data %>%
+        predict(object$fit, newdata = ., type = 'response') %>%
+        mean()
+    }
+    else if(object$method == "gbm") {
+      data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
+      pd_effect[i] <-
+        data %>%
+        predict(object$fit, newdata = ., n.trees = object$fit$n.trees, type = 'response') %>%
+        mean()
+    }
+    else if(object$method == "xgb") {
+      data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
+      f <- as.formula(object$formula)
+      label <- as.character(terms(f)[[2]])
+      data_baked <- bake(object$data_recipe, new_data = data)
+      newdata <- select(data_baked,-as.name(label)) %>% as.matrix()
+      newdata.xgb <- xgb.DMatrix(data = newdata, info = list('label' = as.matrix(data[,label])))
+      response <- predict(object$fit, ntreelimit = object$fit$niter, newdata = newdata.xgb, type = 'response')
+      pd_effect[i] <- mean(response)
+    }
+    else if(object$method == "dnn") {
+      data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
+      f <- as.formula(object$formula)
+      label <- as.character(terms(f)[[2]])
+
+      data_baked <- bake(object$data_recipe, new_data = data)
+      if(ncol(data_baked) == 1)
+        data_baked <- data_baked %>% mutate(intercept = 1)
+
+      x <- select(data_baked,-as.name(label)) %>% as.matrix()
+
+      def_x <- def_x_mlp(object$method_options$use_embedding,
+                         object$method_options$embedding_var,
+                         f,
+                         data,
+                         data_baked,
+                         object$data_recipe,
+                         label)
+
+      if(!object$method_options$use_embedding) {
+        x.inputs <- list(def_x$x)
+      }
+      else {
+        x.inputs <- list(def_x$x_no_fact,def_x$x_fact)
+        x.inputs[sapply(x.inputs, is.null)] <- NULL
+      }
+
+      if(!is.null(object$method_options$ae.hidden)) {
+        x <- data.frame(object$model_en %>% predict(x)) %>% as.matrix()
+      }
+
+      if(!object$method_options$bias_regularization) {
+        response <- predict(object$fit, x.inputs)
+      }
+      else {
+        Zlearn   <- data.frame(object$zz %>% predict(x.inputs))
+        names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
+        response <- predict(object$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
+      }
+      pd_effect[i] <- mean(response)
+    }
+    else if(object$method == "cann") {
+      data <- data %>% dplyr::mutate(!! names(grid) := grid[i, ])
+      data$monthDev12 <- as.character(data$rep.month)
+      data$monthDev12[as.numeric(data$dev.year.fact) > 3] <- 'dev.year.over.3'
+      data <- data %>% dplyr::mutate( devYearMonth = factor(paste(dev.year.fact, monthDev12, sep = '-')) )
+
+      f <- as.formula(object$formula)
+      label <- as.character(terms(f)[[2]])
+
+      if(!is.null(object$method_options$formula.glm))
+        f.glm <- as.formula(object$method_options$formula.glm)
+      else
+        f.glm <- f
+
+      data_baked_for_glm <- bake(object$data_recipe.glm.no_dummy, new_data = data)
+      glm.pred <- predict(object$model.glm, newdata = data_baked_for_glm)
+
+      data_baked <- bake(object$data_recipe, new_data = data)
+      if(ncol(data_baked) == 1)
+        data_baked <- data_baked %>% mutate(intercept = 1)
+
+      data_baked.glm <- bake(object$data_recipe.glm, new_data = data)
+      if(ncol(data_baked.glm) == 1)
+        data_baked.glm <- data_baked.glm %>% mutate(intercept = 1)
+
+      x     <- select(data_baked,-as.name(label)) %>% as.matrix()
+      x.glm <- select(data_baked.glm,-as.name(label)) %>% as.matrix()
+
+      def_x <- def_x(object$method_options$use_embedding,
+                     object$method_options$embedding_var,
+                     object$method_options$embedding_var.glm,
+                     f,
+                     f.glm,
+                     data,
+                     data_baked,
+                     data_baked.glm,
+                     object$data_recipe,
+                     object$data_recipe.glm,
+                     label)
+
+      if(!object$method_options$use_embedding) {
+        x.inputs <- list(def_x$x,def_x$x.glm)
+      }
+      else {
+        x.inputs <- list(def_x$x_no_fact.glm,def_x$x_fact.glm,def_x$x_no_fact,def_x$x_fact)
+        x.inputs[sapply(x.inputs, is.null)] <- NULL
+      }
+
+      if(!object$method_options$bias_regularization) {
+        response <- predict(object$fit, x.inputs)
+      }
+      else {
+        Zlearn   <- data.frame(object$zz %>% predict(x.inputs))
+        names(Zlearn) <- paste0('X', 1:ncol(Zlearn))
+        Zlearn$glm.pred <- glm.pred
+        response <- predict(object$fit, newdata = Zlearn, type = 'response') %>% as.matrix()
+      }
+      pd_effect[i] <- mean(response)
+    }
+  }
+  return(pd_effect)
+}
+```
+
+
+We obtain the following for the "type" covariate. 
+
+```{r}
+df.train <- reserving_data %>% dplyr::filter(calendar.year <= 9, open == 1)
+#df.train_sample <- df.train[sample(seq_len(nrow(df.train)), size = 10000), ]
+
+# Partial dependence plots for "type" covariate
+
+grid_type_init <- data.frame('type' = as.factor(levels(df.train$type)))
+
+# Response variable: settlement
+
+grid_type_settle <- grid_type_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$settlement %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$settlement %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$settlement %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$settlement %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$settlement %>% par_dep(data = df.train, grid = grid_type_init))
+
+# PDPlot
+
+pd_type_settle <- grid_type_settle %>% reshape2::melt(id.vars = 'type',
+                              value.name = 'pd_settlement',
+                              variable.name = 'method') %>%
+  ggplot(aes(x = type, y = pd_settlement)) + theme_bw() +
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
+
+# Response variable: payment
+
+grid_type_payment <- grid_type_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$payment %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$payment %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$payment %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$payment %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$payment %>% par_dep(data = df.train, grid = grid_type_init))
+
+# PDPlot
+
+pd_type_payment <- grid_type_payment %>% reshape2::melt(id.vars = 'type',
+                             value.name = 'pd_payment',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = type, y = pd_payment)) + theme_bw() +
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
+
+# Response variable: size
+
+grid_type_size <- grid_type_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$size %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$size %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$size %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$size %>% par_dep(data = df.train, grid = grid_type_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$size %>% par_dep(data = df.train, grid = grid_type_init))
+
+# PDPlot
+
+pd_type_size <- grid_type_size %>% reshape2::melt(id.vars = 'type',
+                             value.name = 'pd_size',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = type, y = pd_size)) + theme_bw() +
+  geom_line(aes(group = method, colour = method))
+
+```
+
+```{r, fig.width=12, fig.height=3}
+library(gridExtra)
+grid.arrange(pd_type_settle,pd_type_payment,pd_type_size,ncol=3,widths = c(3,3,3.9))
+```
+
+We obtain the following for the "dev.year.fact" covariate.
+
+```{r}
+# Partial dependence plots for "dev.year.fact" covariate
+
+grid_dev.year_init <- data.frame('dev.year.fact' = as.factor(levels(df.train$dev.year.fact)))
+
+# Response variable: settlement
+
+grid_dev.year_settle <- grid_dev.year_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$settlement %>% par_dep(data = df.train, grid = grid_dev.year_init))
+
+# PDPlot
+
+pd_dev.year_settle <- grid_dev.year_settle %>% reshape2::melt(id.vars = 'dev.year.fact',
+                              value.name = 'pd_settlement',
+                              variable.name = 'method') %>%
+  ggplot(aes(x = dev.year.fact, y = pd_settlement)) + theme_bw() +
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
+
+# Response variable: payment
+
+grid_dev.year_payment <- grid_dev.year_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$payment %>% par_dep(data = df.train, grid = grid_dev.year_init))
+
+# PDPlot
+
+pd_dev.year_payment <- grid_dev.year_payment %>% reshape2::melt(id.vars = 'dev.year.fact',
+                             value.name = 'pd_payment',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = dev.year.fact, y = pd_payment)) + theme_bw() +
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
+
+# Response variable: size
+
+grid_dev.year_size <- grid_dev.year_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$size %>% par_dep(data = df.train, grid = grid_dev.year_init))
+
+# PDPlot
+
+pd_dev.year_size <- grid_dev.year_size %>% reshape2::melt(id.vars = 'dev.year.fact',
+                             value.name = 'pd_size',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = dev.year.fact, y = pd_size)) + theme_bw() +
+  geom_line(aes(group = method, colour = method))
+
+```
+
+```{r, fig.width=12, fig.height=3}
+library(gridExtra)
+grid.arrange(pd_dev.year_settle,pd_dev.year_payment,pd_dev.year_size,ncol=3,widths = c(3,3,3.9))
+```
+
+```{r}
+# Partial dependence plots for "rep.month" covariate
+
+grid_rep.month_init <- data.frame('rep.month' = factor(levels(df.train$rep.month),levels=levels(df.train$rep.month)))
+
+
+# Response variable: settlement
+
+grid_rep.month_settle <- grid_rep.month_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$settlement %>% par_dep(data = df.train, grid = grid_rep.month_init))
+
+# PDPlot
+
+pd_rep.month_settle <- grid_rep.month_settle %>% reshape2::melt(id.vars = 'rep.month',
+                              value.name = 'pd_settlement',
+                              variable.name = 'method') %>%
+  ggplot(aes(x = rep.month, y = pd_settlement)) + theme_bw() +
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
+
+# Response variable: payment
+
+grid_rep.month_payment <- grid_rep.month_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$payment %>% par_dep(data = df.train, grid = grid_rep.month_init))
+
+# PDPlot
+
+pd_rep.month_payment <- grid_rep.month_payment %>% reshape2::melt(id.vars = 'rep.month',
+                             value.name = 'pd_payment',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = rep.month, y = pd_payment)) + theme_bw() +
+  geom_line(aes(group = method, colour = method), show.legend = FALSE)
+
+# Response variable: size
+
+grid_rep.month_size <- grid_rep.month_init %>%
+  dplyr::mutate(HGLM = model_glm$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HGBM = model_gbm$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HXGB = model_xgb$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HDNN = model_dnn$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init)) %>%
+  dplyr::mutate(HCANN = model_cann$layers$size %>% par_dep(data = df.train, grid = grid_rep.month_init))
+
+# PDPlot
+
+pd_rep.month_size <- grid_rep.month_size %>% reshape2::melt(id.vars = 'rep.month',
+                             value.name = 'pd_size',
+                             variable.name = 'method') %>%
+  ggplot(aes(x = rep.month, y = pd_size)) + theme_bw() +
+  geom_line(aes(group = method, colour = method))
+
+```
+
+```{r, fig.width=12, fig.height=3}
+library(gridExtra)
+grid.arrange(pd_rep.month_settle,pd_rep.month_payment,pd_rep.month_size,ncol=3,widths = c(3,3,3.9))
+```
+
+```{r, fig.width=10, fig.height=3}
+KULbg <- "#116e8a"
+
+plot.avg.freq <- function(df,x,xlab) {
+  g1 <- df %>% group_by_(as.name(x)) %>% summarize(n = n()) %>% 
+    mutate(rel.freq = n / sum(n))
+  g2 <- g1 %>% 
+    ggplot(data=., aes(x=g1[[x]], y=rel.freq)) + theme_bw() +
+    geom_bar(position = 'dodge', stat='identity',fill=KULbg) + 
+    #geom_text(aes(label=round(rel.freq, digits = 3)), position=position_dodge(width=0.9), vjust=-0.25) +
+    labs(x=xlab,y="Proportion")
+  (g2)
+}
+
+df <- observed_data
+f1 <- plot.avg.freq(df,"type","Type")
+f2 <- plot.avg.freq(df,"rep.month","Reporting month")
+f3 <- plot.avg.freq(df,"occ.month","Occurence month")
+f6 <- plot.avg.freq(df,"occ.year","Occurence year")
+f4 <- plot.avg.freq(df,"rep.delay","Reporting delay")
+f5 <- plot.avg.freq(df,"rep.year","Reporting year")
+
+library(gridExtra)
+
+#grid.arrange(f1,f2,f3,f4,f5,f6,ncol=3)
+grid.arrange(f1,f2,f3,ncol=3)
+
+```
+```{r}
+h1 <- ggplot(data = df %>% filter(payment == 1 ), aes(size)) + 
+      geom_density(adjust = 3, col = KULbg, fill = KULbg) + 
+      xlim(0, 1e4) + ylab("Distribution") + xlab("size") + theme_bw()
+```
+

@@ -431,7 +431,7 @@ library(gridExtra)
 grid.arrange(violin.settle,violin.pay,violin.size,ncol=3)
 ```
 
-We now generate partial dependence plots. For this, we consider a portfolio generated with seed 1. All models were trained based on the "Baseline with seed param.Rmd" file before executing the code below. 
+We now generate partial dependence plots. For this, we consider a portfolio generated with seed 1. All models were trained based on the "Change settle with seed param.Rmd" file before executing the code below. 
 
 ```{r}
 par_dep <- function(object, data, grid) {
@@ -804,5 +804,6 @@ grid.arrange(f1,f2,f3,ncol=3)
 h1 <- ggplot(data = df %>% filter(payment == 1 ), aes(size)) + 
       geom_density(adjust = 3, col = KULbg, fill = KULbg) + 
       xlim(0, 1e4) + ylab("Distribution") + xlab("size") + theme_bw()
+h1
 ```
 

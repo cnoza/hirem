@@ -338,14 +338,14 @@ xgb.importance(colnames(model_xgb$layers$settlement$fit), model = model_xgb$laye
 
 ```{r}
 # Variable importance
-xgb.importance(colnames(model_xgb$layers$payment$fit), model = model_xgb$layers$payment$fit)
-
+t2 <- xgb.importance(colnames(model_xgb$layers$payment$fit), model = model_xgb$layers$payment$fit)
+t2
 ```
 
 ```{r}
 # Variable importance
-xgb.importance(colnames(model_xgb$layers$size$fit), model = model_xgb$layers$size$fit)
-
+t3 <- xgb.importance(colnames(model_xgb$layers$size$fit), model = model_xgb$layers$size$fit)
+t3
 ```
 
 ### Hierarchical Deep feed-forward Neural Network

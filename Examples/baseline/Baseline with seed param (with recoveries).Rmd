@@ -18,9 +18,7 @@ options(dplyr.summarise.inform = FALSE)
 ```
 
 ## Introduction
-This document implements hierarchical reserving models based on the extended hirem package. The input data is generated using the simulation engine from Wang and Wuthrich, described the following paper:
-
-Wang, Melantha and Wuthrich, Mario V., Individual Claims Generator for Claims Reserving Studies: Data Simulation.R (June 3, 2022). Available at SSRN: https://ssrn.com/abstract=4127073 or http://dx.doi.org/10.2139/ssrn.4127073
+This document implements hierarchical reserving models based on the extended hirem package. The input data is generated using the baseline scenario and includes recoveries.
 
 ## Simulating the portfolio
 We evaluate the predictive performance of our hierarchical reserving model (hierarchical GLM, hierarchical GBM, hierarchical XGB and hierarchical DNN) on one portfolio simulated along the extreme event scenario. We compare the results with the ones obtained using an aggregate reserving model, namely the classical chain ladder model.
@@ -186,36 +184,36 @@ covariate_selection <- function(response_variable, all_covariates, family, data,
 # Covariate selection for settlement layer
 all_covariates <- c('type', 'dev.year.fact', 'rep.month', 'devYearMonth')
 family.settle <- model_glm$layers$settlement$method_options
-res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, 
-                                      model_glm$data_observed, weight, minimize='deviance')
-print(res.tab.settle)
+#res.tab.settle <- covariate_selection('settlement', all_covariates, family.settle, 
+#                                      model_glm$data_observed, weight, minimize='deviance')
+#print(res.tab.settle)
 
 # Covariate selection for payment layer
 all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth')
 family.pay <- model_glm$layers$payment$method_options
-res.tab.pay <- covariate_selection('payment',all_covariates, family.pay, 
-                                   model_glm$data_observed, weight, minimize='deviance')
-print(res.tab.pay)
+#res.tab.pay <- covariate_selection('payment',all_covariates, family.pay, 
+#                                   model_glm$data_observed, weight, minimize='deviance')
+#print(res.tab.pay)
 
 # Covariate selection for recovery layer
 all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth')
 family.recov <- model_glm$layers$recovery$method_options
-res.tab.recov <- covariate_selection('recovery',all_covariates, family.recov, model_glm$data_observed, weight, minimize='deviance')
-print(res.tab.recov)
+#res.tab.recov <- covariate_selection('recovery',all_covariates, family.recov, model_glm$data_observed, weight, minimize='deviance')
+#print(res.tab.recov)
 
 # Covariate selection for size.pay layer
 all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth')
 d_size_pay <- model_glm$data_observed %>% filter(payment == 1)
 family.size.pay <- model_glm$layers$size.pay$method_options
-res.tab.size.pay <- covariate_selection('size.pay', all_covariates, family.size.pay, d_size_pay, weight, minimize='deviance')
-print(res.tab.size.pay)
+#res.tab.size.pay <- covariate_selection('size.pay', all_covariates, family.size.pay, d_size_pay, weight, minimize='deviance')
+#print(res.tab.size.pay)
 
 # Covariate selection for size.recov layer
 all_covariates <- c('settlement', 'type', 'dev.year.fact', 'rep.month', 'devYearMonth')
 d_size_recov <- model_glm$data_observed %>% filter(recovery == 1)
 family.size.recov <- model_glm$layers$q.size.recov$method_options
-res.tab.size.recov <- covariate_selection('q.size.recov', all_covariates, family.size.recov, d_size_recov, weight, minimize='deviance')
-print(res.tab.size.recov)
+#res.tab.size.recov <- covariate_selection('q.size.recov', all_covariates, family.size.recov, d_size_recov, weight, minimize='deviance')
+#print(res.tab.size.recov)
 
 ```
 
@@ -225,11 +223,16 @@ Next, we provide the formulae for each layer, coming from the covariate selectio
 
 ```{r}
 # Formulae hierarchical GLM layers - model calibration
-formula_settle_glm <- res.tab.settle$m_formula[[1]]
-formula_pay_glm    <- res.tab.pay$m_formula[[1]]
-formula_recov_glm    <- res.tab.recov$m_formula[[1]]
-formula_size_pay_glm   <- res.tab.size.pay$m_formula[[1]]
-formula_size_recov_glm    <- res.tab.size.recov$m_formula[[1]]
+#formula_settle_glm <- res.tab.settle$m_formula[[1]]
+formula_settle_glm <- "settlement ~ type + devYearMonth + rep.month"
+#formula_pay_glm    <- res.tab.pay$m_formula[[1]]
+formula_pay_glm    <- "payment ~ settlement + type + devYearMonth + rep.month"
+#formula_recov_glm    <- res.tab.recov$m_formula[[1]]
+formula_recov_glm    <- "recovery ~ settlement + devYearMonth + rep.month + type"
+#formula_size_pay_glm   <- res.tab.size.pay$m_formula[[1]]
+formula_size_pay_glm   <- "size.pay ~ devYearMonth + type + settlement + rep.month"
+#formula_size_recov_glm    <- res.tab.size.recov$m_formula[[1]]
+formula_size_recov_glm    <- "q.size.recov ~ devYearMonth + settlement + type + rep.month"
 ```
 
 We fit the hierarchical GLM on the observed portfolio of simulated claims.
@@ -572,6 +575,8 @@ triangle_open    <- construct_triangle(data = observed_data %>% filter(open == 1
                                        group.var2 = 'dev.year', value = 'open', cumulative = FALSE)
 triangle_payment <- construct_triangle(data = observed_data, group.var1 = 'rep.year',
                                        group.var2 = 'dev.year', value = 'payment', cumulative = FALSE)
+triangle_recovery <- construct_triangle(data = observed_data, group.var1 = 'rep.year',
+                                       group.var2 = 'dev.year', value = 'recovery', cumulative = FALSE)
 triangle_size_pay    <- construct_triangle(data = observed_data, group.var1 = 'rep.year',
                                        group.var2 = 'dev.year', value = 'size.pay', cumulative = FALSE)
 triangle_size_recov    <- construct_triangle(data = observed_data, group.var1 = 'rep.year',
@@ -594,6 +599,7 @@ We then apply (a special version of) the chain-ladder model on the incremental r
 # Chain ladder predictions
 cl_open <- chainLadder_open(triangle_open)
 cl_pay  <- chainLadder(triangle_payment, is_cumulatif = FALSE)
+cl_recov  <- chainLadder(triangle_recovery, is_cumulatif = FALSE)
 cl_size_pay <- chainLadder(triangle_size_pay, is_cumulatif = FALSE)
 cl_size_recov <- chainLadder(triangle_size_recov, is_cumulatif = FALSE)
 ```
@@ -649,7 +655,7 @@ Third, we compare the prediction for the total number of recoveries in the predi
 ```{r}
 # Predictions
 obs_recov_total <- prediction_data %>% summarise(Total = sum(recovery)) %>% pull(Total)
-
+cl_recov_total  <- sum(cl_recov, na.rm=T)
 glm_recov_total <- simul_glm %>% summarise(Total = sum(recovery)/nsim) %>% pull(Total)
 gbm_recov_total <- simul_gbm %>% summarise(Total = sum(recovery)/nsim) %>% pull(Total)
 cann_recov_total <- simul_cann %>% summarise(Total = sum(recovery)/nsim) %>% pull(Total)
@@ -657,6 +663,7 @@ cann2_recov_total <- simul_cann2 %>% summarise(Total = sum(recovery)/nsim) %>% p
 
 # Print Results
 c('Actual' = obs_recov_total, 
+  'Chain-Ladder' = cl_recov_total,
   'Hierarchical GLM' = glm_recov_total, 
   'Hierarchical GBM' = gbm_recov_total, 
   'Hierarchical CANN/GLM' = cann_recov_total, 
@@ -735,28 +742,6 @@ c('Actual' = obs_size_total,
   )
 
 ```
-
-Comparing the empirical cumulative distribution function obtained from the prediction dataset with the one obtained from the simulated data:
-```{r}
-Fn <- prediction_data %>% filter(size.recov > 0) %>% pull(size.recov)
-ecdf_pred <- ecdf(Fn)
-plot(ecdf_pred, do.points = F, col.hor = "red")
-ecdf_glm <- ecdf(simul_glm %>% filter(recovery==1) %>% pull(size.recov))
-lines(ecdf_glm, do.points = F, col.hor = "green")
-ecdf_gbm <- ecdf(simul_gbm %>% filter(recovery==1) %>% pull(size.recov))
-lines(ecdf_gbm, do.points = F, col.hor = "blue")
-```
-
-```{r}
-Fn <- prediction_data %>% filter(size.recov > 0) %>% pull(size.recov)
-ecdf_pred <- ecdf(Fn)
-plot(ecdf_pred, do.points = F, col.hor = "red")
-ecdf_cann <- ecdf(simul_cann %>% filter(recovery==1) %>% pull(size.recov))
-lines(ecdf_cann, do.points = F, col.hor = "green")
-ecdf_cann2 <- ecdf(simul_cann2 %>% filter(recovery==1) %>% pull(size.recov))
-lines(ecdf_cann2, do.points = F, col.hor = "blue")
-```
-
 
 ## References
 

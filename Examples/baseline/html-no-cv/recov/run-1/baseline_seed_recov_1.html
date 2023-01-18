@@ -12,7 +12,7 @@
 <meta name="author" content="Christophe Nozaradan" />
 
 
-<title>Testing the hierarchical reserving models on the simulation engine proposed by Wang and Wuthrich</title>
+<title>Testing the hierarchical reserving models on the simulation engine including recoveries</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -385,9 +385,9 @@ pre code {
 
 
 <h1 class="title toc-ignore">Testing the hierarchical reserving models
-on the simulation engine proposed by Wang and Wuthrich</h1>
+on the simulation engine including recoveries</h1>
 <h4 class="author">Christophe Nozaradan</h4>
-<h4 class="date">October 2022</h4>
+<h4 class="date">December 2022</h4>
 
 </div>
 
@@ -400,11 +400,8 @@ on the simulation engine proposed by Wang and Wuthrich</h1>
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
 <p>This document implements hierarchical reserving models based on the
-extended hirem package. The input data is generated using the simulation
-engine from Wang and Wuthrich, described the following paper:</p>
-<p>Wang, Melantha and Wuthrich, Mario V., Individual Claims Generator
-for Claims Reserving Studies: Data Simulation.R (June 3, 2022).
-Available at SSRN: <a href="https://ssrn.com/abstract=4127073" class="uri">https://ssrn.com/abstract=4127073</a> or <a href="http://dx.doi.org/10.2139/ssrn.4127073" class="uri">http://dx.doi.org/10.2139/ssrn.4127073</a></p>
+extended hirem package. The input data is generated using the baseline
+scenario and includes recoveries.</p>
 </div>
 <div id="simulating-the-portfolio" class="section level2">
 <h2>Simulating the portfolio</h2>
@@ -571,115 +568,49 @@ covariate_selection &lt;- function(response_variable, all_covariates, family, da
 # Covariate selection for settlement layer
 all_covariates &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;)
 family.settle &lt;- model_glm$layers$settlement$method_options
-res.tab.settle &lt;- covariate_selection(&#39;settlement&#39;, all_covariates, family.settle, 
-                                      model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
-print(res.tab.settle)</code></pre>
-<pre><code>##    step                                                    m_formula      aic  deviance
-## 1     3                 settlement ~ type + devYearMonth + rep.month 88167.95  99550.25
-## 2     4 settlement ~ type + devYearMonth + rep.month + dev.year.fact 88167.95  99550.25
-## 3     2                             settlement ~ type + devYearMonth 88154.51  99561.01
-## 4     3             settlement ~ type + devYearMonth + dev.year.fact 88154.51  99561.01
-## 5     2                            settlement ~ type + dev.year.fact 88088.52  99565.03
-## 6     2                                settlement ~ type + rep.month 88340.97  99938.66
-## 7     1                                            settlement ~ type 88326.34  99945.26
-## 8     1                                    settlement ~ devYearMonth 89923.82 101464.49
-## 9     1                                   settlement ~ dev.year.fact 89857.82 101467.77
-## 10    1                                       settlement ~ rep.month 89914.94 101562.14</code></pre>
-<pre class="r"><code># Covariate selection for payment layer
+#res.tab.settle &lt;- covariate_selection(&#39;settlement&#39;, all_covariates, family.settle, 
+#                                      model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
+#print(res.tab.settle)
+
+# Covariate selection for payment layer
 all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;)
 family.pay &lt;- model_glm$layers$payment$method_options
-res.tab.pay &lt;- covariate_selection(&#39;payment&#39;,all_covariates, family.pay, 
-                                   model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
-print(res.tab.pay)</code></pre>
-<pre><code>##    step                                                              m_formula      aic deviance
-## 1     4                 payment ~ settlement + type + devYearMonth + rep.month 89910.75 100131.0
-## 2     5 payment ~ settlement + type + devYearMonth + rep.month + dev.year.fact 89910.75 100131.0
-## 3     3                             payment ~ settlement + type + devYearMonth 89909.46 100162.1
-## 4     4             payment ~ settlement + type + devYearMonth + dev.year.fact 89909.46 100162.1
-## 5     3                            payment ~ settlement + type + dev.year.fact 89842.82 100483.9
-## 6     3                                payment ~ settlement + type + rep.month 89922.45 100779.5
-## 7     2                                            payment ~ settlement + type 89891.66 100825.4
-## 8     2                                    payment ~ settlement + devYearMonth 91564.07 101955.1
-## 9     2                                   payment ~ settlement + dev.year.fact 91497.32 102277.7
-## 10    2                                       payment ~ settlement + rep.month 91728.16 102903.9
-## 11    1                                                   payment ~ settlement 91699.47 102957.7
-## 12    1                                                         payment ~ type 95977.55 107915.3
-## 13    1                                                 payment ~ devYearMonth 96678.07 107923.0
-## 14    1                                                payment ~ dev.year.fact 96612.07 108231.5
-## 15    1                                                    payment ~ rep.month 96892.98 108948.4</code></pre>
-<pre class="r"><code># Covariate selection for recovery layer
+#res.tab.pay &lt;- covariate_selection(&#39;payment&#39;,all_covariates, family.pay, 
+#                                   model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
+#print(res.tab.pay)
+
+# Covariate selection for recovery layer
 all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;)
 family.recov &lt;- model_glm$layers$recovery$method_options
-res.tab.recov &lt;- covariate_selection(&#39;recovery&#39;,all_covariates, family.recov, model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
-print(res.tab.recov)</code></pre>
-<pre><code>##    step                                                               m_formula      aic deviance
-## 1     4                 recovery ~ settlement + devYearMonth + rep.month + type 59097.91 64141.12
-## 2     5 recovery ~ settlement + devYearMonth + rep.month + type + dev.year.fact 59097.91 64141.12
-## 3     3                        recovery ~ settlement + devYearMonth + rep.month 59094.73 64143.23
-## 4     4        recovery ~ settlement + devYearMonth + rep.month + dev.year.fact 59094.73 64143.23
-## 5     3                             recovery ~ settlement + devYearMonth + type 59090.35 64159.30
-## 6     2                                    recovery ~ settlement + devYearMonth 59087.07 64161.31
-## 7     3                    recovery ~ settlement + devYearMonth + dev.year.fact 59087.07 64161.31
-## 8     2                                   recovery ~ settlement + dev.year.fact 59021.06 64285.02
-## 9     2                                       recovery ~ settlement + rep.month 59163.67 64609.28
-## 10    2                                            recovery ~ settlement + type 59149.29 64624.74
-## 11    1                                                   recovery ~ settlement 59147.98 64631.15
-## 12    1                                                 recovery ~ devYearMonth 59604.03 64832.47
-## 13    1                                                recovery ~ dev.year.fact 59538.03 64956.66
-## 14    1                                                    recovery ~ rep.month 59693.03 65310.09
-## 15    1                                                         recovery ~ type 59676.79 65329.57</code></pre>
-<pre class="r"><code># Covariate selection for size.pay layer
+#res.tab.recov &lt;- covariate_selection(&#39;recovery&#39;,all_covariates, family.recov, model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
+#print(res.tab.recov)
+
+# Covariate selection for size.pay layer
 all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;)
 d_size_pay &lt;- model_glm$data_observed %&gt;% filter(payment == 1)
 family.size.pay &lt;- model_glm$layers$size.pay$method_options
-res.tab.size.pay &lt;- covariate_selection(&#39;size.pay&#39;, all_covariates, family.size.pay, d_size_pay, weight, minimize=&#39;deviance&#39;)
-print(res.tab.size.pay)</code></pre>
-<pre><code>##    step                                                               m_formula      aic deviance
-## 1     4                 size.pay ~ devYearMonth + settlement + type + rep.month 761113.5 59555.51
-## 2     5 size.pay ~ devYearMonth + settlement + type + rep.month + dev.year.fact 761113.5 59555.51
-## 3     3                             size.pay ~ devYearMonth + settlement + type 761277.5 59751.43
-## 4     4             size.pay ~ devYearMonth + settlement + type + dev.year.fact 761277.5 59751.43
-## 5     3                        size.pay ~ devYearMonth + settlement + rep.month 761743.3 60225.53
-## 6     2                                    size.pay ~ devYearMonth + settlement 761884.1 60398.81
-## 7     3                    size.pay ~ devYearMonth + settlement + dev.year.fact 761884.1 60398.81
-## 8     2                                          size.pay ~ devYearMonth + type 761949.3 60466.15
-## 9     2                                     size.pay ~ devYearMonth + rep.month 762284.2 60804.75
-## 10    1                                                 size.pay ~ devYearMonth 762418.7 60972.63
-## 11    2                                 size.pay ~ devYearMonth + dev.year.fact 762418.7 60972.63
-## 12    1                                                size.pay ~ dev.year.fact 762387.5 61010.06
-## 13    1                                                   size.pay ~ settlement 771988.7 72128.00
-## 14    1                                                    size.pay ~ rep.month 772011.0 72130.85
-## 15    1                                                         size.pay ~ type 772324.7 72543.68</code></pre>
-<pre class="r"><code># Covariate selection for size.recov layer
+#res.tab.size.pay &lt;- covariate_selection(&#39;size.pay&#39;, all_covariates, family.size.pay, d_size_pay, weight, minimize=&#39;deviance&#39;)
+#print(res.tab.size.pay)
+
+# Covariate selection for size.recov layer
 all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;)
 d_size_recov &lt;- model_glm$data_observed %&gt;% filter(recovery == 1)
 family.size.recov &lt;- model_glm$layers$q.size.recov$method_options
-res.tab.size.recov &lt;- covariate_selection(&#39;q.size.recov&#39;, all_covariates, family.size.recov, d_size_recov, weight, minimize=&#39;deviance&#39;)
-print(res.tab.size.recov)</code></pre>
-<pre><code>##    step                                                                   m_formula      aic deviance
-## 1     4                 q.size.recov ~ devYearMonth + settlement + rep.month + type 84887.71 21116.66
-## 2     5 q.size.recov ~ devYearMonth + settlement + rep.month + type + dev.year.fact 84887.71 21116.66
-## 3     3                        q.size.recov ~ devYearMonth + settlement + rep.month 84894.95 21127.63
-## 4     4        q.size.recov ~ devYearMonth + settlement + rep.month + dev.year.fact 84894.95 21127.63
-## 5     3                             q.size.recov ~ devYearMonth + settlement + type 84917.10 21166.88
-## 6     2                                    q.size.recov ~ devYearMonth + settlement 84923.75 21177.30
-## 7     3                    q.size.recov ~ devYearMonth + settlement + dev.year.fact 84923.75 21177.30
-## 8     2                                          q.size.recov ~ devYearMonth + type 86016.01 22272.00
-## 9     2                                     q.size.recov ~ devYearMonth + rep.month 86054.36 22292.96
-## 10    1                                                 q.size.recov ~ devYearMonth 86075.92 22337.90
-## 11    2                                 q.size.recov ~ devYearMonth + dev.year.fact 86075.92 22337.90
-## 12    1                                                q.size.recov ~ dev.year.fact 86046.79 22353.26
-## 13    1                                                   q.size.recov ~ settlement 89712.96 26496.33
-## 14    1                                                         q.size.recov ~ type 90483.55 27454.67
-## 15    1                                                    q.size.recov ~ rep.month 90536.96 27499.64</code></pre>
+#res.tab.size.recov &lt;- covariate_selection(&#39;q.size.recov&#39;, all_covariates, family.size.recov, d_size_recov, weight, minimize=&#39;deviance&#39;)
+#print(res.tab.size.recov)</code></pre>
 <p>Next, we provide the formulae for each layer, coming from the
 covariate selection procedure.</p>
 <pre class="r"><code># Formulae hierarchical GLM layers - model calibration
-formula_settle_glm &lt;- res.tab.settle$m_formula[[1]]
-formula_pay_glm    &lt;- res.tab.pay$m_formula[[1]]
-formula_recov_glm    &lt;- res.tab.recov$m_formula[[1]]
-formula_size_pay_glm   &lt;- res.tab.size.pay$m_formula[[1]]
-formula_size_recov_glm    &lt;- res.tab.size.recov$m_formula[[1]]</code></pre>
+#formula_settle_glm &lt;- res.tab.settle$m_formula[[1]]
+formula_settle_glm &lt;- &quot;settlement ~ type + devYearMonth + rep.month&quot;
+#formula_pay_glm    &lt;- res.tab.pay$m_formula[[1]]
+formula_pay_glm    &lt;- &quot;payment ~ settlement + type + devYearMonth + rep.month&quot;
+#formula_recov_glm    &lt;- res.tab.recov$m_formula[[1]]
+formula_recov_glm    &lt;- &quot;recovery ~ settlement + devYearMonth + rep.month + type&quot;
+#formula_size_pay_glm   &lt;- res.tab.size.pay$m_formula[[1]]
+formula_size_pay_glm   &lt;- &quot;size.pay ~ devYearMonth + type + settlement + rep.month&quot;
+#formula_size_recov_glm    &lt;- res.tab.size.recov$m_formula[[1]]
+formula_size_recov_glm    &lt;- &quot;q.size.recov ~ devYearMonth + settlement + type + rep.month&quot;</code></pre>
 <p>We fit the hierarchical GLM on the observed portfolio of simulated
 claims.</p>
 <pre class="r"><code># Fitting the hierarchical GLM
@@ -714,7 +645,7 @@ the tuning strategy in the paper. We further fix the
 <code>bag.fraction</code> to 0.75 and the minimum number of
 observecations each node (<code>n.minobsinnode</code>) to 100.</p>
 <pre class="r"><code># Results of hierarchical model calibration
-gbm_param_settle &lt;- list(&#39;n.trees&#39; = 215, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
+gbm_param_settle &lt;- list(&#39;n.trees&#39; = 25, &#39;interaction.depth&#39; = 6, &#39;shrinkage&#39; = 0.2)
 gbm_param_pay    &lt;- list(&#39;n.trees&#39; = 490, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
 gbm_param_recov    &lt;- list(&#39;n.trees&#39; = 235, &#39;interaction.depth&#39; = 1, &#39;shrinkage&#39; = 0.05)
 gbm_param_size_pay   &lt;- list(&#39;n.trees&#39; = 442, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
@@ -1325,6 +1256,8 @@ triangle_open    &lt;- construct_triangle(data = observed_data %&gt;% filter(ope
                                        group.var2 = &#39;dev.year&#39;, value = &#39;open&#39;, cumulative = FALSE)
 triangle_payment &lt;- construct_triangle(data = observed_data, group.var1 = &#39;rep.year&#39;,
                                        group.var2 = &#39;dev.year&#39;, value = &#39;payment&#39;, cumulative = FALSE)
+triangle_recovery &lt;- construct_triangle(data = observed_data, group.var1 = &#39;rep.year&#39;,
+                                       group.var2 = &#39;dev.year&#39;, value = &#39;recovery&#39;, cumulative = FALSE)
 triangle_size_pay    &lt;- construct_triangle(data = observed_data, group.var1 = &#39;rep.year&#39;,
                                        group.var2 = &#39;dev.year&#39;, value = &#39;size.pay&#39;, cumulative = FALSE)
 triangle_size_recov    &lt;- construct_triangle(data = observed_data, group.var1 = &#39;rep.year&#39;,
@@ -1346,6 +1279,7 @@ ladder model applied on the cumulative run-off triangles.</p>
 <pre class="r"><code># Chain ladder predictions
 cl_open &lt;- chainLadder_open(triangle_open)
 cl_pay  &lt;- chainLadder(triangle_payment, is_cumulatif = FALSE)
+cl_recov  &lt;- chainLadder(triangle_recovery, is_cumulatif = FALSE)
 cl_size_pay &lt;- chainLadder(triangle_size_pay, is_cumulatif = FALSE)
 cl_size_recov &lt;- chainLadder(triangle_size_recov, is_cumulatif = FALSE)</code></pre>
 </div>
@@ -1373,7 +1307,7 @@ c(&#39;Actual&#39; =  obs_open_total,
   &#39;Hierarchical CANN/GBM&#39; = cann2_open_total
   )</code></pre>
 <pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM Hierarchical CANN/GBM 
-##              51521.00              51504.86              51422.80              51299.00              51421.40              51453.28</code></pre>
+##              51521.00              51504.86              51430.96              51339.06              51415.64              51396.56</code></pre>
 <p>Second, we compare the prediction for the total number of payments in
 the prediction data set.</p>
 <pre class="r"><code># Predictions
@@ -1393,12 +1327,12 @@ c(&#39;Actual&#39; = obs_pay_total,
   &#39;Hierarchical CANN/GBM&#39; = cann2_pay_total
   )</code></pre>
 <pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM Hierarchical CANN/GBM 
-##              48299.00              47842.58              47881.74              48065.40              47896.42              47894.28</code></pre>
+##              50130.00              50064.70              50168.08              50396.74              50232.98              50167.74</code></pre>
 <p>Third, we compare the prediction for the total number of recoveries
 in the prediction data set.</p>
 <pre class="r"><code># Predictions
 obs_recov_total &lt;- prediction_data %&gt;% summarise(Total = sum(recovery)) %&gt;% pull(Total)
-
+cl_recov_total  &lt;- sum(cl_recov, na.rm=T)
 glm_recov_total &lt;- simul_glm %&gt;% summarise(Total = sum(recovery)/nsim) %&gt;% pull(Total)
 gbm_recov_total &lt;- simul_gbm %&gt;% summarise(Total = sum(recovery)/nsim) %&gt;% pull(Total)
 cann_recov_total &lt;- simul_cann %&gt;% summarise(Total = sum(recovery)/nsim) %&gt;% pull(Total)
@@ -1406,13 +1340,14 @@ cann2_recov_total &lt;- simul_cann2 %&gt;% summarise(Total = sum(recovery)/nsim)
 
 # Print Results
 c(&#39;Actual&#39; = obs_recov_total, 
+  &#39;Chain-Ladder&#39; = cl_recov_total,
   &#39;Hierarchical GLM&#39; = glm_recov_total, 
   &#39;Hierarchical GBM&#39; = gbm_recov_total, 
   &#39;Hierarchical CANN/GLM&#39; = cann_recov_total, 
   &#39;Hierarchical CANN/GBM&#39; = cann2_recov_total
   )</code></pre>
-<pre><code>##                Actual      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM Hierarchical CANN/GBM 
-##              11052.00              11349.02              11251.72              11370.74              11344.08</code></pre>
+<pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM Hierarchical CANN/GBM 
+##              9151.000              6018.032              8946.880              8937.660              8935.120              8946.120</code></pre>
 <p>Fourth, we compare the prediction for the total number of payment
 sizes in the prediction set.</p>
 <pre class="r"><code># Predictions
@@ -1432,7 +1367,7 @@ c(&#39;Actual&#39; = obs_size_pay_total,
   &#39;Hierarchical CANN/GBM&#39; = cann2_size_pay_total
   )</code></pre>
 <pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM Hierarchical CANN/GBM 
-##              58727795              59245672              58876410              59078634              58978524              58945859</code></pre>
+##              63725424              64205276              64040667              64623211              64218193              64139540</code></pre>
 <p>Fifth, we compare the prediction for the total amount of recovery
 sizes in the prediction set.</p>
 <pre class="r"><code>update_simul &lt;- function(simul) {
@@ -1442,8 +1377,8 @@ sizes in the prediction set.</p>
     dplyr::group_by(simulation, claim.nr) %&gt;%
     dplyr::mutate(total.size.pay = sum(size.pay)) %&gt;%
     dplyr::ungroup() %&gt;%
-    dplyr::mutate(p.size.recov = exp(q.size.recov) / (1+exp(q.size.recov)), 
-                  size.recov = p.size.recov * total.size.pay)
+    dplyr::mutate(p.size.recov = ifelse(recovery == 1, exp(q.size.recov) / (1+exp(q.size.recov)),0), 
+                  size.recov = ifelse(recovery == 1, p.size.recov * total.size.pay, 0))
   
   return(simul)
   
@@ -1457,10 +1392,10 @@ simul_cann2 &lt;- update_simul(simul_cann2)
 # Predictions
 obs_size_recov_total &lt;- prediction_data %&gt;% summarise(Total = sum(size.recov)) %&gt;% pull(Total)
 cl_size_recov_total  &lt;- sum(cl_size_recov, na.rm=T)
-glm_size_recov_total &lt;- simul_glm %&gt;% filter(recovery==1) %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
-gbm_size_recov_total &lt;- simul_gbm %&gt;% filter(recovery==1) %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
-cann_size_recov_total &lt;- simul_cann %&gt;% filter(recovery==1) %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
-cann2_size_recov_total &lt;- simul_cann2 %&gt;% filter(recovery==1) %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
+glm_size_recov_total &lt;- simul_glm %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
+gbm_size_recov_total &lt;- simul_gbm %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
+cann_size_recov_total &lt;- simul_cann %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
+cann2_size_recov_total &lt;- simul_cann2 %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
 
 # Print Results
 c(&#39;Actual&#39; = obs_size_recov_total, 
@@ -1471,7 +1406,7 @@ c(&#39;Actual&#39; = obs_size_recov_total,
   &#39;Hierarchical CANN/GBM&#39; = cann2_size_recov_total
   )</code></pre>
 <pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM Hierarchical CANN/GBM 
-##               8898386               7469889               8652132               8475095               8471745               8472483</code></pre>
+##               7831382               6401988               6438279               6426525               6358469               6375829</code></pre>
 <pre class="r"><code>obs_size_total &lt;- prediction_data %&gt;% summarise(Total = sum(size)) %&gt;% pull(Total)
 # Print Results
 c(&#39;Actual&#39; = obs_size_total, 
@@ -1482,26 +1417,7 @@ c(&#39;Actual&#39; = obs_size_total,
   &#39;Hierarchical CANN/GBM&#39; = cann2_size_pay_total - cann2_size_recov_total
   )</code></pre>
 <pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM Hierarchical CANN/GBM 
-##              49829409              51775783              50224277              50603539              50506779              50473376</code></pre>
-<p>Comparing the empirical cumulative distribution function obtained
-from the prediction dataset with the one obtained from the simulated
-data:</p>
-<pre class="r"><code>Fn &lt;- prediction_data %&gt;% filter(size.recov &gt; 0) %&gt;% pull(size.recov)
-ecdf_pred &lt;- ecdf(Fn)
-plot(ecdf_pred, do.points = F, col.hor = &quot;red&quot;)
-ecdf_glm &lt;- ecdf(simul_glm %&gt;% filter(recovery==1) %&gt;% pull(size.recov))
-lines(ecdf_glm, do.points = F, col.hor = &quot;green&quot;)
-ecdf_gbm &lt;- ecdf(simul_gbm %&gt;% filter(recovery==1) %&gt;% pull(size.recov))
-lines(ecdf_gbm, do.points = F, col.hor = &quot;blue&quot;)</code></pre>
-<p><img src="data:image/png;base64,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" width="672" /></p>
-<pre class="r"><code>Fn &lt;- prediction_data %&gt;% filter(size.recov &gt; 0) %&gt;% pull(size.recov)
-ecdf_pred &lt;- ecdf(Fn)
-plot(ecdf_pred, do.points = F, col.hor = &quot;red&quot;)
-ecdf_cann &lt;- ecdf(simul_cann %&gt;% filter(recovery==1) %&gt;% pull(size.recov))
-lines(ecdf_cann, do.points = F, col.hor = &quot;green&quot;)
-ecdf_cann2 &lt;- ecdf(simul_cann2 %&gt;% filter(recovery==1) %&gt;% pull(size.recov))
-lines(ecdf_cann2, do.points = F, col.hor = &quot;blue&quot;)</code></pre>
-<p><img src="data:image/png;base64,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" width="672" /></p>
+##              55894042              57803288              57602389              58196686              57859724              57763711</code></pre>
 </div>
 <div id="references" class="section level2">
 <h2>References</h2>

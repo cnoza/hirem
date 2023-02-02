@@ -393,7 +393,7 @@ data.generation.type <- function(type, exposure, seed){
   claims[claims$Id %in% Id, "SetMonth"] <- claims[claims$Id %in% Id, "SetMonth"] + DelayPlus
 
   ### reopenings
-  source('./wang-wuthrich/Tools/reopening.r', local = TRUE)
+  source('~/R-projects/hirem/Examples/wang-wuthrich/Tools/reopening.r', local = TRUE)
 
   list(
     claims = claims,

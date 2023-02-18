@@ -79,7 +79,7 @@ setldel_param <- function(claim_size, occurrence_period) {
     a <- pmax(0.85, 1 - 0.0075 * occurrence_period)
   }
   mean_quarter <- a * pmin(25, pmax(1, 6 + 4*log(claim_size/(1000 * ref_claim))))
-  target_mean <- mean_quarter / 8 / time_unit
+  target_mean <- mean_quarter / 8 / time_unit * 1.5
   target_cv <- 0.60
   c(shape = get_Weibull_parameters(target_mean, target_cv)[1, ],
     scale = get_Weibull_parameters(target_mean, target_cv)[2, ])
@@ -87,14 +87,35 @@ setldel_param <- function(claim_size, occurrence_period) {
 
 # define sampling function for number of payments
 # taken from vignette with slightly changed parameters
+# rmixed_payment_no <- function(n, claim_size, claim_size_benchmark_1, claim_size_benchmark_2) {
+#   test_1 <- (claim_size_benchmark_1 < claim_size & claim_size <= claim_size_benchmark_2)
+#   test_2 <- (claim_size > claim_size_benchmark_2)
+#   #no_pmt <- sample(c(1:10), size = n, replace = T, rev(c(1:10))/sum(c(1:10)))
+#   no_pmt <- sample(c(1, 2), size = n, replace = T, prob = c(5/6, 1/6))
+#   no_pmt[test_1] <- sample(c(1, 2, 3), size = sum(test_1), replace = T, prob = c(1/2, 1/4, 1/4))
+#   #no_pmt[test_1] <- sample(c(1:10), size = sum(test_1), replace = T, prob = rev(c(1:10))/sum(c(1:10)))
+#   no_pmt_mean <- pmin(8, 4 + log(claim_size/claim_size_benchmark_2))
+#   prob <- 1 / (no_pmt_mean - 3)
+#   no_pmt[test_2] <- stats::rgeom(n = sum(test_2), prob = prob[test_2]) + 2
+#   no_pmt
+# }
+
+# define sampling function for number of payments
+# taken from vignette
 rmixed_payment_no <- function(n, claim_size, claim_size_benchmark_1, claim_size_benchmark_2) {
+  # construct the range indicators
   test_1 <- (claim_size_benchmark_1 < claim_size & claim_size <= claim_size_benchmark_2)
   test_2 <- (claim_size > claim_size_benchmark_2)
-  no_pmt <- sample(c(1, 2), size = n, replace = T, prob = c(5/6, 1/6))
-  no_pmt[test_1] <- sample(c(1, 2, 3), size = sum(test_1), replace = T, prob = c(1/2, 1/4, 1/4))
+
+  # if claim_size <= claim_size_benchmark_1
+  no_pmt <- sample(c(1, 2, 3), size = n, replace = T, prob = c(1/3, 1/3, 1/3))
+  # if claim_size is between the two benchmark values
+  no_pmt[test_1] <- sample(c(3, 4), size = sum(test_1), replace = T, prob = c(1/3, 2/3))
+  # if claim_size > claim_size_benchmark_2
   no_pmt_mean <- pmin(8, 4 + log(claim_size/claim_size_benchmark_2))
   prob <- 1 / (no_pmt_mean - 3)
-  no_pmt[test_2] <- stats::rgeom(n = sum(test_2), prob = prob[test_2]) + 2
+  no_pmt[test_2] <- stats::rgeom(n = sum(test_2), prob = prob[test_2]) + 6
+
   no_pmt
 }
 
@@ -115,6 +136,13 @@ hirem_payment_size <- function(n, claim_size) {
 
   amt <- as.vector(df_size / sum(df_size) * claim_size)
 }
+
+## input
+paymentNo_param <- function(claim_size) {
+  no_pmt_mean <- pmax(4, pmin(8, 4 + log(claim_size / 15000)))
+  c(lambda = no_pmt_mean - 3)
+}
+
 
 # define sampling function for individual payment sizes of multiple payments
 # taken from vignette
@@ -279,6 +307,7 @@ data.generation.type <- function(type, exposure, seed){
 
   ### number of payments
   PayCount <- claim_payment_no(n_vector, Ultimate, rfun = rmixed_payment_no, claim_size_benchmark_1 = 3000 * ref_claim, claim_size_benchmark_2 = 10000 * ref_claim)
+  #PayCount <- claim_payment_no(n_vector, Ultimate, rfun = actuar::rztpois, paramfun = paymentNo_param)
 
   ### payment sizes of individual payments
   Paid <- claim_payment_size(n_vector, Ultimate, PayCount, rfun = rmixed_payment_size)
@@ -406,8 +435,8 @@ data.generation.type <- function(type, exposure, seed){
 
 data.generation <- function(seed, future_info = FALSE){
 
-  exposure = c(40000, 30000, 10000, 40000, 20000, 20000) * 2
-  seeds = seed + c(0:5)
+  exposure = c(40000, 30000, 30000, 40000, 20000, 20000)
+  seeds = seed + c(0:5)*1000
 
   for (type in c(1:6)) {
     if (type == 1) {

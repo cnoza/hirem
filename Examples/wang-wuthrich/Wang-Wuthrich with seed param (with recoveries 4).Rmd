@@ -146,20 +146,13 @@ reserving_data <- reserving_data %>%
 reserving_data$dev.year.fact <- factor(reserving_data$dev.year, levels = 1:max(reserving_data$dev.year))
 reserving_data$rep.year.fact <- factor(reserving_data$rep.year, levels = 1:max(reserving_data$rep.year))
 reserving_data$monthDev12 <- as.character(reserving_data$rep.month)
-#reserving_data$monthDev12 <- as.character(ceiling(as.numeric(reserving_data$rep.month)/3))
 reserving_data$monthDev12[reserving_data$dev.year > 3] <- 'dev.year.over.3'
 reserving_data$devYearMonth <- factor(paste(reserving_data$dev.year, reserving_data$monthDev12, sep = '-'))
-# reserving_data$devYearMonth <- paste(reserving_data$dev.year, reserving_data$monthDev12, sep = '-')
-# reserving_data$devYearMonth[reserving_data$devYearMonth == '9-dev.year.over.3'
-#                             | reserving_data$devYearMonth == '10-dev.year.over.3'] <- '9-10-dev.year.over.3'
-# reserving_data$devYearMonth <- factor(reserving_data$devYearMonth)
 
 str(reserving_data)
 
 ```
  
-Next, we set the evaluation date to .... The observed portfolio then consists of the claims that are reported before this evaluation date, i.e. with calendar year before year 9.  The prediction data set consists of the remaining claims, namely the claims reported after calendar year 9.
-
 ```{r}
 # Observed and prediction data set
 observed_data   <- reserving_data %>% filter(calendar.year <= 10)
@@ -167,6 +160,7 @@ prediction_data <- reserving_data %>% filter(calendar.year > 10)
 ```
 
 ## Calibration of the hierarhical reserving models
+
 We first define the weights used in the calibration of the hierarchical reserving model. The purpose of these weights is to replicate the development year distribution from the prediction data set to the observed data set (training data set). Hence, more weight is assigned to claims observations in later development years since reporting. We give a very small weight to the claims observations in the first development year since reporting because the prediction data set does not contain observations for this development year. More details are provided in @hirempaper
 
 ```{r}
@@ -335,10 +329,6 @@ model_glm <- hirem::fit(model_glm,
 
 ### Hierarchical GBM
 
-The hierarchical GBM consists of the same three layer structure and the same distributional assumptions as the hierarchical GLM. However each layer is now modeled with a GBM instead of a GLM.
-
-We first define the model specifications of each layer. We only train the reserving model on the claim updates that are still open at the beginning of each year and are observed on the evaluation date (`calendar.year <= 10`). We tune some of the GBM parameters (number of trees, interaction depth and shrinkage) using a 5-fold cross validation approach [@hirempaper]. We list here the obtained results from the tuning strategy in the paper. We further fix the `bag.fraction` to 0.75 and the minimum number of observecations each node (`n.minobsinnode`) to 100.
-
 ```{r}
 # Results of hierarchical model calibration
 gbm_param_settle <- list('n.trees' = 225, 'interaction.depth' = 1, 'shrinkage' = 0.05)
@@ -478,8 +468,6 @@ model_cann <-  hirem(reserving_data) %>%
   layer_glm(name = 'q.size.recov', 'family' = gaussian(), 
             filter = function(x){x$recovery == 1})
 ```
-
-We now fit the hierarchical CANN on the observed portfolio of simulated claims. Notice that `dev.year.fact` is removed from the list of covariates to prevent an issue in the calibration process (loss function is `nan`).
 
 ```{r}
 #Covariates

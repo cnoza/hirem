@@ -243,7 +243,7 @@ def_x <- function(use_embedding,
     if(length(fact_var)>0) {
       x_fact <- list()
       for(i in 1:length(fact_var)) {
-        x_fact[[i]] <- select(data_baked,fact_var[i])[[1]] %>% as.integer()
+        x_fact[[i]] <- select(data_baked,fact_var[i])[[1]] %>% as.character() %>% as.integer()
         x_fact[[i]] <- x_fact[[i]]-1 # linked to issue with input_dim for embedding in keras
       }
     }
@@ -255,7 +255,7 @@ def_x <- function(use_embedding,
     if(length(fact_var.glm)>0) {
       x_fact.glm <- list()
       for(i in 1:length(fact_var.glm)) {
-        x_fact.glm[[i]] <- select(data_baked.glm,fact_var.glm[i])[[1]] %>% as.integer()
+        x_fact.glm[[i]] <- select(data_baked.glm,fact_var.glm[i])[[1]] %>% as.character() %>% as.integer()
         x_fact.glm[[i]] <- x_fact.glm[[i]]-1 # linked to issue with input_dim for embedding in keras
       }
     }
@@ -377,7 +377,7 @@ def_inputs <- function(use_embedding,
         beta.fact_var.glm[[i]]   <- model_coefficients %>% select(starts_with(fact_var.glm[i])) %>% as.numeric()
         input_layer_emb.glm[[i]] <- layer_input(shape=c(1), dtype='int32', name = paste0('il_',fact_var.glm[i],'_glm'))
         embedded_layer.glm[[i]]  <- input_layer_emb.glm[[i]] %>%
-          layer_embedding(input_dim = max(x_fact.glm[[i]])+1, output_dim = 1, trainable = FALSE,
+          layer_embedding(input_dim = max(x_fact.glm[[i]])-min(x_fact.glm[[i]])+1, output_dim = 1, trainable = FALSE,
                           input_length = 1, name = paste0('el_',fact_var.glm[i],'_glm')
                           ,weights = list(array(c(beta.no_fact_var.glm[1],beta.fact_var.glm[[i]]),
                                                 dim=c(length(beta.fact_var.glm[[i]])+1,1)))
@@ -399,7 +399,7 @@ def_inputs <- function(use_embedding,
 
         input_layer_emb[[i]] <- layer_input(shape=c(1), dtype='int32', name = paste0('il_',fact_var[i]))
         embedded_layer[[i]]  <- input_layer_emb[[i]] %>%
-          layer_embedding(input_dim = max(x_fact[[i]])+1, output_dim = 1,
+          layer_embedding(input_dim = max(x_fact[[i]])-min(x_fact.glm[[i]])+1, output_dim = 1,
                           input_length = 1, name = paste0('el_',fact_var[i]))
 
         embedded_layer[[i]] <- embedded_layer[[i]] %>%

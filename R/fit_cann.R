@@ -1057,7 +1057,8 @@ fit.layer_cann <- function(layer, obj, formula, training = FALSE, fold = NULL) {
                                    def_inputs$input_layer_emb),
                         outputs = c(CANNoutput), name = 'CANN')
 
-  print(summary(CANN))
+  #print(summary(CANN))
+  summary(CANN)
 
   CANN %>% compile(
     loss = layer$method_options$loss,

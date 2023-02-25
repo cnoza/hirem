@@ -43,6 +43,7 @@ late_closure_rows <- data.frame(
 # Simulate reopenings
 # Step 1: Randomly select a subset of claims that will reopen after the first
 # recorded claim closure
+
 sim_reopen <- function(Ultimate) {
   if (Ultimate > 20000) {
     sample(c(0, 1), size = 1, prob = c(0.9, 0.1))
@@ -79,14 +80,14 @@ reopen_rows$EventMonth <- sim_reopen_mth(reopen_rows$SetMonth)
 # 2.2 Payment with/after reopening
 # The re-opening may (prob = 0.2) or may not (prob = 0.8) occur with a payment
 reopen_rows$PayInd <- sample(
-  c(0, 1), size = nrow(reopen_rows), prob = c(0.8, 0.2), replace = T)
+  c(0, 0), size = nrow(reopen_rows), prob = c(0.8, 0.2), replace = T) # CNO: We force 0 payment
 
 # Case 1: If the re-opening does occur with a payment
 # We will activate the PayInd, and close the claim 1 month after.
 sim_reopen_paid <- function(PayInd, Ultimate) {
   beta_params <- get_Beta_parameters(target_mean = 0.15, target_cv = 0.2)
   if (PayInd == 1) {
-    Ultimate * rbeta(1, shape1 = beta_params[1], shape2 = beta_params[2])
+    Ultimate * rbeta(1, shape1 = beta_params[1], shape2 = beta_params[2]) * 0 # CNO: Force 0 amount in case of reopening with payment
   } else {
     0
   }
@@ -153,7 +154,7 @@ for (row in 1:nrow(paid_del)) {
       OpenInd = 0
     )
   }
-  new_row$Paid <- round(sim_reopen_paid(new_row$PayInd, new_row$Ultimate))
+  new_row$Paid <- round(sim_reopen_paid(new_row$PayInd, new_row$Ultimate)) * 0 # CNO: Force 0
   reopen_closure_rows <- rbind(reopen_closure_rows, new_row)
 }
 

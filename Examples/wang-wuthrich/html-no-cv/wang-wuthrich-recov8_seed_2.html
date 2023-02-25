@@ -490,19 +490,21 @@ colnames(d3) &lt;- c(&#39;Id&#39;,&#39;dev.year&#39;, &#39;size&#39;)
 d4 &lt;- merge(d3, claims, by=&quot;Id&quot;, all.x = T)
 
 reserving_data &lt;- d4 %&gt;% 
-  mutate(rep.year = floor(RepMonth/12)+1,
+  mutate(rep.year = floor(RepMonth/12)+1-2,
          calendar.year = dev.year + rep.year - 1,
-         settlement.year = floor(SetMonth/12)+1,
+         settlement.year = floor(SetMonth/12)+1-2,
          payment = as.integer(size&gt;0),
          recovery = as.integer(size&lt;0),
          size.pay = ifelse(size&gt;0,size,0),
          size.recov = ifelse(size&lt;0, -size, 0),
          occ.month = AccMonth,
+         occ.month12 = factor(ifelse(occ.month %% 12 == 0, 12, occ.month %% 12)),
          occ.date = AccDate,
          occ.weekday = factor(AccWeekday),
          rep.date = RepDate,
          age = Age,
          age.fact = factor(Age),
+         age.cat = cut(Age, breaks=unique(quantile(Age,probs=seq.int(0,1, by=1/5))), include.lowest=TRUE),
          settlement = as.integer(calendar.year &gt;= settlement.year),
          open = as.integer(ifelse(calendar.year==settlement.year,1,1-settlement)),
          type = factor(Type),
@@ -510,7 +512,7 @@ reserving_data &lt;- d4 %&gt;%
   select(-CumPaid, -Type, -Ultimate, -Status, -PayCount, -AccMonth, -AccDate, -Age, -AccWeekday, -RepDate, RepMonth) %&gt;%
   arrange(Id, dev.year)
 
-reserving_data &lt;- reserving_data %&gt;% filter(rep.year &lt;= 10 &amp; dev.year &lt;= 10)
+reserving_data &lt;- reserving_data %&gt;% filter(rep.year &gt;= 1 &amp; rep.year &lt;= 10 &amp; dev.year &lt;= 10)
 
 ultimate &lt;- reserving_data %&gt;% 
   dplyr::group_by(Id) %&gt;% 
@@ -525,52 +527,57 @@ reserving_data &lt;- reserving_data %&gt;%
 reserving_data$dev.year.fact &lt;- factor(reserving_data$dev.year, levels = 1:max(reserving_data$dev.year))
 reserving_data$rep.year.fact &lt;- factor(reserving_data$rep.year, levels = 1:max(reserving_data$rep.year))
 reserving_data$monthDev12 &lt;- as.character(reserving_data$rep.month)
-#reserving_data$monthDev12 &lt;- as.character(ceiling(as.numeric(reserving_data$rep.month)/3))
 reserving_data$monthDev12[reserving_data$dev.year &gt; 3] &lt;- &#39;dev.year.over.3&#39;
 reserving_data$devYearMonth &lt;- factor(paste(reserving_data$dev.year, reserving_data$monthDev12, sep = &#39;-&#39;))
-# reserving_data$devYearMonth &lt;- paste(reserving_data$dev.year, reserving_data$monthDev12, sep = &#39;-&#39;)
-# reserving_data$devYearMonth[reserving_data$devYearMonth == &#39;9-dev.year.over.3&#39;
-#                             | reserving_data$devYearMonth == &#39;10-dev.year.over.3&#39;] &lt;- &#39;9-10-dev.year.over.3&#39;
-# reserving_data$devYearMonth &lt;- factor(reserving_data$devYearMonth)
 
 str(reserving_data)</code></pre>
-<pre><code>## &#39;data.frame&#39;:    625260 obs. of  31 variables:
-##  $ Id             : int  1 1 1 1 1 1 1 1 1 1 ...
+<pre><code>## &#39;data.frame&#39;:    655810 obs. of  33 variables:
+##  $ Id             : int  10002 10002 10002 10002 10002 10002 10002 10002 10002 10002 ...
 ##  $ dev.year       : num  1 2 3 4 5 6 7 8 9 10 ...
-##  $ size           : num  454 0 379 2691 0 ...
-##  $ RepMonth       : num  1 1 1 1 1 1 1 1 1 1 ...
-##  $ RepDelDays     : int  1 1 1 1 1 1 1 1 1 1 ...
-##  $ SetMonth       : num  48 48 48 48 48 48 48 48 48 48 ...
-##  $ SetDelMonths   : num  47 47 47 47 47 47 47 47 47 47 ...
+##  $ size           : num  1381 1307 14573 0 0 ...
+##  $ RepMonth       : num  24 24 24 24 24 24 24 24 24 24 ...
+##  $ RepDelDays     : int  388 388 388 388 388 388 388 388 388 388 ...
+##  $ SetMonth       : num  55 55 55 55 55 55 55 55 55 55 ...
+##  $ SetDelMonths   : num  31 31 31 31 31 31 31 31 31 31 ...
 ##  $ rep.year       : num  1 1 1 1 1 1 1 1 1 1 ...
 ##  $ calendar.year  : num  1 2 3 4 5 6 7 8 9 10 ...
-##  $ settlement.year: num  5 5 5 5 5 5 5 5 5 5 ...
-##  $ payment        : int  1 0 1 1 0 0 0 0 0 0 ...
+##  $ settlement.year: num  3 3 3 3 3 3 3 3 3 3 ...
+##  $ payment        : int  1 1 1 0 0 0 0 0 0 0 ...
 ##  $ recovery       : int  0 0 0 0 0 0 0 0 0 0 ...
-##  $ size.pay       : num  454 0 379 2691 0 ...
+##  $ size.pay       : num  1381 1307 14573 0 0 ...
 ##  $ size.recov     : num  0 0 0 0 0 0 0 0 0 0 ...
-##  $ occ.month      : num  1 1 1 1 1 1 1 1 1 1 ...
-##  $ occ.date       : Date, format: &quot;2012-01-02&quot; &quot;2012-01-02&quot; &quot;2012-01-02&quot; &quot;2012-01-02&quot; ...
-##  $ occ.weekday    : Factor w/ 7 levels &quot;Mon&quot;,&quot;Tue&quot;,&quot;Wed&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ rep.date       : Date, format: &quot;2012-01-03&quot; &quot;2012-01-03&quot; &quot;2012-01-03&quot; &quot;2012-01-03&quot; ...
-##  $ age            : int  59 59 59 59 59 59 59 59 59 59 ...
-##  $ age.fact       : Factor w/ 48 levels &quot;18&quot;,&quot;19&quot;,&quot;20&quot;,..: 42 42 42 42 42 42 42 42 42 42 ...
-##  $ settlement     : int  0 0 0 0 1 1 1 1 1 1 ...
-##  $ open           : int  1 1 1 1 1 0 0 0 0 0 ...
-##  $ type           : Factor w/ 6 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,..: 6 6 6 6 6 6 6 6 6 6 ...
-##  $ rep.month      : Factor w/ 12 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ total.size.pay : num  3524 3524 3524 3524 3524 ...
+##  $ occ.month      : num  11 11 11 11 11 11 11 11 11 11 ...
+##  $ occ.month12    : Factor w/ 12 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,..: 11 11 11 11 11 11 11 11 11 11 ...
+##  $ occ.date       : Date, format: &quot;2012-11-08&quot; &quot;2012-11-08&quot; &quot;2012-11-08&quot; &quot;2012-11-08&quot; ...
+##  $ occ.weekday    : Factor w/ 7 levels &quot;Mon&quot;,&quot;Tue&quot;,&quot;Wed&quot;,..: 4 4 4 4 4 4 4 4 4 4 ...
+##  $ rep.date       : Date, format: &quot;2013-12-01&quot; &quot;2013-12-01&quot; &quot;2013-12-01&quot; &quot;2013-12-01&quot; ...
+##  $ age            : int  18 18 18 18 18 18 18 18 18 18 ...
+##  $ age.fact       : Factor w/ 48 levels &quot;18&quot;,&quot;19&quot;,&quot;20&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ age.cat        : Factor w/ 5 levels &quot;[18,27]&quot;,&quot;(27,37]&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ settlement     : int  0 0 1 1 1 1 1 1 1 1 ...
+##  $ open           : int  1 1 1 0 0 0 0 0 0 0 ...
+##  $ type           : Factor w/ 6 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ rep.month      : Factor w/ 12 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,..: 12 12 12 12 12 12 12 12 12 12 ...
+##  $ total.size.pay : num  17261 17261 17261 17261 17261 ...
 ##  $ p.size.recov   : num  0 0 0 0 0 0 0 0 0 0 ...
 ##  $ q.size.recov   : num  0 0 0 0 0 0 0 0 0 0 ...
 ##  $ dev.year.fact  : Factor w/ 10 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,..: 1 2 3 4 5 6 7 8 9 10 ...
 ##  $ rep.year.fact  : Factor w/ 10 levels &quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ monthDev12     : chr  &quot;1&quot; &quot;1&quot; &quot;1&quot; &quot;dev.year.over.3&quot; ...
-##  $ devYearMonth   : Factor w/ 43 levels &quot;1-1&quot;,&quot;1-10&quot;,&quot;1-11&quot;,..: 1 14 26 38 39 40 41 42 43 13 ...</code></pre>
-<p>Next, we set the evaluation date to …. The observed portfolio then
-consists of the claims that are reported before this evaluation date,
-i.e. with calendar year before year 9. The prediction data set consists
-of the remaining claims, namely the claims reported after calendar year
-9.</p>
+##  $ monthDev12     : chr  &quot;12&quot; &quot;12&quot; &quot;12&quot; &quot;dev.year.over.3&quot; ...
+##  $ devYearMonth   : Factor w/ 43 levels &quot;1-1&quot;,&quot;1-10&quot;,&quot;1-11&quot;,..: 4 17 29 38 39 40 41 42 43 13 ...</code></pre>
+<pre class="r"><code>reserving_data %&gt;% group_by(age.cat) %&gt;% summarize(n_pay = sum(payment), 
+                                                   n_settl = sum(settlement), 
+                                                   n_recov = sum(recovery),
+                                                   tot_size.pay = sum(size.pay),
+                                                   tot_size.recov = sum(size.recov))</code></pre>
+<pre><code>## # A tibble: 5 × 6
+##   age.cat n_pay n_settl n_recov tot_size.pay tot_size.recov
+##   &lt;fct&gt;   &lt;int&gt;   &lt;int&gt;   &lt;int&gt;        &lt;dbl&gt;          &lt;dbl&gt;
+## 1 [18,27] 26369  114528     358    131893243         863212
+## 2 (27,37] 26089  112997     369    124106533         857836
+## 3 (37,46] 24815  100898     315    113491284         711220
+## 4 (46,56] 29436  112509     374    140568331         777758
+## 5 (56,65] 26682   99111     358    135562935         784550</code></pre>
 <pre class="r"><code># Observed and prediction data set
 observed_data   &lt;- reserving_data %&gt;% filter(calendar.year &lt;= 10)
 prediction_data &lt;- reserving_data %&gt;% filter(calendar.year &gt; 10)</code></pre>
@@ -601,7 +608,7 @@ weight &lt;- c(10^(-6), numerator / denominator)
 names(weight) &lt;- paste0(&#39;dev.year&#39;,1:10)
 weight</code></pre>
 <pre><code>##  dev.year1  dev.year2  dev.year3  dev.year4  dev.year5  dev.year6  dev.year7  dev.year8  dev.year9 dev.year10 
-##  0.0000010  0.1179131  0.2684045  0.4634181  0.7341358  1.1185200  1.7378054  2.8100055  5.3323881 16.3442441</code></pre>
+##  0.0000010  0.1081428  0.2455557  0.4239095  0.6636057  0.9962559  1.5048125  2.3391548  4.0587010  9.0322778</code></pre>
 <div id="hierarchical-glm" class="section level3">
 <h3>Hierarchical GLM</h3>
 <p>The hierarchical GLM consists of the three layer structure:
@@ -626,207 +633,108 @@ model_glm  &lt;- hirem(reserving_data) %&gt;%
   layer_glm(name = &#39;q.size.recov&#39;, &#39;family&#39; = gaussian(), 
             filter = function(x){x$recovery == 1})</code></pre>
 <pre class="r"><code># Covariate selection function
-covariate_selection &lt;- function(response_variable, all_covariates, family, data, weight, minimize=&quot;deviance&quot;) {
-  aic_sav &lt;- NULL
-  deviance_sav &lt;- NULL
-  aic &lt;- c()
-  deviance &lt;- c()
-  formula_resp_list &lt;- c()
-  step &lt;- c()
-  i = 1
-  covariate_sav_list &lt;- c()
-  weights.vec &lt;- weight[data[[&#39;dev.year&#39;]]]
-  
-  while(length(all_covariates) &gt; 0) {
-    covariate_sav &lt;- NULL
-    for(covariate in all_covariates) {
-      cov_list &lt;- append(covariate_sav_list, covariate)
-      formula_resp &lt;- as.formula(paste0(response_variable, &#39; ~ &#39;,paste0(cov_list, collapse = &#39; + &#39;)))
-      m_glm &lt;- glm(formula_resp , family = family, data = data, weights = weights.vec)
-      aic &lt;- append(aic, m_glm$aic)
-      deviance &lt;- append(deviance, m_glm$deviance)
-      formula_resp_list &lt;- append(formula_resp_list, formula_resp)
-      step = append(step,i)
-      
-      if(is.null(aic_sav)) aic_sav = m_glm$aic + 1
-      if(is.null(deviance_sav)) deviance_sav = m_glm$deviance + 1
-      
-      if( (m_glm$deviance &lt; deviance_sav &amp; minimize == &quot;deviance&quot;) 
-          | (m_glm$aic &lt; aic_sav &amp; minimize == &quot;aic&quot;)) {
-        #formula_resp_sav &lt;- formula_resp
-        covariate_sav &lt;- covariate
-        aic_sav &lt;- m_glm$aic
-        deviance_sav &lt;- m_glm$deviance
-      }
-    }
-    if(!is.null(covariate_sav)) {
-      covariate_sav_list &lt;- append(covariate_sav_list, covariate_sav)
-      all_covariates &lt;- all_covariates[all_covariates != covariate_sav]
-      i=i+1
-    } else all_covariates &lt;- NULL
-    
-  }
-  
-  if(minimize==&quot;deviance&quot;)
-    res.tab &lt;- data.frame(step = step, 
-                          m_formula = as.character(formula_resp_list), 
-                          aic = aic, 
-                          deviance = deviance) %&gt;% arrange(deviance)
-  else
-    res.tab &lt;- data.frame(step = step, 
-                          m_formula = as.character(formula_resp_list), 
-                          aic = aic, deviance = deviance) %&gt;% arrange(aic)
-  
-  return(res.tab)
-  
-}
-
-# Covariate selection for settlement layer
-all_covariates &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.fact&#39;)
-family.settle &lt;- model_glm$layers$settlement$method_options
-res.tab.settle &lt;- covariate_selection(&#39;settlement&#39;, all_covariates, family.settle,
-                                     model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
-print(res.tab.settle)</code></pre>
-<pre><code>##    step                                                               m_formula      aic deviance
-## 1     4                 settlement ~ type + devYearMonth + age.fact + rep.month 13017.89 34349.84
-## 2     5 settlement ~ type + devYearMonth + age.fact + rep.month + dev.year.fact 13017.89 34349.84
-## 3     3                             settlement ~ type + devYearMonth + age.fact 13004.90 34358.78
-## 4     4             settlement ~ type + devYearMonth + age.fact + dev.year.fact 13004.90 34358.78
-## 5     3                            settlement ~ type + devYearMonth + rep.month 12989.43 34440.60
-## 6     2                                        settlement ~ type + devYearMonth 12978.67 34451.17
-## 7     3                        settlement ~ type + devYearMonth + dev.year.fact 12978.67 34451.17
-## 8     2                                       settlement ~ type + dev.year.fact 12912.85 34475.90
-## 9     2                                            settlement ~ type + age.fact 13128.62 34844.33
-## 10    2                                           settlement ~ type + rep.month 13096.61 34892.32
-## 11    1                                                       settlement ~ type 13078.20 34901.97
-## 12    1                                               settlement ~ devYearMonth 13194.59 35104.48
-## 13    1                                              settlement ~ dev.year.fact 13128.59 35122.67
-## 14    1                                                   settlement ~ age.fact 13248.79 35309.12
-## 15    1                                                  settlement ~ rep.month 13222.10 35351.47</code></pre>
-<pre class="r"><code># Covariate selection for payment layer
-all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.fact&#39;)
-family.pay &lt;- model_glm$layers$payment$method_options
-res.tab.pay &lt;- covariate_selection(&#39;payment&#39;,all_covariates, family.pay,
-                                   model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
-print(res.tab.pay)</code></pre>
-<pre><code>##    step                                                                         m_formula      aic deviance
-## 1     5                 payment ~ settlement + devYearMonth + type + age.fact + rep.month 8772.524 20429.62
-## 2     6 payment ~ settlement + devYearMonth + type + age.fact + rep.month + dev.year.fact 8772.524 20429.62
-## 3     4                             payment ~ settlement + devYearMonth + type + age.fact 8767.287 20443.28
-## 4     5             payment ~ settlement + devYearMonth + type + age.fact + dev.year.fact 8767.287 20443.28
-## 5     4                            payment ~ settlement + devYearMonth + type + rep.month 8719.116 20471.46
-## 6     3                                        payment ~ settlement + devYearMonth + type 8713.555 20484.73
-## 7     4                        payment ~ settlement + devYearMonth + type + dev.year.fact 8713.555 20484.73
-## 8     3                                    payment ~ settlement + devYearMonth + age.fact 8776.872 20591.08
-## 9     3                                   payment ~ settlement + devYearMonth + rep.month 8729.732 20615.75
-## 10    2                                               payment ~ settlement + devYearMonth 8722.233 20626.91
-## 11    3                               payment ~ settlement + devYearMonth + dev.year.fact 8722.233 20626.91
-## 12    2                                              payment ~ settlement + dev.year.fact 8656.257 20646.36
-## 13    2                                                       payment ~ settlement + type 8799.775 20804.96
-## 14    2                                                   payment ~ settlement + age.fact 8840.858 20842.10
-## 15    2                                                  payment ~ settlement + rep.month 8801.509 20873.32
-## 16    1                                                              payment ~ settlement 8787.815 20878.95
-## 17    1                                                            payment ~ devYearMonth 8902.688 21127.85
-## 18    1                                                           payment ~ dev.year.fact 8836.688 21148.54
-## 19    1                                                                payment ~ age.fact 8993.024 21292.11
-## 20    1                                                                    payment ~ type 8957.614 21293.89
-## 21    1                                                               payment ~ rep.month 8954.722 21322.27</code></pre>
-<pre class="r"><code># Covariate selection for recovery layer
-all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.fact&#39;)
-family.recov &lt;- model_glm$layers$recovery$method_options
-res.tab.recov &lt;- covariate_selection(&#39;recovery&#39;,all_covariates, family.recov, model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
-print(res.tab.recov)</code></pre>
-<pre><code>##    step                                                                          m_formula      aic deviance
-## 1     5                 recovery ~ settlement + devYearMonth + type + age.fact + rep.month 2239.067 4087.848
-## 2     6 recovery ~ settlement + devYearMonth + type + age.fact + rep.month + dev.year.fact 2239.067 4087.848
-## 3     4                             recovery ~ settlement + devYearMonth + type + age.fact 2238.303 4105.081
-## 4     5             recovery ~ settlement + devYearMonth + type + age.fact + dev.year.fact 2238.303 4105.081
-## 5     4                            recovery ~ settlement + devYearMonth + type + rep.month 2198.910 4131.829
-## 6     3                                        recovery ~ settlement + devYearMonth + type 2197.570 4148.751
-## 7     4                        recovery ~ settlement + devYearMonth + type + dev.year.fact 2197.570 4148.751
-## 8     3                                    recovery ~ settlement + devYearMonth + age.fact 2269.494 4188.829
-## 9     3                                   recovery ~ settlement + devYearMonth + rep.month 2234.479 4218.359
-## 10    2                                               recovery ~ settlement + devYearMonth 2230.680 4233.568
-## 11    3                               recovery ~ settlement + devYearMonth + dev.year.fact 2230.680 4233.568
-## 12    2                                                       recovery ~ settlement + type 2162.226 4245.207
-## 13    2                                              recovery ~ settlement + dev.year.fact 2164.598 4250.029
-## 14    2                                                   recovery ~ settlement + age.fact 2238.625 4289.408
-## 15    2                                                  recovery ~ settlement + rep.month 2202.443 4318.810
-## 16    1                                                              recovery ~ settlement 2197.808 4332.374
-## 17    1                                                            recovery ~ devYearMonth 2519.498 4705.886
-## 18    1                                                           recovery ~ dev.year.fact 2453.498 4724.509
-## 19    1                                                                    recovery ~ type 2472.554 4756.163
-## 20    1                                                                recovery ~ age.fact 2539.004 4790.246
-## 21    1                                                               recovery ~ rep.month 2508.868 4823.734</code></pre>
-<pre class="r"><code># Covariate selection for size.pay layer
-all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.fact&#39;)
-d_size_pay &lt;- model_glm$data_observed %&gt;% filter(payment == 1)
-family.size.pay &lt;- model_glm$layers$size.pay$method_options
-res.tab.size.pay &lt;- covariate_selection(&#39;size.pay&#39;, all_covariates, family.size.pay, d_size_pay, weight, minimize=&#39;deviance&#39;)
-print(res.tab.size.pay)</code></pre>
-<pre><code>##    step                                                                          m_formula      aic deviance
-## 1     5                 size.pay ~ type + devYearMonth + settlement + age.fact + rep.month 416777.2 35902.31
-## 2     6 size.pay ~ type + devYearMonth + settlement + age.fact + rep.month + dev.year.fact 416777.2 35902.31
-## 3     4                             size.pay ~ type + devYearMonth + settlement + age.fact 416870.6 36056.87
-## 4     5             size.pay ~ type + devYearMonth + settlement + age.fact + dev.year.fact 416870.6 36056.87
-## 5     4                            size.pay ~ type + devYearMonth + settlement + rep.month 416878.5 36164.13
-## 6     3                                        size.pay ~ type + devYearMonth + settlement 416981.3 36332.32
-## 7     4                        size.pay ~ type + devYearMonth + settlement + dev.year.fact 416981.3 36332.32
-## 8     3                                          size.pay ~ type + devYearMonth + age.fact 417815.8 37347.05
-## 9     3                                         size.pay ~ type + devYearMonth + rep.month 417842.2 37483.25
-## 10    2                                                     size.pay ~ type + devYearMonth 417914.6 37614.43
-## 11    3                                     size.pay ~ type + devYearMonth + dev.year.fact 417914.6 37614.43
-## 12    2                                                    size.pay ~ type + dev.year.fact 417937.1 37737.68
-## 13    2                                                       size.pay ~ type + settlement 419253.4 39635.42
-## 14    2                                                         size.pay ~ type + age.fact 419751.2 40229.26
-## 15    2                                                        size.pay ~ type + rep.month 419904.4 40562.20
-## 16    1                                                                    size.pay ~ type 420016.7 40761.73
-## 17    1                                                            size.pay ~ devYearMonth 422192.5 43995.32
-## 18    1                                                           size.pay ~ dev.year.fact 422265.1 44215.96
-## 19    1                                                              size.pay ~ settlement 426097.5 50726.28
-## 20    1                                                                size.pay ~ age.fact 426340.6 50997.48
-## 21    1                                                               size.pay ~ rep.month 426323.4 51096.01</code></pre>
-<pre class="r"><code># Covariate selection for size.recov layer
-all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.fact&#39;)
-d_size_recov &lt;- model_glm$data_observed %&gt;% filter(recovery == 1)
-family.size.recov &lt;- model_glm$layers$q.size.recov$method_options
-res.tab.size.recov &lt;- covariate_selection(&#39;q.size.recov&#39;, all_covariates, family.size.recov, d_size_recov, weight, minimize=&#39;deviance&#39;)
-print(res.tab.size.recov)</code></pre>
-<pre><code>##    step                                                                              m_formula      aic deviance
-## 1     5                 q.size.recov ~ type + devYearMonth + age.fact + rep.month + settlement 3739.172 297.0061
-## 2     6 q.size.recov ~ type + devYearMonth + age.fact + rep.month + settlement + dev.year.fact 3739.172 297.0061
-## 3     4                              q.size.recov ~ type + devYearMonth + age.fact + rep.month 3737.604 297.1097
-## 4     5              q.size.recov ~ type + devYearMonth + age.fact + rep.month + dev.year.fact 3737.604 297.1097
-## 5     4                             q.size.recov ~ type + devYearMonth + age.fact + settlement 3750.999 305.2399
-## 6     3                                          q.size.recov ~ type + devYearMonth + age.fact 3749.606 305.3898
-## 7     4                          q.size.recov ~ type + devYearMonth + age.fact + dev.year.fact 3749.606 305.3898
-## 8     3                                         q.size.recov ~ type + devYearMonth + rep.month 3703.249 311.7866
-## 9     3                                        q.size.recov ~ type + devYearMonth + settlement 3715.338 319.9804
-## 10    2                                                     q.size.recov ~ type + devYearMonth 3714.005 320.1530
-## 11    3                                     q.size.recov ~ type + devYearMonth + dev.year.fact 3714.005 320.1530
-## 12    2                                                    q.size.recov ~ type + dev.year.fact 3670.262 324.3885
-## 13    2                                                         q.size.recov ~ type + age.fact 3753.004 325.6344
-## 14    2                                                        q.size.recov ~ type + rep.month 3708.512 332.9568
-## 15    2                                                       q.size.recov ~ type + settlement 3720.063 341.5583
-## 16    1                                                                    q.size.recov ~ type 3720.254 342.1638
-## 17    1                                                            q.size.recov ~ devYearMonth 3950.507 390.7522
-## 18    1                                                           q.size.recov ~ dev.year.fact 3902.451 394.5434
-## 19    1                                                                q.size.recov ~ age.fact 4085.295 429.4414
-## 20    1                                                               q.size.recov ~ rep.month 4053.161 443.5069
-## 21    1                                                              q.size.recov ~ settlement 4056.851 452.0825</code></pre>
+# covariate_selection &lt;- function(response_variable, all_covariates, family, data, weight, minimize=&quot;deviance&quot;) {
+#   aic_sav &lt;- NULL
+#   deviance_sav &lt;- NULL
+#   aic &lt;- c()
+#   deviance &lt;- c()
+#   formula_resp_list &lt;- c()
+#   step &lt;- c()
+#   i = 1
+#   covariate_sav_list &lt;- c()
+#   weights.vec &lt;- weight[data[[&#39;dev.year&#39;]]]
+#   
+#   while(length(all_covariates) &gt; 0) {
+#     covariate_sav &lt;- NULL
+#     for(covariate in all_covariates) {
+#       cov_list &lt;- append(covariate_sav_list, covariate)
+#       formula_resp &lt;- as.formula(paste0(response_variable, &#39; ~ &#39;,paste0(cov_list, collapse = &#39; + &#39;)))
+#       m_glm &lt;- glm(formula_resp , family = family, data = data, weights = weights.vec)
+#       aic &lt;- append(aic, m_glm$aic)
+#       deviance &lt;- append(deviance, m_glm$deviance)
+#       formula_resp_list &lt;- append(formula_resp_list, formula_resp)
+#       step = append(step,i)
+#       
+#       if(is.null(aic_sav)) aic_sav = m_glm$aic + 1
+#       if(is.null(deviance_sav)) deviance_sav = m_glm$deviance + 1
+#       
+#       if( (m_glm$deviance &lt; deviance_sav &amp; minimize == &quot;deviance&quot;) 
+#           | (m_glm$aic &lt; aic_sav &amp; minimize == &quot;aic&quot;)) {
+#         #formula_resp_sav &lt;- formula_resp
+#         covariate_sav &lt;- covariate
+#         aic_sav &lt;- m_glm$aic
+#         deviance_sav &lt;- m_glm$deviance
+#       }
+#     }
+#     if(!is.null(covariate_sav)) {
+#       covariate_sav_list &lt;- append(covariate_sav_list, covariate_sav)
+#       all_covariates &lt;- all_covariates[all_covariates != covariate_sav]
+#       i=i+1
+#     } else all_covariates &lt;- NULL
+#     
+#   }
+#   
+#   if(minimize==&quot;deviance&quot;)
+#     res.tab &lt;- data.frame(step = step, 
+#                           m_formula = as.character(formula_resp_list), 
+#                           aic = aic, 
+#                           deviance = deviance) %&gt;% arrange(deviance)
+#   else
+#     res.tab &lt;- data.frame(step = step, 
+#                           m_formula = as.character(formula_resp_list), 
+#                           aic = aic, deviance = deviance) %&gt;% arrange(aic)
+#   
+#   return(res.tab)
+#   
+# }
+# 
+# # Covariate selection for settlement layer
+# all_covariates &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.cat&#39;)
+# family.settle &lt;- model_glm$layers$settlement$method_options
+# res.tab.settle &lt;- covariate_selection(&#39;settlement&#39;, all_covariates, family.settle,
+#                                      model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
+# print(res.tab.settle)
+# 
+# # Covariate selection for payment layer
+# all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.cat&#39;)
+# family.pay &lt;- model_glm$layers$payment$method_options
+# res.tab.pay &lt;- covariate_selection(&#39;payment&#39;,all_covariates, family.pay,
+#                                    model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
+# print(res.tab.pay)
+# 
+# # Covariate selection for recovery layer
+# all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.cat&#39;)
+# family.recov &lt;- model_glm$layers$recovery$method_options
+# res.tab.recov &lt;- covariate_selection(&#39;recovery&#39;,all_covariates, family.recov, model_glm$data_observed, weight, minimize=&#39;deviance&#39;)
+# print(res.tab.recov)
+# 
+# # Covariate selection for size.pay layer
+# all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.cat&#39;)
+# d_size_pay &lt;- model_glm$data_observed %&gt;% filter(payment == 1)
+# family.size.pay &lt;- model_glm$layers$size.pay$method_options
+# res.tab.size.pay &lt;- covariate_selection(&#39;size.pay&#39;, all_covariates, family.size.pay, d_size_pay, weight, minimize=&#39;deviance&#39;)
+# print(res.tab.size.pay)
+# 
+# # Covariate selection for size.recov layer
+# all_covariates &lt;- c(&#39;settlement&#39;, &#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;devYearMonth&#39;, &#39;age.cat&#39;)
+# d_size_recov &lt;- model_glm$data_observed %&gt;% filter(recovery == 1)
+# family.size.recov &lt;- model_glm$layers$q.size.recov$method_options
+# res.tab.size.recov &lt;- covariate_selection(&#39;q.size.recov&#39;, all_covariates, family.size.recov, d_size_recov, weight, minimize=&#39;deviance&#39;)
+# print(res.tab.size.recov)</code></pre>
 <p>Next, we provide the formulae for each layer, coming from the
 covariate selection procedure.</p>
 <pre class="r"><code># Formulae hierarchical GLM layers - model calibration
-#formula_settle_glm &lt;- res.tab.settle$m_formula[[1]]
-formula_settle_glm &lt;- &quot;settlement ~ type + devYearMonth + age.fact + rep.month&quot;
-#formula_pay_glm    &lt;- res.tab.pay$m_formula[[1]]
-formula_pay_glm &lt;- &quot;payment ~ settlement + devYearMonth + type + age.fact + rep.month&quot;
-#formula_recov_glm    &lt;- res.tab.recov$m_formula[[1]]
-formula_recov_glm &lt;- &quot;recovery ~ devYearMonth + settlement + type + age.fact + rep.month&quot;
-#formula_size_pay_glm   &lt;- res.tab.size.pay$m_formula[[1]]
-formula_size_pay_glm &lt;- &quot;size.pay ~ type + devYearMonth + age.fact + rep.month + settlement&quot;
-#formula_size_recov_glm    &lt;- res.tab.size.recov$m_formula[[1]]
-formula_size_recov_glm &lt;- &quot;q.size.recov ~ age.fact + type + devYearMonth + rep.month + settlement&quot;</code></pre>
+# formula_settle_glm &lt;- res.tab.settle$m_formula[[1]]
+# formula_pay_glm    &lt;- res.tab.pay$m_formula[[1]]
+# formula_recov_glm    &lt;- res.tab.recov$m_formula[[1]]
+# formula_size_pay_glm   &lt;- res.tab.size.pay$m_formula[[1]]
+# formula_size_recov_glm    &lt;- res.tab.size.recov$m_formula[[1]]
+
+formula_settle_glm &lt;- &quot;settlement ~ type + devYearMonth + age.cat + rep.month&quot;
+formula_pay_glm &lt;- &quot;payment ~ devYearMonth + settlement + type + age.cat + rep.month&quot;
+formula_recov_glm &lt;- &quot;recovery ~ settlement + type + devYearMonth + rep.month + age.cat&quot;
+formula_size_pay_glm &lt;- &quot;size.pay ~ type + devYearMonth + settlement + age.cat + rep.month&quot;
+formula_size_recov_glm &lt;- &quot;q.size.recov ~ type + devYearMonth + rep.month + settlement + age.cat&quot;</code></pre>
 <p>We fit the hierarchical GLM on the observed portfolio of simulated
 claims.</p>
 <pre class="r"><code># Fitting the hierarchical GLM
@@ -847,25 +755,12 @@ model_glm &lt;- hirem::fit(model_glm,
 </div>
 <div id="hierarchical-gbm" class="section level3">
 <h3>Hierarchical GBM</h3>
-<p>The hierarchical GBM consists of the same three layer structure and
-the same distributional assumptions as the hierarchical GLM. However
-each layer is now modeled with a GBM instead of a GLM.</p>
-<p>We first define the model specifications of each layer. We only train
-the reserving model on the claim updates that are still open at the
-beginning of each year and are observed on the evaluation date
-(<code>calendar.year &lt;= 10</code>). We tune some of the GBM
-parameters (number of trees, interaction depth and shrinkage) using a
-5-fold cross validation approach <span class="citation">(Creveceour,
-Antonio, and Robben 2021)</span>. We list here the obtained results from
-the tuning strategy in the paper. We further fix the
-<code>bag.fraction</code> to 0.75 and the minimum number of
-observecations each node (<code>n.minobsinnode</code>) to 100.</p>
 <pre class="r"><code># Results of hierarchical model calibration
-gbm_param_settle &lt;- list(&#39;n.trees&#39; = 225, &#39;interaction.depth&#39; = 1, &#39;shrinkage&#39; = 0.05)
-gbm_param_pay    &lt;- list(&#39;n.trees&#39; = 125, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
-gbm_param_recov    &lt;- list(&#39;n.trees&#39; = 125, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
-gbm_param_size_pay   &lt;- list(&#39;n.trees&#39; = 700, &#39;interaction.depth&#39; = 1, &#39;shrinkage&#39; = 0.05)
-gbm_param_size_recov   &lt;- list(&#39;n.trees&#39; = 700, &#39;interaction.depth&#39; = 1, &#39;shrinkage&#39; = 0.05)
+gbm_param_settle &lt;- list(&#39;n.trees&#39; = 225, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
+gbm_param_pay    &lt;- list(&#39;n.trees&#39; = 225, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
+gbm_param_recov    &lt;- list(&#39;n.trees&#39; = 225, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
+gbm_param_size_pay   &lt;- list(&#39;n.trees&#39; = 700, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
+gbm_param_size_recov   &lt;- list(&#39;n.trees&#39; = 700, &#39;interaction.depth&#39; = 3, &#39;shrinkage&#39; = 0.05)
 
 # Model specifications
 model_gbm &lt;- hirem(reserving_data) %&gt;%
@@ -890,7 +785,7 @@ model_gbm &lt;- hirem(reserving_data) %&gt;%
 <p>We now fit the hierarchical GBM on the observed portfolio of
 simulated claims.</p>
 <pre class="r"><code># Covariates
-covariates_gbm &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;rep.year.fact&#39;, &#39;age.fact&#39;, &#39;calendar.year&#39;)
+covariates_gbm &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;age.cat&#39;)
 
 # Fitting the hierarchical GBM
 model_gbm &lt;- hirem::fit(model_gbm,
@@ -907,6 +802,113 @@ model_gbm &lt;- hirem::fit(model_gbm,
 ## Fitting layer_gbm for recovery...
 ## Fitting layer_gbm for size.pay...
 ## Fitting layer_gbm for q.size.recov...</code></pre>
+</div>
+<div id="hierarchical-xgb" class="section level3">
+<h3>Hierarchical XGB</h3>
+<pre class="r"><code># Results of hierarchical model calibration
+xgb_param_settle &lt;- list(&#39;eta&#39; =   1, &#39;max_depth&#39; = 1, &#39;nrounds&#39; =  10, &#39;subsample&#39; = 1)
+xgb_param_pay    &lt;- list(&#39;eta&#39; =  .5, &#39;max_depth&#39; = 3, &#39;nrounds&#39; =  10, &#39;subsample&#39; = 1)
+xgb_param_size   &lt;- list(&#39;eta&#39; = .5, &#39;max_depth&#39; = 3, &#39;nrounds&#39; = 40, &#39;subsample&#39; = .75)
+
+hyper_grid &lt;- expand.grid(
+  eta = c(.05,.5,1),
+  max_depth = c(1:5)
+)
+
+# Model specifications
+model_xgb &lt;- hirem(reserving_data) %&gt;%
+  split_data(observed = function(df) df %&gt;% filter(calendar.year &lt;= 10, open == 1)) %&gt;%
+  layer_xgb(&#39;settlement&#39;, objective = &#39;binary:logistic&#39;, eval_metric = &#39;logloss&#39;, grow_policy = &#39;lossguide&#39;,
+            eta = xgb_param_settle$eta, max_depth = xgb_param_settle$max_depth, 
+            nrounds = xgb_param_settle$nrounds, subsample = xgb_param_settle$subsample) %&gt;%
+  layer_xgb(&#39;payment&#39;, objective = &#39;binary:logistic&#39;, eval_metric = &#39;logloss&#39;, grow_policy = &#39;lossguide&#39;,
+            eta = xgb_param_pay$eta, max_depth = xgb_param_pay$max_depth,
+            nrounds = xgb_param_pay$nrounds, subsample = xgb_param_pay$subsample) %&gt;%
+  layer_xgb(&#39;recovery&#39;, objective = &#39;binary:logistic&#39;, eval_metric = &#39;logloss&#39;, grow_policy = &#39;lossguide&#39;,
+            eta = xgb_param_pay$eta, max_depth = xgb_param_pay$max_depth, 
+            nrounds = xgb_param_pay$nrounds, subsample = xgb_param_pay$subsample) %&gt;%
+  layer_xgb(&#39;size.pay&#39;, objective = &#39;reg:gamma&#39;, 
+            #gridsearch_cv = T, hyper_grid = hyper_grid, nfolds = 5,
+            eval_metric = &#39;gamma-deviance&#39;, grow_policy = &#39;lossguide&#39;,
+            eta = xgb_param_size$eta, max_depth = xgb_param_size$max_depth, nrounds = xgb_param_size$nrounds, 
+            subsample = xgb_param_size$subsample,
+            filter = function(data){data$payment == 1}) %&gt;%
+  layer_xgb(&#39;q.size.recov&#39;, objective = &#39;reg:squarederror&#39;, eval_metric = &#39;rmse&#39;,
+            grow_policy = &#39;lossguide&#39;,
+            eta = xgb_param_size$eta, max_depth = xgb_param_size$max_depth, 
+            nrounds = xgb_param_size$nrounds, subsample = xgb_param_size$subsample,
+            filter = function(data){data$recovery == 1})
+
+# Covariates
+covariates_xgb &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;age.cat&#39;)
+
+# Fitting the hierarchical XGB
+model_xgb &lt;- hirem::fit(model_xgb,
+                        weights = weight,
+                        weight.var = &#39;dev.year&#39;,
+                        balance.var = &#39;dev.year&#39;,
+                        settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_xgb, collapse = &#39; + &#39;)) ,
+                        payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_xgb, &#39;settlement&#39;), collapse = &#39; + &#39;)),
+                        recovery = paste0(&#39;recovery ~ &#39;, paste0(c(covariates_xgb, &#39;settlement&#39;), collapse = &#39; + &#39;)),
+                        size.pay = paste0(&#39;size.pay ~ &#39;, paste0(c(covariates_xgb,&#39;settlement&#39;), collapse = &#39; + &#39;)),
+                        q.size.recov = paste0(&#39;q.size.recov ~ &#39;, paste0(c(covariates_xgb,&#39;settlement&#39;), collapse = &#39; + &#39;)))</code></pre>
+<pre><code>## Fitting layer_xgb for settlement...
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:31] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## Fitting layer_xgb for payment...
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:33] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## Fitting layer_xgb for recovery...
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:35] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## Fitting layer_xgb for size.pay...
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:40] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## Fitting layer_xgb for q.size.recov...
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:09:41] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.</code></pre>
 </div>
 <div id="hierarchical-hybrid-cannglm" class="section level3">
 <h3>Hierarchical Hybrid CANN/GLM</h3>
@@ -994,12 +996,8 @@ model_cann &lt;-  hirem(reserving_data) %&gt;%
              filter = function(data){data$payment == 1}) %&gt;%
   layer_glm(name = &#39;q.size.recov&#39;, &#39;family&#39; = gaussian(), 
             filter = function(x){x$recovery == 1})</code></pre>
-<p>We now fit the hierarchical CANN on the observed portfolio of
-simulated claims. Notice that <code>dev.year.fact</code> is removed from
-the list of covariates to prevent an issue in the calibration process
-(loss function is <code>nan</code>).</p>
 <pre class="r"><code>#Covariates
-covariates_cann &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;rep.year.fact&#39;, &#39;calendar.year&#39;, &#39;age.fact&#39;)
+covariates_cann &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;age.cat&#39;)
 
 model_cann &lt;- hirem::fit(model_cann,
                  balance.var = &#39;dev.year&#39;,
@@ -1010,144 +1008,326 @@ model_cann &lt;- hirem::fit(model_cann,
                  q.size.recov = formula_size_recov_glm)</code></pre>
 <pre><code>## Fitting layer_cann for settlement...
 ## Model: &quot;CANN&quot;
-## ________________________________________________________________________________________________________________________________________
-##  Layer (type)                               Output Shape                  Param #          Connected to                                 
-## ========================================================================================================================================
-##  input_layer_nn (InputLayer)                [(None, 87)]                  0                []                                           
-##                                                                                                                                         
-##  hidden_layer_1 (Dense)                     (None, 10)                    880              [&#39;input_layer_nn[0][0]&#39;]                     
-##                                                                                                                                         
-##  hidden_layer_activation_1 (Activation)     (None, 10)                    0                [&#39;hidden_layer_1[0][0]&#39;]                     
-##                                                                                                                                         
-##  hidden_layer_2 (Dense)                     (None, 20)                    220              [&#39;hidden_layer_activation_1[0][0]&#39;]          
-##                                                                                                                                         
-##  hidden_layer_activation_2 (Activation)     (None, 20)                    0                [&#39;hidden_layer_2[0][0]&#39;]                     
-##                                                                                                                                         
-##  last_hidden_layer (Dense)                  (None, 10)                    210              [&#39;hidden_layer_activation_2[0][0]&#39;]          
-##                                                                                                                                         
-##  input_layer_glm (InputLayer)               [(None, 105)]                 0                []                                           
-##                                                                                                                                         
-##  last_hidden_layer_activation (Activation)  (None, 10)                    0                [&#39;last_hidden_layer[0][0]&#39;]                  
-##                                                                                                                                         
-##  output_layer_glm (Dense)                   (None, 1)                     106              [&#39;input_layer_glm[0][0]&#39;]                    
-##                                                                                                                                         
-##  output_layer_NN (Dense)                    (None, 1)                     11               [&#39;last_hidden_layer_activation[0][0]&#39;]       
-##                                                                                                                                         
-##  add_4 (Add)                                (None, 1)                     0                [&#39;output_layer_glm[0][0]&#39;,                   
-##                                                                                             &#39;output_layer_NN[0][0]&#39;]                    
-##                                                                                                                                         
-##  output_layer_CANN (Dense)                  (None, 1)                     2                [&#39;add_4[0][0]&#39;]                              
-##                                                                                                                                         
-## ========================================================================================================================================
-## Total params: 1,429
-## Trainable params: 1,321
-## Non-trainable params: 108
-## ________________________________________________________________________________________________________________________________________
+## _____________________________________________________________________________________________________________________________________________________________
+##  Layer (type)                                      Output Shape                       Param #            Connected to                                        
+## =============================================================================================================================================================
+##  input_layer_nn (InputLayer)                       [(None, 33)]                       0                  []                                                  
+##                                                                                                                                                              
+##  hidden_layer_1 (Dense)                            (None, 10)                         340                [&#39;input_layer_nn[0][0]&#39;]                            
+##                                                                                                                                                              
+##  hidden_layer_activation_1 (Activation)            (None, 10)                         0                  [&#39;hidden_layer_1[0][0]&#39;]                            
+##                                                                                                                                                              
+##  hidden_layer_2 (Dense)                            (None, 20)                         220                [&#39;hidden_layer_activation_1[0][0]&#39;]                 
+##                                                                                                                                                              
+##  hidden_layer_activation_2 (Activation)            (None, 20)                         0                  [&#39;hidden_layer_2[0][0]&#39;]                            
+##                                                                                                                                                              
+##  last_hidden_layer (Dense)                         (None, 10)                         210                [&#39;hidden_layer_activation_2[0][0]&#39;]                 
+##                                                                                                                                                              
+##  input_layer_glm (InputLayer)                      [(None, 62)]                       0                  []                                                  
+##                                                                                                                                                              
+##  last_hidden_layer_activation (Activation)         (None, 10)                         0                  [&#39;last_hidden_layer[0][0]&#39;]                         
+##                                                                                                                                                              
+##  output_layer_glm (Dense)                          (None, 1)                          63                 [&#39;input_layer_glm[0][0]&#39;]                           
+##                                                                                                                                                              
+##  output_layer_NN (Dense)                           (None, 1)                          11                 [&#39;last_hidden_layer_activation[0][0]&#39;]              
+##                                                                                                                                                              
+##  add_4 (Add)                                       (None, 1)                          0                  [&#39;output_layer_glm[0][0]&#39;,                          
+##                                                                                                           &#39;output_layer_NN[0][0]&#39;]                           
+##                                                                                                                                                              
+##  output_layer_CANN (Dense)                         (None, 1)                          2                  [&#39;add_4[0][0]&#39;]                                     
+##                                                                                                                                                              
+## =============================================================================================================================================================
+## Total params: 846
+## Trainable params: 781
+## Non-trainable params: 65
+## _____________________________________________________________________________________________________________________________________________________________
 ## Fitting layer_cann for payment...
 ## Model: &quot;CANN&quot;
-## ________________________________________________________________________________________________________________________________________
-##  Layer (type)                               Output Shape                  Param #          Connected to                                 
-## ========================================================================================================================================
-##  input_layer_nn (InputLayer)                [(None, 88)]                  0                []                                           
-##                                                                                                                                         
-##  hidden_layer_1 (Dense)                     (None, 10)                    890              [&#39;input_layer_nn[0][0]&#39;]                     
-##                                                                                                                                         
-##  hidden_layer_activation_1 (Activation)     (None, 10)                    0                [&#39;hidden_layer_1[0][0]&#39;]                     
-##                                                                                                                                         
-##  hidden_layer_2 (Dense)                     (None, 10)                    110              [&#39;hidden_layer_activation_1[0][0]&#39;]          
-##                                                                                                                                         
-##  hidden_layer_activation_2 (Activation)     (None, 10)                    0                [&#39;hidden_layer_2[0][0]&#39;]                     
-##                                                                                                                                         
-##  last_hidden_layer (Dense)                  (None, 20)                    220              [&#39;hidden_layer_activation_2[0][0]&#39;]          
-##                                                                                                                                         
-##  input_layer_glm (InputLayer)               [(None, 106)]                 0                []                                           
-##                                                                                                                                         
-##  last_hidden_layer_activation (Activation)  (None, 20)                    0                [&#39;last_hidden_layer[0][0]&#39;]                  
-##                                                                                                                                         
-##  output_layer_glm (Dense)                   (None, 1)                     107              [&#39;input_layer_glm[0][0]&#39;]                    
-##                                                                                                                                         
-##  output_layer_NN (Dense)                    (None, 1)                     21               [&#39;last_hidden_layer_activation[0][0]&#39;]       
-##                                                                                                                                         
-##  add_5 (Add)                                (None, 1)                     0                [&#39;output_layer_glm[0][0]&#39;,                   
-##                                                                                             &#39;output_layer_NN[0][0]&#39;]                    
-##                                                                                                                                         
-##  output_layer_CANN (Dense)                  (None, 1)                     2                [&#39;add_5[0][0]&#39;]                              
-##                                                                                                                                         
-## ========================================================================================================================================
-## Total params: 1,350
-## Trainable params: 1,241
-## Non-trainable params: 109
-## ________________________________________________________________________________________________________________________________________
+## _____________________________________________________________________________________________________________________________________________________________
+##  Layer (type)                                      Output Shape                       Param #            Connected to                                        
+## =============================================================================================================================================================
+##  input_layer_nn (InputLayer)                       [(None, 34)]                       0                  []                                                  
+##                                                                                                                                                              
+##  hidden_layer_1 (Dense)                            (None, 10)                         350                [&#39;input_layer_nn[0][0]&#39;]                            
+##                                                                                                                                                              
+##  hidden_layer_activation_1 (Activation)            (None, 10)                         0                  [&#39;hidden_layer_1[0][0]&#39;]                            
+##                                                                                                                                                              
+##  hidden_layer_2 (Dense)                            (None, 10)                         110                [&#39;hidden_layer_activation_1[0][0]&#39;]                 
+##                                                                                                                                                              
+##  hidden_layer_activation_2 (Activation)            (None, 10)                         0                  [&#39;hidden_layer_2[0][0]&#39;]                            
+##                                                                                                                                                              
+##  last_hidden_layer (Dense)                         (None, 20)                         220                [&#39;hidden_layer_activation_2[0][0]&#39;]                 
+##                                                                                                                                                              
+##  input_layer_glm (InputLayer)                      [(None, 63)]                       0                  []                                                  
+##                                                                                                                                                              
+##  last_hidden_layer_activation (Activation)         (None, 20)                         0                  [&#39;last_hidden_layer[0][0]&#39;]                         
+##                                                                                                                                                              
+##  output_layer_glm (Dense)                          (None, 1)                          64                 [&#39;input_layer_glm[0][0]&#39;]                           
+##                                                                                                                                                              
+##  output_layer_NN (Dense)                           (None, 1)                          21                 [&#39;last_hidden_layer_activation[0][0]&#39;]              
+##                                                                                                                                                              
+##  add_5 (Add)                                       (None, 1)                          0                  [&#39;output_layer_glm[0][0]&#39;,                          
+##                                                                                                           &#39;output_layer_NN[0][0]&#39;]                           
+##                                                                                                                                                              
+##  output_layer_CANN (Dense)                         (None, 1)                          2                  [&#39;add_5[0][0]&#39;]                                     
+##                                                                                                                                                              
+## =============================================================================================================================================================
+## Total params: 767
+## Trainable params: 701
+## Non-trainable params: 66
+## _____________________________________________________________________________________________________________________________________________________________
 ## Fitting layer_cann for recovery...
 ## Model: &quot;CANN&quot;
-## ________________________________________________________________________________________________________________________________________
-##  Layer (type)                               Output Shape                  Param #          Connected to                                 
-## ========================================================================================================================================
-##  input_layer_nn (InputLayer)                [(None, 88)]                  0                []                                           
-##                                                                                                                                         
-##  hidden_layer_1 (Dense)                     (None, 10)                    890              [&#39;input_layer_nn[0][0]&#39;]                     
-##                                                                                                                                         
-##  hidden_layer_activation_1 (Activation)     (None, 10)                    0                [&#39;hidden_layer_1[0][0]&#39;]                     
-##                                                                                                                                         
-##  hidden_layer_2 (Dense)                     (None, 10)                    110              [&#39;hidden_layer_activation_1[0][0]&#39;]          
-##                                                                                                                                         
-##  hidden_layer_activation_2 (Activation)     (None, 10)                    0                [&#39;hidden_layer_2[0][0]&#39;]                     
-##                                                                                                                                         
-##  last_hidden_layer (Dense)                  (None, 20)                    220              [&#39;hidden_layer_activation_2[0][0]&#39;]          
-##                                                                                                                                         
-##  input_layer_glm (InputLayer)               [(None, 106)]                 0                []                                           
-##                                                                                                                                         
-##  last_hidden_layer_activation (Activation)  (None, 20)                    0                [&#39;last_hidden_layer[0][0]&#39;]                  
-##                                                                                                                                         
-##  output_layer_glm (Dense)                   (None, 1)                     107              [&#39;input_layer_glm[0][0]&#39;]                    
-##                                                                                                                                         
-##  output_layer_NN (Dense)                    (None, 1)                     21               [&#39;last_hidden_layer_activation[0][0]&#39;]       
-##                                                                                                                                         
-##  add_6 (Add)                                (None, 1)                     0                [&#39;output_layer_glm[0][0]&#39;,                   
-##                                                                                             &#39;output_layer_NN[0][0]&#39;]                    
-##                                                                                                                                         
-##  output_layer_CANN (Dense)                  (None, 1)                     2                [&#39;add_6[0][0]&#39;]                              
-##                                                                                                                                         
-## ========================================================================================================================================
-## Total params: 1,350
-## Trainable params: 1,241
-## Non-trainable params: 109
-## ________________________________________________________________________________________________________________________________________
+## _____________________________________________________________________________________________________________________________________________________________
+##  Layer (type)                                      Output Shape                       Param #            Connected to                                        
+## =============================================================================================================================================================
+##  input_layer_nn (InputLayer)                       [(None, 34)]                       0                  []                                                  
+##                                                                                                                                                              
+##  hidden_layer_1 (Dense)                            (None, 10)                         350                [&#39;input_layer_nn[0][0]&#39;]                            
+##                                                                                                                                                              
+##  hidden_layer_activation_1 (Activation)            (None, 10)                         0                  [&#39;hidden_layer_1[0][0]&#39;]                            
+##                                                                                                                                                              
+##  hidden_layer_2 (Dense)                            (None, 10)                         110                [&#39;hidden_layer_activation_1[0][0]&#39;]                 
+##                                                                                                                                                              
+##  hidden_layer_activation_2 (Activation)            (None, 10)                         0                  [&#39;hidden_layer_2[0][0]&#39;]                            
+##                                                                                                                                                              
+##  last_hidden_layer (Dense)                         (None, 20)                         220                [&#39;hidden_layer_activation_2[0][0]&#39;]                 
+##                                                                                                                                                              
+##  input_layer_glm (InputLayer)                      [(None, 63)]                       0                  []                                                  
+##                                                                                                                                                              
+##  last_hidden_layer_activation (Activation)         (None, 20)                         0                  [&#39;last_hidden_layer[0][0]&#39;]                         
+##                                                                                                                                                              
+##  output_layer_glm (Dense)                          (None, 1)                          64                 [&#39;input_layer_glm[0][0]&#39;]                           
+##                                                                                                                                                              
+##  output_layer_NN (Dense)                           (None, 1)                          21                 [&#39;last_hidden_layer_activation[0][0]&#39;]              
+##                                                                                                                                                              
+##  add_6 (Add)                                       (None, 1)                          0                  [&#39;output_layer_glm[0][0]&#39;,                          
+##                                                                                                           &#39;output_layer_NN[0][0]&#39;]                           
+##                                                                                                                                                              
+##  output_layer_CANN (Dense)                         (None, 1)                          2                  [&#39;add_6[0][0]&#39;]                                     
+##                                                                                                                                                              
+## =============================================================================================================================================================
+## Total params: 767
+## Trainable params: 701
+## Non-trainable params: 66
+## _____________________________________________________________________________________________________________________________________________________________
 ## Fitting layer_cann for size.pay...
 ## Model: &quot;CANN&quot;
-## ________________________________________________________________________________________________________________________________________
-##  Layer (type)                               Output Shape                  Param #          Connected to                                 
-## ========================================================================================================================================
-##  input_layer_nn (InputLayer)                [(None, 88)]                  0                []                                           
-##                                                                                                                                         
-##  hidden_layer_1 (Dense)                     (None, 30)                    2670             [&#39;input_layer_nn[0][0]&#39;]                     
-##                                                                                                                                         
-##  hidden_layer_activation_1 (Activation)     (None, 30)                    0                [&#39;hidden_layer_1[0][0]&#39;]                     
-##                                                                                                                                         
-##  hidden_layer_2 (Dense)                     (None, 20)                    620              [&#39;hidden_layer_activation_1[0][0]&#39;]          
-##                                                                                                                                         
-##  hidden_layer_activation_2 (Activation)     (None, 20)                    0                [&#39;hidden_layer_2[0][0]&#39;]                     
-##                                                                                                                                         
-##  last_hidden_layer (Dense)                  (None, 10)                    210              [&#39;hidden_layer_activation_2[0][0]&#39;]          
-##                                                                                                                                         
-##  input_layer_glm (InputLayer)               [(None, 106)]                 0                []                                           
-##                                                                                                                                         
-##  last_hidden_layer_activation (Activation)  (None, 10)                    0                [&#39;last_hidden_layer[0][0]&#39;]                  
-##                                                                                                                                         
-##  output_layer_glm (Dense)                   (None, 1)                     107              [&#39;input_layer_glm[0][0]&#39;]                    
-##                                                                                                                                         
-##  output_layer_NN (Dense)                    (None, 1)                     11               [&#39;last_hidden_layer_activation[0][0]&#39;]       
-##                                                                                                                                         
-##  add_7 (Add)                                (None, 1)                     0                [&#39;output_layer_glm[0][0]&#39;,                   
-##                                                                                             &#39;output_layer_NN[0][0]&#39;]                    
-##                                                                                                                                         
-##  output_layer_CANN (Dense)                  (None, 1)                     2                [&#39;add_7[0][0]&#39;]                              
-##                                                                                                                                         
-## ========================================================================================================================================
-## Total params: 3,620
-## Trainable params: 3,511
-## Non-trainable params: 109
-## ________________________________________________________________________________________________________________________________________
+## _____________________________________________________________________________________________________________________________________________________________
+##  Layer (type)                                      Output Shape                       Param #            Connected to                                        
+## =============================================================================================================================================================
+##  input_layer_nn (InputLayer)                       [(None, 34)]                       0                  []                                                  
+##                                                                                                                                                              
+##  hidden_layer_1 (Dense)                            (None, 30)                         1050               [&#39;input_layer_nn[0][0]&#39;]                            
+##                                                                                                                                                              
+##  hidden_layer_activation_1 (Activation)            (None, 30)                         0                  [&#39;hidden_layer_1[0][0]&#39;]                            
+##                                                                                                                                                              
+##  hidden_layer_2 (Dense)                            (None, 20)                         620                [&#39;hidden_layer_activation_1[0][0]&#39;]                 
+##                                                                                                                                                              
+##  hidden_layer_activation_2 (Activation)            (None, 20)                         0                  [&#39;hidden_layer_2[0][0]&#39;]                            
+##                                                                                                                                                              
+##  last_hidden_layer (Dense)                         (None, 10)                         210                [&#39;hidden_layer_activation_2[0][0]&#39;]                 
+##                                                                                                                                                              
+##  input_layer_glm (InputLayer)                      [(None, 63)]                       0                  []                                                  
+##                                                                                                                                                              
+##  last_hidden_layer_activation (Activation)         (None, 10)                         0                  [&#39;last_hidden_layer[0][0]&#39;]                         
+##                                                                                                                                                              
+##  output_layer_glm (Dense)                          (None, 1)                          64                 [&#39;input_layer_glm[0][0]&#39;]                           
+##                                                                                                                                                              
+##  output_layer_NN (Dense)                           (None, 1)                          11                 [&#39;last_hidden_layer_activation[0][0]&#39;]              
+##                                                                                                                                                              
+##  add_7 (Add)                                       (None, 1)                          0                  [&#39;output_layer_glm[0][0]&#39;,                          
+##                                                                                                           &#39;output_layer_NN[0][0]&#39;]                           
+##                                                                                                                                                              
+##  output_layer_CANN (Dense)                         (None, 1)                          2                  [&#39;add_7[0][0]&#39;]                                     
+##                                                                                                                                                              
+## =============================================================================================================================================================
+## Total params: 1,957
+## Trainable params: 1,891
+## Non-trainable params: 66
+## _____________________________________________________________________________________________________________________________________________________________
+## Fitting layer_glm for q.size.recov...</code></pre>
+</div>
+<div id="hierarchical-dnnglm" class="section level3">
+<h3>Hierarchical DNN/GLM</h3>
+<pre class="r"><code># Model specifications
+model_dnn &lt;-  hirem(reserving_data) %&gt;%
+  split_data(observed = function(df) df %&gt;% filter(calendar.year &lt;= 10, open == 1)) %&gt;%
+  layer_dnn(&#39;settlement&#39;, distribution = &#39;bernoulli&#39;,
+            bias_regularization = T, 
+            hidden = c(40,30,40),
+            loss = &#39;binary_crossentropy&#39;,
+            metrics = &#39;binary_crossentropy&#39;,
+            optimizer = optimizer_nadam(),
+            validation_split = .3,
+            activation.output = &#39;sigmoid&#39;,
+            family_for_init = binomial(), # default link = logit
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;val_binary_crossentropy&#39;,
+            patience = 20) %&gt;%
+  layer_dnn(&#39;payment&#39;, distribution = &#39;bernoulli&#39;,
+            bias_regularization = T,
+            hidden = c(30,40,20),
+            loss = &#39;binary_crossentropy&#39;,
+            metrics = &#39;binary_crossentropy&#39;,
+            optimizer = optimizer_nadam(),
+            validation_split = .3,
+            activation.output = &#39;sigmoid&#39;,
+            family_for_init = binomial(), # default link = logit
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;val_binary_crossentropy&#39;,
+            patience = 20) %&gt;%
+  layer_dnn(&#39;recovery&#39;, distribution = &#39;bernoulli&#39;,
+            bias_regularization = T,
+            hidden = c(30,40,20),
+            loss = &#39;binary_crossentropy&#39;,
+            metrics = &#39;binary_crossentropy&#39;,
+            optimizer = optimizer_nadam(),
+            validation_split = .3,
+            activation.output = &#39;sigmoid&#39;,
+            family_for_init = binomial(), # default link = logit
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;val_binary_crossentropy&#39;,
+            patience = 20) %&gt;%
+  layer_dnn(&#39;size.pay&#39;, distribution = &#39;gamma&#39;,
+            bias_regularization = T, 
+            hidden = c(30,40,50),
+            loss = gamma_deviance_keras,
+            metrics = metric_gamma_deviance_keras,
+            optimizer = optimizer_nadam(),
+            validation_split = .3,
+            activation.output = &#39;exponential&#39;,
+            family_for_init = Gamma(link=log), # default link = inverse
+            epochs = 100,
+            batch_size = 1000,
+            monitor = &#39;val_gamma_deviance_keras&#39;,
+            patience = 20,
+            filter = function(data){data$payment == 1}) %&gt;%
+  layer_glm(name = &#39;q.size.recov&#39;, &#39;family&#39; = gaussian(), 
+            filter = function(x){x$recovery == 1})
+
+
+covariates_dnn &lt;- c(&#39;type&#39;, &#39;dev.year.fact&#39;, &#39;rep.month&#39;, &#39;age.cat&#39;)
+
+# Fitting the hierarchical MLP
+model_dnn &lt;- hirem::fit(model_dnn,
+                        balance.var = &#39;dev.year&#39;,
+                        settlement = paste0(&#39;settlement ~ &#39;, paste0(covariates_dnn, collapse = &#39; + &#39;)),
+                        payment = paste0(&#39;payment ~ &#39;, paste0(c(covariates_dnn, &#39;settlement&#39;), collapse = &#39; + &#39;)),
+                        recovery = paste0(&#39;recovery ~ &#39;, paste0(c(covariates_dnn, &#39;settlement&#39;), collapse = &#39; + &#39;)),
+                        size.pay = paste0(&#39;size.pay ~ &#39;, paste0(c(covariates_dnn,&#39;settlement&#39;), collapse = &#39; + &#39;)),
+                        q.size.recov = formula_size_recov_glm)</code></pre>
+<pre><code>## Fitting layer_dnn for settlement...
+## Model: &quot;model_16&quot;
+## _____________________________________________________________________________________________________________________________________________________________
+##  Layer (type)                                                         Output Shape                                                   Param #                 
+## =============================================================================================================================================================
+##  input_layer_nn (InputLayer)                                          [(None, 33)]                                                   0                       
+##                                                                                                                                                              
+##  hidden_layer_1 (Dense)                                               (None, 40)                                                     1360                    
+##                                                                                                                                                              
+##  hidden_layer_activation_1 (Activation)                               (None, 40)                                                     0                       
+##                                                                                                                                                              
+##  hidden_layer_2 (Dense)                                               (None, 30)                                                     1230                    
+##                                                                                                                                                              
+##  hidden_layer_activation_2 (Activation)                               (None, 30)                                                     0                       
+##                                                                                                                                                              
+##  last_hidden_layer (Dense)                                            (None, 40)                                                     1240                    
+##                                                                                                                                                              
+##  last_hidden_layer_activation (Activation)                            (None, 40)                                                     0                       
+##                                                                                                                                                              
+##  output_layer (Dense)                                                 (None, 1)                                                      41                      
+##                                                                                                                                                              
+## =============================================================================================================================================================
+## Total params: 3,871
+## Trainable params: 3,871
+## Non-trainable params: 0
+## _____________________________________________________________________________________________________________________________________________________________
+## [1] &quot;Model: \&quot;model_16\&quot;\n_____________________________________________________________________________________________________________________________________________________________\n Layer (type)                                                         Output Shape                                                   Param #                 \n=============================================================================================================================================================\n input_layer_nn (InputLayer)                                          [(None, 33)]                                                   0                       \n                                                                                                                                                             \n hidden_layer_1 (Dense)                                               (None, 40)                                                     1360                    \n                                                                                                                                                             \n hidden_layer_activation_1 (Activation)                               (None, 40)                                                     0                       \n                                                                                                                                                             \n hidden_layer_2 (Dense)                                               (None, 30)                                                     1230                    \n                                                                                                                                                             \n hidden_layer_activation_2 (Activation)                               (None, 30)                                                     0                       \n                                                                                                                                                             \n last_hidden_layer (Dense)                                            (None, 40)                                                     1240                    \n                                                                                                                                                             \n last_hidden_layer_activation (Activation)                            (None, 40)                                                     0                       \n                                                                                                                                                             \n output_layer (Dense)                                                 (None, 1)                                                      41                      \n                                                                                                                                                             \n=============================================================================================================================================================\nTotal params: 3,871\nTrainable params: 3,871\nNon-trainable params: 0\n_____________________________________________________________________________________________________________________________________________________________&quot;
+## Fitting layer_dnn for payment...
+## Model: &quot;model_18&quot;
+## _____________________________________________________________________________________________________________________________________________________________
+##  Layer (type)                                                         Output Shape                                                   Param #                 
+## =============================================================================================================================================================
+##  input_layer_nn (InputLayer)                                          [(None, 34)]                                                   0                       
+##                                                                                                                                                              
+##  hidden_layer_1 (Dense)                                               (None, 30)                                                     1050                    
+##                                                                                                                                                              
+##  hidden_layer_activation_1 (Activation)                               (None, 30)                                                     0                       
+##                                                                                                                                                              
+##  hidden_layer_2 (Dense)                                               (None, 40)                                                     1240                    
+##                                                                                                                                                              
+##  hidden_layer_activation_2 (Activation)                               (None, 40)                                                     0                       
+##                                                                                                                                                              
+##  last_hidden_layer (Dense)                                            (None, 20)                                                     820                     
+##                                                                                                                                                              
+##  last_hidden_layer_activation (Activation)                            (None, 20)                                                     0                       
+##                                                                                                                                                              
+##  output_layer (Dense)                                                 (None, 1)                                                      21                      
+##                                                                                                                                                              
+## =============================================================================================================================================================
+## Total params: 3,131
+## Trainable params: 3,131
+## Non-trainable params: 0
+## _____________________________________________________________________________________________________________________________________________________________
+## [1] &quot;Model: \&quot;model_18\&quot;\n_____________________________________________________________________________________________________________________________________________________________\n Layer (type)                                                         Output Shape                                                   Param #                 \n=============================================================================================================================================================\n input_layer_nn (InputLayer)                                          [(None, 34)]                                                   0                       \n                                                                                                                                                             \n hidden_layer_1 (Dense)                                               (None, 30)                                                     1050                    \n                                                                                                                                                             \n hidden_layer_activation_1 (Activation)                               (None, 30)                                                     0                       \n                                                                                                                                                             \n hidden_layer_2 (Dense)                                               (None, 40)                                                     1240                    \n                                                                                                                                                             \n hidden_layer_activation_2 (Activation)                               (None, 40)                                                     0                       \n                                                                                                                                                             \n last_hidden_layer (Dense)                                            (None, 20)                                                     820                     \n                                                                                                                                                             \n last_hidden_layer_activation (Activation)                            (None, 20)                                                     0                       \n                                                                                                                                                             \n output_layer (Dense)                                                 (None, 1)                                                      21                      \n                                                                                                                                                             \n=============================================================================================================================================================\nTotal params: 3,131\nTrainable params: 3,131\nNon-trainable params: 0\n_____________________________________________________________________________________________________________________________________________________________&quot;
+## Fitting layer_dnn for recovery...
+## Model: &quot;model_20&quot;
+## _____________________________________________________________________________________________________________________________________________________________
+##  Layer (type)                                                         Output Shape                                                   Param #                 
+## =============================================================================================================================================================
+##  input_layer_nn (InputLayer)                                          [(None, 34)]                                                   0                       
+##                                                                                                                                                              
+##  hidden_layer_1 (Dense)                                               (None, 30)                                                     1050                    
+##                                                                                                                                                              
+##  hidden_layer_activation_1 (Activation)                               (None, 30)                                                     0                       
+##                                                                                                                                                              
+##  hidden_layer_2 (Dense)                                               (None, 40)                                                     1240                    
+##                                                                                                                                                              
+##  hidden_layer_activation_2 (Activation)                               (None, 40)                                                     0                       
+##                                                                                                                                                              
+##  last_hidden_layer (Dense)                                            (None, 20)                                                     820                     
+##                                                                                                                                                              
+##  last_hidden_layer_activation (Activation)                            (None, 20)                                                     0                       
+##                                                                                                                                                              
+##  output_layer (Dense)                                                 (None, 1)                                                      21                      
+##                                                                                                                                                              
+## =============================================================================================================================================================
+## Total params: 3,131
+## Trainable params: 3,131
+## Non-trainable params: 0
+## _____________________________________________________________________________________________________________________________________________________________
+## [1] &quot;Model: \&quot;model_20\&quot;\n_____________________________________________________________________________________________________________________________________________________________\n Layer (type)                                                         Output Shape                                                   Param #                 \n=============================================================================================================================================================\n input_layer_nn (InputLayer)                                          [(None, 34)]                                                   0                       \n                                                                                                                                                             \n hidden_layer_1 (Dense)                                               (None, 30)                                                     1050                    \n                                                                                                                                                             \n hidden_layer_activation_1 (Activation)                               (None, 30)                                                     0                       \n                                                                                                                                                             \n hidden_layer_2 (Dense)                                               (None, 40)                                                     1240                    \n                                                                                                                                                             \n hidden_layer_activation_2 (Activation)                               (None, 40)                                                     0                       \n                                                                                                                                                             \n last_hidden_layer (Dense)                                            (None, 20)                                                     820                     \n                                                                                                                                                             \n last_hidden_layer_activation (Activation)                            (None, 20)                                                     0                       \n                                                                                                                                                             \n output_layer (Dense)                                                 (None, 1)                                                      21                      \n                                                                                                                                                             \n=============================================================================================================================================================\nTotal params: 3,131\nTrainable params: 3,131\nNon-trainable params: 0\n_____________________________________________________________________________________________________________________________________________________________&quot;
+## Fitting layer_dnn for size.pay...
+## Model: &quot;model_22&quot;
+## _____________________________________________________________________________________________________________________________________________________________
+##  Layer (type)                                                         Output Shape                                                   Param #                 
+## =============================================================================================================================================================
+##  input_layer_nn (InputLayer)                                          [(None, 34)]                                                   0                       
+##                                                                                                                                                              
+##  hidden_layer_1 (Dense)                                               (None, 30)                                                     1050                    
+##                                                                                                                                                              
+##  hidden_layer_activation_1 (Activation)                               (None, 30)                                                     0                       
+##                                                                                                                                                              
+##  hidden_layer_2 (Dense)                                               (None, 40)                                                     1240                    
+##                                                                                                                                                              
+##  hidden_layer_activation_2 (Activation)                               (None, 40)                                                     0                       
+##                                                                                                                                                              
+##  last_hidden_layer (Dense)                                            (None, 50)                                                     2050                    
+##                                                                                                                                                              
+##  last_hidden_layer_activation (Activation)                            (None, 50)                                                     0                       
+##                                                                                                                                                              
+##  output_layer (Dense)                                                 (None, 1)                                                      51                      
+##                                                                                                                                                              
+## =============================================================================================================================================================
+## Total params: 4,391
+## Trainable params: 4,391
+## Non-trainable params: 0
+## _____________________________________________________________________________________________________________________________________________________________
+## [1] &quot;Model: \&quot;model_22\&quot;\n_____________________________________________________________________________________________________________________________________________________________\n Layer (type)                                                         Output Shape                                                   Param #                 \n=============================================================================================================================================================\n input_layer_nn (InputLayer)                                          [(None, 34)]                                                   0                       \n                                                                                                                                                             \n hidden_layer_1 (Dense)                                               (None, 30)                                                     1050                    \n                                                                                                                                                             \n hidden_layer_activation_1 (Activation)                               (None, 30)                                                     0                       \n                                                                                                                                                             \n hidden_layer_2 (Dense)                                               (None, 40)                                                     1240                    \n                                                                                                                                                             \n hidden_layer_activation_2 (Activation)                               (None, 40)                                                     0                       \n                                                                                                                                                             \n last_hidden_layer (Dense)                                            (None, 50)                                                     2050                    \n                                                                                                                                                             \n last_hidden_layer_activation (Activation)                            (None, 50)                                                     0                       \n                                                                                                                                                             \n output_layer (Dense)                                                 (None, 1)                                                      51                      \n                                                                                                                                                             \n=============================================================================================================================================================\nTotal params: 4,391\nTrainable params: 4,391\nNon-trainable params: 0\n_____________________________________________________________________________________________________________________________________________________________&quot;
 ## Fitting layer_glm for q.size.recov...</code></pre>
 </div>
 </div>
@@ -1177,7 +1357,9 @@ update &lt;- function(data) {
 
 model_glm &lt;- register_updater(model_glm, update)
 model_gbm &lt;- register_updater(model_gbm, update)
-model_cann &lt;- register_updater(model_cann, update)</code></pre>
+model_xgb &lt;- register_updater(model_xgb, update)
+model_cann &lt;- register_updater(model_cann, update)
+model_dnn &lt;- register_updater(model_dnn, update)</code></pre>
 <p>Next, we apply the actual simulation of the development of claims
 over time beyond the observation window of those claims that are still
 open at the evaluation date (calendar year 11). Moreover, we apply the
@@ -1197,10 +1379,66 @@ simul_gbm &lt;- simulate(model_gbm,
                       data = model_gbm$data_observed %&gt;% dplyr::filter(calendar.year == 10),
                       balance.correction = TRUE)
 
-simul_cann &lt;- simulate(model_cann,
+simul_xgb &lt;- simulate(model_xgb,
+                      nsim = nsim,
+                      filter = function(data){dplyr::filter(data, dev.year &lt;= 10, settlement == 0)},
+                      data = model_xgb$data_observed %&gt;% dplyr::filter(calendar.year == 10),
+                      balance.correction = TRUE)</code></pre>
+<pre><code>## [22:15:11] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:12] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:13] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:14] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:15] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:16] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:16] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:17] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:17] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:17] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:20] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:20] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:20] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:20] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:21] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:22] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:22] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:22] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:22] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:22] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:23] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:23] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:24] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:24] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:24] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:25] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:25] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:25] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:25] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:25] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:26] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:26] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:26] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:26] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:26] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:27] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:27] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:27] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:27] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:27] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:28] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:28] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:28] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:28] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.
+## [22:15:28] WARNING: amalgamation/../src/c_api/c_api.cc:785: `ntree_limit` is deprecated, use `iteration_range` instead.</code></pre>
+<pre class="r"><code>simul_cann &lt;- simulate(model_cann,
                       nsim = nsim,
                       filter = function(data){dplyr::filter(data, dev.year &lt;= 10, settlement == 0)},
                       data = model_cann$data_observed %&gt;% dplyr::filter(calendar.year == 10),
+                      balance.correction = TRUE)
+
+simul_dnn &lt;- simulate(model_dnn,
+                      nsim = nsim,
+                      filter = function(data){dplyr::filter(data, dev.year &lt;= 10, settlement == 0)},
+                      data = model_dnn$data_observed %&gt;% dplyr::filter(calendar.year == 10),
                       balance.correction = TRUE)</code></pre>
 </div>
 <div id="chain-ladder-model" class="section level2">
@@ -1219,8 +1457,10 @@ triangle_open    &lt;- construct_triangle(data = observed_data %&gt;% filter(ope
                                        group.var2 = &#39;dev.year&#39;, value = &#39;open&#39;, cumulative = FALSE)
 triangle_payment &lt;- construct_triangle(data = observed_data, group.var1 = &#39;rep.year&#39;,
                                        group.var2 = &#39;dev.year&#39;, value = &#39;payment&#39;, cumulative = FALSE)
-triangle_size    &lt;- construct_triangle(data = observed_data, group.var1 = &#39;rep.year&#39;,
-                                       group.var2 = &#39;dev.year&#39;, value = &#39;size&#39;, cumulative = FALSE)
+triangle_size_pay    &lt;- construct_triangle(data = observed_data, group.var1 = &#39;rep.year&#39;,
+                                       group.var2 = &#39;dev.year&#39;, value = &#39;size.pay&#39;, cumulative = FALSE)
+triangle_size_recov    &lt;- construct_triangle(data = observed_data, group.var1 = &#39;rep.year&#39;,
+                                       group.var2 = &#39;dev.year&#39;, value = &#39;size.recov&#39;, cumulative = FALSE)
 
 # Number of open claims in the year following the evaluation date
 settle.evalyear &lt;- observed_data %&gt;% 
@@ -1238,7 +1478,8 @@ ladder model applied on the cumulative run-off triangles.</p>
 <pre class="r"><code># Chain ladder predictions
 cl_open &lt;- chainLadder_open(triangle_open)
 cl_pay  &lt;- chainLadder(triangle_payment, is_cumulatif = FALSE)
-cl_size &lt;- chainLadder(triangle_size, is_cumulatif = FALSE)</code></pre>
+cl_size_pay &lt;- chainLadder(triangle_size_pay, is_cumulatif = FALSE)
+cl_size_recov &lt;- chainLadder(triangle_size_recov, is_cumulatif = FALSE)</code></pre>
 </div>
 <div id="evaluating-the-predictive-performance-of-the-chain-ladder-model-and-the-hierarchical-glm-and-gbm" class="section level2">
 <h2>Evaluating the predictive performance of the chain-ladder model and
@@ -1252,12 +1493,14 @@ obs_open_total &lt;- prediction_data %&gt;% filter(calendar.year != 11) %&gt;% s
 cl_open_total  &lt;- sum(cl_open)
 glm_open_total &lt;- simul_glm %&gt;% filter(calendar.year != 11) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 gbm_open_total &lt;- simul_gbm %&gt;% filter(calendar.year != 11) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
+xgb_open_total &lt;- simul_xgb %&gt;% filter(calendar.year != 11) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 cann_open_total &lt;- simul_cann %&gt;% filter(calendar.year != 11) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
+dnn_open_total &lt;- simul_dnn %&gt;% filter(calendar.year != 11) %&gt;% summarise(Total = sum(open)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; =  obs_open_total, &#39;Chain-Ladder&#39; = cl_open_total, &#39;Hierarchical GLM&#39; = glm_open_total, &#39;Hierarchical GBM&#39; = gbm_open_total, &#39;Hierarchical CANN/GLM&#39; = cann_open_total)</code></pre>
-<pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM 
-##              12049.00              12498.98              12676.30              12882.14              12961.32</code></pre>
+c(&#39;Actual&#39; =  obs_open_total, &#39;Chain-Ladder&#39; = cl_open_total, &#39;Hierarchical GLM&#39; = glm_open_total, &#39;Hierarchical GBM&#39; = gbm_open_total, &#39;Hierarchical XGB&#39; = xgb_open_total, &#39;Hierarchical CANN/GLM&#39; = cann_open_total, &#39;Hierarchical DNN/GLM&#39; = dnn_open_total)</code></pre>
+<pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM      Hierarchical XGB Hierarchical CANN/GLM  Hierarchical DNN/GLM 
+##              10417.00              11604.54              11616.78              11551.58              11521.72              11638.60              11616.66</code></pre>
 <p>Second, we compare the prediction for the total number of payments in
 the prediction data set.</p>
 <pre class="r"><code># Predictions
@@ -1265,37 +1508,43 @@ obs_pay_total &lt;- prediction_data %&gt;% summarise(Total = sum(payment)) %&gt;
 cl_pay_total  &lt;- sum(cl_pay)
 glm_pay_total &lt;- simul_glm %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
 gbm_pay_total &lt;- simul_gbm %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
+xgb_pay_total &lt;- simul_xgb %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
 cann_pay_total &lt;- simul_cann %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
+dnn_pay_total &lt;- simul_dnn %&gt;% summarise(Total = sum(payment)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; = obs_pay_total, &#39;Chain-Ladder&#39; = cl_pay_total, &#39;Hierarchical GLM&#39; = glm_pay_total, &#39;Hierarchical GBM&#39; = gbm_pay_total, &#39;Hierarchical CANN/GLM&#39; = cann_pay_total)</code></pre>
-<pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM 
-##              20489.00              21974.33              20988.32              21099.76              21348.72</code></pre>
+c(&#39;Actual&#39; = obs_pay_total, &#39;Chain-Ladder&#39; = cl_pay_total, &#39;Hierarchical GLM&#39; = glm_pay_total, &#39;Hierarchical GBM&#39; = gbm_pay_total, &#39;Hierarchical XGB&#39; = xgb_pay_total, &#39;Hierarchical CANN/GLM&#39; = cann_pay_total, &#39;Hierarchical DNN/GLM&#39; = dnn_pay_total)</code></pre>
+<pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM      Hierarchical XGB Hierarchical CANN/GLM  Hierarchical DNN/GLM 
+##              18800.00              20002.47              19656.40              19595.12              19559.64              19676.12              19642.96</code></pre>
 <p>Third, we compare the prediction for the total number of recoveries
 in the prediction data set.</p>
 <pre class="r"><code># Predictions
 obs_recov_total &lt;- prediction_data %&gt;% summarise(Total = sum(recovery)) %&gt;% pull(Total)
-glm_recov_total &lt;- simul_glm %&gt;% summarise(Total = sum(recovery)/nsim) %&gt;% pull(Total)
-gbm_recov_total &lt;- simul_gbm %&gt;% summarise(Total = sum(recovery)/nsim) %&gt;% pull(Total)
-cann_recov_total &lt;- simul_cann %&gt;% summarise(Total = sum(recovery)/nsim) %&gt;% pull(Total)
+glm_recov_total &lt;- simul_glm %&gt;% summarise(Total = round(sum(recovery)/nsim)) %&gt;% pull(Total)
+gbm_recov_total &lt;- simul_gbm %&gt;% summarise(Total = round(sum(recovery)/nsim)) %&gt;% pull(Total)
+xgb_recov_total &lt;- simul_xgb %&gt;% summarise(Total = round(sum(recovery)/nsim)) %&gt;% pull(Total)
+cann_recov_total &lt;- simul_cann %&gt;% summarise(Total = round(sum(recovery)/nsim)) %&gt;% pull(Total)
+dnn_recov_total &lt;- simul_dnn %&gt;% summarise(Total = round(sum(recovery)/nsim)) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; = obs_recov_total, &#39;Hierarchical GLM&#39; = glm_recov_total, &#39;Hierarchical GBM&#39; = gbm_recov_total, &#39;Hierarchical CANN/GLM&#39; = cann_recov_total)</code></pre>
-<pre><code>##                Actual      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM 
-##                479.00                464.78                471.04                454.58</code></pre>
+c(&#39;Actual&#39; = obs_recov_total, &#39;Hierarchical GLM&#39; = glm_recov_total, &#39;Hierarchical GBM&#39; = gbm_recov_total, &#39;Hierarchical XGB &#39; = xgb_recov_total, &#39;Hierarchical CANN/GLM&#39; = cann_recov_total, &#39;Hierarchical DNN/GLM&#39; = dnn_recov_total)</code></pre>
+<pre><code>##                Actual      Hierarchical GLM      Hierarchical GBM     Hierarchical XGB  Hierarchical CANN/GLM  Hierarchical DNN/GLM 
+##                   463                   484                   478                   474                   484                   481</code></pre>
 <p>Fourth, we compare the prediction for the total number of payment
 sizes in the prediction set.</p>
 <pre class="r"><code># Predictions
 obs_size_pay_total &lt;- prediction_data %&gt;% summarise(Total = sum(size.pay)) %&gt;% pull(Total)
-cl_size_pay_total  &lt;- sum(cl_size)
+cl_size_pay_total  &lt;- sum(cl_size_pay)
 glm_size_pay_total &lt;- simul_glm %&gt;% summarise(Total = sum(size.pay)/nsim) %&gt;% pull(Total)
 gbm_size_pay_total &lt;- simul_gbm %&gt;% summarise(Total = sum(size.pay)/nsim) %&gt;% pull(Total)
+xgb_size_pay_total &lt;- simul_xgb %&gt;% summarise(Total = sum(size.pay)/nsim) %&gt;% pull(Total)
 cann_size_pay_total &lt;- simul_cann %&gt;% summarise(Total = sum(size.pay)/nsim) %&gt;% pull(Total)
+dnn_size_pay_total &lt;- simul_dnn %&gt;% summarise(Total = sum(size.pay)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; = obs_size_pay_total, &#39;Chain-Ladder&#39; = cl_size_pay_total, &#39;Hierarchical GLM&#39; = glm_size_pay_total, &#39;Hierarchical GBM&#39; = gbm_size_pay_total, &#39;Hierarchical CANN/GLM&#39; = cann_size_pay_total)</code></pre>
-<pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM 
-##             173145208             181852037             157993321             162539393             163976678</code></pre>
+c(&#39;Actual&#39; = obs_size_pay_total, &#39;Chain-Ladder&#39; = cl_size_pay_total, &#39;Hierarchical GLM&#39; = glm_size_pay_total, &#39;Hierarchical GBM&#39; = gbm_size_pay_total, &#39;Hierarchical XGB&#39; = xgb_size_pay_total, &#39;Hierarchical CANN/GLM&#39; = cann_size_pay_total, &#39;Hierarchical DNN/GLM&#39; = dnn_size_pay_total)</code></pre>
+<pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM      Hierarchical XGB Hierarchical CANN/GLM  Hierarchical DNN/GLM 
+##             164241035             180287241             163995697             156504832             156772523             168912801             159204461</code></pre>
 <p>Fifth, we compare the prediction for the total amount of recovery
 sizes in the prediction set.</p>
 <pre class="r"><code>update_simul &lt;- function(simul) {
@@ -1314,18 +1563,23 @@ sizes in the prediction set.</p>
 
 simul_glm &lt;- update_simul(simul_glm)
 simul_gbm &lt;- update_simul(simul_gbm)
+simul_xgb &lt;- update_simul(simul_xgb)
 simul_cann &lt;- update_simul(simul_cann)
+simul_dnn &lt;- update_simul(simul_dnn)
 
 # Predictions
 obs_size_recov_total &lt;- prediction_data %&gt;% summarise(Total = sum(size.recov)) %&gt;% pull(Total)
+cl_size_recov_total  &lt;- sum(cl_size_recov)
 glm_size_recov_total &lt;- simul_glm %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
 gbm_size_recov_total &lt;- simul_gbm %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
+xgb_size_recov_total &lt;- simul_xgb %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
 cann_size_recov_total &lt;- simul_cann %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
+dnn_size_recov_total &lt;- simul_dnn %&gt;% summarise(Total = sum(size.recov)/nsim) %&gt;% pull(Total)
 
 # Print Results
-c(&#39;Actual&#39; = obs_size_recov_total, &#39;Hierarchical GLM&#39; = glm_size_recov_total, &#39;Hierarchical GBM&#39; = gbm_size_recov_total, &#39;Hierarchical CANN/GLM&#39; = cann_size_recov_total)</code></pre>
-<pre><code>##                Actual      Hierarchical GLM      Hierarchical GBM Hierarchical CANN/GLM 
-##               1348640               1866984               1941986               1818195</code></pre>
+c(&#39;Actual&#39; = obs_size_recov_total, &#39;Chain-Ladder&#39; = cl_size_recov_total, &#39;Hierarchical GLM&#39; = glm_size_recov_total, &#39;Hierarchical GBM&#39; = gbm_size_recov_total, &#39;Hierarchical XGB&#39; = xgb_size_recov_total, &#39;Hierarchical CANN/GLM&#39; = cann_size_recov_total, &#39;Hierarchical DNN/GLM&#39; = dnn_size_recov_total)</code></pre>
+<pre><code>##                Actual          Chain-Ladder      Hierarchical GLM      Hierarchical GBM      Hierarchical XGB Hierarchical CANN/GLM  Hierarchical DNN/GLM 
+##               1425083               1056512               2346231               2169046               2227919               2312632               2188037</code></pre>
 </div>
 <div id="references" class="section level2">
 <h2>References</h2>

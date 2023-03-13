@@ -18,16 +18,16 @@
 # define sampling functions for ultimates of different claim types
 claims.type1 <- function(n_vector, age) {
   mu <- exp(8 + 0.0175*(age-18) + 0.0005*(age-30)^2)
-  cc <- ceiling(rgamma(sum(n_vector), shape=1.25, rate=1.25/mu)*.4)
+  cc <- ceiling(rgamma(sum(n_vector), shape=1.25, rate=1.25/mu))
   to_SynthETIC(cc, n_vector)
 }
 
 claims.type2 <- function(n) {
-  s <- actuar::rinvgauss(n, mean = 10000, dispersion = 1.5e-5)
-  while (any(s < 30 | s > 100000)) {
-    for (j in which(s < 30 | s > 100000)) {
+  s <- actuar::rinvgauss(n, mean = 50000, dispersion = 1.5e-5)
+  while (any(s < 30 | s > 1000000)) {
+    for (j in which(s < 30 | s > 1000000)) {
       # for rejected values, resample
-      s[j] <- actuar::rinvgauss(1, mean = 2500, dispersion = 1e-4)
+      s[j] <- actuar::rinvgauss(1, mean = 25000, dispersion = 1e-4)
     }
   }
   return(s)
@@ -237,10 +237,13 @@ param_pmtdel <- function(claim_size, setldel, occurrence_period) {
 # define base inflation
 # taken from vignette
 demo_rate <- (1 + 0.02)^(1/4) - 1
-base_inflation_past <- rep(demo_rate, times = 40)
-base_inflation_future <- rep(demo_rate, times = 40)
-base_inflation_vector <- c(base_inflation_past, base_inflation_future)
-
+#demo_rate <- 0
+base_inflation_past <- rep(demo_rate, times = 136)
+#base_inflation_future <- rep(demo_rate, times = 40)
+#base_inflation_vector <- c(base_inflation_past, base_inflation_future)
+SI_occurrence <- function(occurrence_time, claim_size) {1}
+SI_payment <- function(payment_time, claim_size) {1}
+base_inflation_vector <- base_inflation_past
 
 
 #####################################################################
@@ -342,7 +345,7 @@ data.generation.type <- function(type, exposure, seed){
   )
 
   ### inflation adjustment
-  Inflation <- claim_payment_inflation(n_vector, Paid, PayTimes, acc_time, Ultimate, base_inflation_vector)
+  Inflation <- claim_payment_inflation(n_vector, Paid, PayTimes, acc_time, Ultimate, base_inflation_vector, SI_occurrence, SI_payment)
 
   ### collecting the individual payments
   ClaimsPaid <- claims(
@@ -431,12 +434,12 @@ data.generation.type <- function(type, exposure, seed){
   claims[claims$Id %in% Id, "SetMonth"] <- claims[claims$Id %in% Id, "SetMonth"] + DelayPlus
 
   ### reopenings
-  source('~/R-projects/hirem/Examples/wang-wuthrich/Tools/reopening.r', local = TRUE)
+  #source('~/R-projects/hirem/Examples/wang-wuthrich/Tools/reopening.r', local = TRUE)
 
   list(
     claims = claims,
-    paid = ClaimsPaid_new,
-    reopen = reopen_rows %>% dplyr::select(Id, SetMonth, EventMonth, OpenInd)
+    paid = ClaimsPaid
+    #reopen = reopen_rows %>% dplyr::select(Id, SetMonth, EventMonth, OpenInd)
   )
 }
 
@@ -458,16 +461,16 @@ data.generation <- function(seed, future_info = FALSE){
 
       ### Code added to remove duplicate claim Id's ###
       ### Begin ###
-      claims <- dplyr::arrange(claims, RepDate)
-      Id_map <- data.frame(Id = claims$Id, Id_new = c(1:nrow(claims)))
-      claims <- merge(Id_map, claims, by = "Id", all.y = T) %>%
-        dplyr::select(-Id) %>% # remove old Id
-        dplyr::rename(Id = Id_new) %>%
-        dplyr::arrange(Id)
-      paid <- merge(Id_map, paid, by = "Id", all.y = T) %>%
-        dplyr::select(-Id) %>% # remove old Id
-        dplyr::rename(Id = Id_new) %>%
-        dplyr::arrange(Id, EventId)
+      # claims <- dplyr::arrange(claims, RepDate)
+      # Id_map <- data.frame(Id = claims$Id, Id_new = c(1:nrow(claims)))
+      # claims <- merge(Id_map, claims, by = "Id", all.y = T) %>%
+      #   dplyr::select(-Id) %>% # remove old Id
+      #   dplyr::rename(Id = Id_new) %>%
+      #   dplyr::arrange(Id)
+      # paid <- merge(Id_map, paid, by = "Id", all.y = T) %>%
+      #   dplyr::select(-Id) %>% # remove old Id
+      #   dplyr::rename(Id = Id_new, EventId = PayId) %>%
+      #   dplyr::arrange(Id, EventId)
       ### End ###
 
     } else {
@@ -475,16 +478,16 @@ data.generation <- function(seed, future_info = FALSE){
 
       ### Code added to remove duplicate claim Id's ###
       ### Begin ###
-      data_list$claims <- dplyr::arrange(data_list$claims, RepDate)
-      Id_map <- data.frame(Id = data_list$claims$Id, Id_new = c(1:nrow(data_list$claims)))
-      data_list$claims <- merge(Id_map, data_list$claims, by = "Id", all.y = T) %>%
-        dplyr::select(-Id) %>% # remove old Id
-        dplyr::rename(Id = Id_new) %>%
-        dplyr::arrange(Id)
-      data_list$paid <- merge(Id_map, data_list$paid, by = "Id", all.y = T) %>%
-        dplyr::select(-Id) %>% # remove old Id
-        dplyr::rename(Id = Id_new) %>%
-        dplyr::arrange(Id, EventId)
+      # data_list$claims <- dplyr::arrange(data_list$claims, RepDate)
+      # Id_map <- data.frame(Id = data_list$claims$Id, Id_new = c(1:nrow(data_list$claims)))
+      # data_list$claims <- merge(Id_map, data_list$claims, by = "Id", all.y = T) %>%
+      #   dplyr::select(-Id) %>% # remove old Id
+      #   dplyr::rename(Id = Id_new) %>%
+      #   dplyr::arrange(Id)
+      # data_list$paid <- merge(Id_map, data_list$paid, by = "Id", all.y = T) %>%
+      #   dplyr::select(-Id) %>% # remove old Id
+      #   dplyr::rename(Id = Id_new, EventId = PayId) %>%
+      #   dplyr::arrange(Id, EventId)
       ### End ###
 
       # get individual data components
@@ -509,23 +512,23 @@ data.generation <- function(seed, future_info = FALSE){
     dplyr::arrange(Id)
   paid <- merge(Id_map, paid, by = "Id", all.y = T) %>%
     dplyr::select(-Id) %>% # remove old Id
-    dplyr::rename(Id = Id_new) %>%
+    dplyr::rename(Id = Id_new, EventId = PayId) %>%
     dplyr::arrange(Id, EventId)
-  reopen <- merge(Id_map, reopen, by = "Id", all.y = T) %>%
-    dplyr::select(-Id) %>% # remove old Id
-    dplyr::rename(Id = Id_new) %>%
-    dplyr::arrange(Id)
+  # reopen <- merge(Id_map, reopen, by = "Id", all.y = T) %>%
+  #   dplyr::select(-Id) %>% # remove old Id
+  #   dplyr::rename(Id = Id_new) %>%
+  #   dplyr::arrange(Id)
 
   # impose maximal reporting delay of 3 years
   claims <- claims[claims$RepDelDays <= 365 * 3, ]
   paid <- paid[paid$Id %in% claims$Id, ]
-  reopen <- reopen[reopen$Id %in% claims$Id, ]
+  # reopen <- reopen[reopen$Id %in% claims$Id, ]
 
   # save full simulated claims and paid data, if future_info == TRUE
   if (future_info == FALSE) {
     full_claims <- NULL
     full_paid <- NULL
-    reopen <- NULL
+    # reopen <- NULL
   } else {
     full_paid <- paid
     full_claims <- claims %>%
@@ -536,13 +539,13 @@ data.generation <- function(seed, future_info = FALSE){
   # get a stopped view of claim status/set months as of the cutoff date
   claims$Status <- "Closed"
   cutoff.date <- years / time_unit
-  claims$SetMonth <- dplyr::if_else(
-    # if the claim reopens and has a revised SetMonth that is after the
-    # cutoff date, we will consider the original SetMonth
-    claims$SetMonth > cutoff.date, claims$SetMonth_old,
-    claims$SetMonth)
+  # claims$SetMonth <- dplyr::if_else(
+  #   # if the claim reopens and has a revised SetMonth that is after the
+  #   # cutoff date, we will consider the original SetMonth
+  #   claims$SetMonth > cutoff.date, claims$SetMonth_old,
+  #   claims$SetMonth)
   claims$SetDelMonths <- claims$SetMonth - claims$RepMonth
-  claims <- dplyr::select(claims, -SetMonth_old, -SetDelMonths_old)
+  #claims <- dplyr::select(claims, -SetMonth_old, -SetDelMonths_old)
   claims[claims$SetMonth > cutoff.date, "Status"]       <- "RBNS"
   claims[claims$SetMonth > cutoff.date, "SetDelMonths"] <- NA
   claims[claims$SetMonth > cutoff.date, "SetMonth"]     <- NA
@@ -552,6 +555,8 @@ data.generation <- function(seed, future_info = FALSE){
   claims[claims$RepMonth > cutoff.date, "RepMonth"]     <- NA
   claims$Status <- factor(claims$Status, levels=c("Closed", "RBNS", "IBNR"))
 
+
+  paid <- paid %>% dplyr::rename(EventMonth = PayMonth)
   # censored paid data (output payment history as of the cutoff date)
   paid <- paid[paid$EventMonth <= cutoff.date, ]
 
@@ -567,11 +572,11 @@ data.generation <- function(seed, future_info = FALSE){
   rownames(paid) <- NULL
   rownames(full_claims) <- NULL
   rownames(full_paid) <- NULL
-  rownames(reopen) <- NULL
+  #rownames(reopen) <- NULL
   list(
     # censored paid data, (not-so-fully-censored) claims data
     claims = claims, paid = paid,
     # full simulated data (to be returned only if future_info == TRUE)
-    full_claims = full_claims, full_paid = full_paid, reopen = reopen
+    full_claims = full_claims, full_paid = full_paid#, reopen = reopen
   )
 }

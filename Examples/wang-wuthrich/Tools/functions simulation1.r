@@ -236,14 +236,14 @@ param_pmtdel <- function(claim_size, setldel, occurrence_period) {
 
 # define base inflation
 # taken from vignette
-demo_rate <- (1 + 0.02)^(1/4) - 1
+demo_rate <- (1 + 0.02)^(1/12) - 1
 #demo_rate <- 0
-base_inflation_past <- rep(demo_rate, times = 136)
-#base_inflation_future <- rep(demo_rate, times = 40)
-#base_inflation_vector <- c(base_inflation_past, base_inflation_future)
-SI_occurrence <- function(occurrence_time, claim_size) {1}
-SI_payment <- function(payment_time, claim_size) {1}
-base_inflation_vector <- base_inflation_past
+base_inflation_past <- rep(demo_rate, times = I)
+base_inflation_future <- rep(demo_rate, times = I)
+base_inflation_vector <- c(base_inflation_past, base_inflation_future)
+#SI_occurrence <- function(occurrence_time, claim_size) {1}
+#SI_payment <- function(payment_time, claim_size) {1}
+#base_inflation_vector <- base_inflation_past
 
 
 #####################################################################
@@ -345,7 +345,8 @@ data.generation.type <- function(type, exposure, seed){
   )
 
   ### inflation adjustment
-  Inflation <- claim_payment_inflation(n_vector, Paid, PayTimes, acc_time, Ultimate, base_inflation_vector, SI_occurrence, SI_payment)
+  #Inflation <- claim_payment_inflation(n_vector, Paid, PayTimes, acc_time, Ultimate, base_inflation_vector, SI_occurrence, SI_payment)
+  Inflation <- claim_payment_inflation(n_vector, Paid, PayTimes, acc_time, Ultimate, base_inflation_vector)
 
   ### collecting the individual payments
   ClaimsPaid <- claims(
